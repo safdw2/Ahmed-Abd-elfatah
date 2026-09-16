@@ -4454,9 +4454,13 @@
                 return;
             }
 
-            // Radial Course Progress Wheel Math (Calculate watched sessions ratio)
-            const watchedList = lectures.filter(l => l.completed).length;
-            const totalSessions = lectures.length || 1;
+            // Radial Course Progress Wheel Math (Calculate watched sessions ratio - for this grade only)
+            const gradeFilteredLectures = lectures.filter(l => 
+                l.grade && l.grade.trim() === (currentUser.grade || '').trim()
+            );
+            
+            const watchedList = gradeFilteredLectures.filter(l => l.completed).length;
+            const totalSessions = gradeFilteredLectures.length || 1;
             const watchPercentage = Math.round((watchedList / totalSessions) * 100);
 
             document.getElementById('dashboard-progress-percent').textContent = `${watchPercentage}%`;
@@ -4465,9 +4469,9 @@
             const ringOffset = 219.9 - (219.9 * watchPercentage / 100);
             document.getElementById('dashboard-progress-ring').style.strokeDashoffset = ringOffset;
 
-            // Calculate hours watched vs remaining for supporting stats
-            const totalSessionsDuration = lectures.reduce((acc, l) => acc + (l.duration_mins || 0), 0);
-            const watchedMinutes = lectures.filter(l => l.completed).reduce((acc, l) => acc + (l.duration_mins || 0), 0);
+            // Calculate hours watched vs remaining for supporting stats (grade-filtered)
+            const totalSessionsDuration = gradeFilteredLectures.reduce((acc, l) => acc + (l.duration_mins || 0), 0);
+            const watchedMinutes = gradeFilteredLectures.filter(l => l.completed).reduce((acc, l) => acc + (l.duration_mins || 0), 0);
             const hoursWatched = (watchedMinutes / 60).toFixed(1);
             const hoursRemaining = (Math.max(0, totalSessionsDuration - watchedMinutes) / 60).toFixed(1);
 
@@ -4488,8 +4492,8 @@
 
             // Learning analytics numbers
             document.getElementById('dashboard-total-minutes').textContent = `${currentUser.watch_mins || 0} mins`;
-            document.getElementById('dashboard-lectures-finished').textContent = `${watchedList} / ${lectures.length}`;
-            document.getElementById('dashboard-lecture-count').textContent = `Currently active with ${lectures.length} live courses listed.`;
+            document.getElementById('dashboard-lectures-finished').textContent = `${watchedList} / ${totalSessions}`;
+            document.getElementById('dashboard-lecture-count').textContent = `Currently active with ${totalSessions} live courses listed for your grade.`;
 
             // Milestone Badges logic
             const minutesPlayed = currentUser.watch_mins || 0;
@@ -4688,9 +4692,12 @@
             const sessionsList = document.getElementById('video-sessions-list');
             sessionsList.innerHTML = '';
 
+            // Filter by grade - handle both student and teacher/admin roles
             const filteredLectures = lectures.filter(l => {
-                if (currentUser.role === 'student' && l.grade !== currentUser.grade) return false;
-                return true;
+                if (currentUser.role === 'student') {
+                    return l.grade && l.grade.trim() === (currentUser.grade || '').trim();
+                }
+                return true; // Teachers/admins see all
             });
 
             document.getElementById('videos-count-badge').textContent = `${filteredLectures.length} Sessions`;
