@@ -2333,7 +2333,248 @@
             }
         }
 
-</style>
+        /* ===================================================================== */
+        /* 🖥️✨ DESKTOP PREMIUM POLISH PASS — purely additive visual refinement  */
+        /* for wider screens. Scoped to (min-width: 768px) so nothing here ever */
+        /* touches the phone layout, which stays exactly as it was.             */
+        /* ===================================================================== */
+        @media (min-width: 768px) {
+
+            /* Richer, more dimensional page backdrop behind the glass panels */
+            .dark-theme body {
+                background:
+                    radial-gradient(ellipse 900px 500px at 12% -5%, rgba(99, 102, 241, 0.10), transparent 60%),
+                    radial-gradient(ellipse 800px 600px at 100% 10%, rgba(6, 182, 212, 0.07), transparent 55%),
+                    radial-gradient(ellipse 700px 500px at 50% 110%, rgba(139, 92, 246, 0.08), transparent 55%),
+                    var(--bg-main) !important;
+            }
+            .light-theme body {
+                background:
+                    radial-gradient(ellipse 900px 500px at 12% -5%, rgba(99, 102, 241, 0.06), transparent 60%),
+                    radial-gradient(ellipse 800px 600px at 100% 10%, rgba(6, 182, 212, 0.05), transparent 55%),
+                    #f8fafc !important;
+            }
+
+            /* Sidebar: crisper edge, subtle top highlight, gentle depth */
+            .glass-sidebar {
+                border-radius: 22px !important;
+                position: relative;
+                overflow: hidden;
+            }
+            .glass-sidebar::after {
+                content: '';
+                position: absolute;
+                inset: 0 0 auto 0;
+                height: 1px;
+                background: linear-gradient(90deg, transparent, rgba(129, 140, 248, 0.5), transparent);
+                pointer-events: none;
+            }
+
+            /* Active nav item gets a clean accent bar + gentle glow instead of just a tint */
+            .nav-btn.bg-indigo-600\/15 {
+                position: relative;
+                box-shadow: 0 8px 20px -8px rgba(99, 102, 241, 0.35) !important;
+            }
+            .nav-btn.bg-indigo-600\/15::before {
+                content: '';
+                position: absolute;
+                left: -1px;
+                top: 20%;
+                bottom: 20%;
+                width: 3px;
+                border-radius: 3px;
+                background: linear-gradient(180deg, #818cf8, #6366f1);
+            }
+            .nav-btn {
+                transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease !important;
+            }
+            .nav-btn:hover {
+                transform: translateX(3px);
+            }
+
+            /* Cards lift subtly on hover for a tactile, premium feel */
+            .glass-card {
+                transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.35s ease, box-shadow 0.35s ease !important;
+            }
+            .glass-card:hover {
+                transform: translateY(-3px);
+            }
+
+            /* Primary buttons get a soft directional sheen on hover */
+            button.bg-indigo-600 {
+                position: relative;
+                overflow: hidden;
+                transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+            }
+            button.bg-indigo-600:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 10px 24px -8px rgba(99, 102, 241, 0.55) !important;
+            }
+            button.bg-indigo-600:active {
+                transform: translateY(0);
+            }
+
+            /* Section headings: a touch more breathing room and refined tracking */
+            h1, h2, h3 {
+                letter-spacing: -0.01em;
+            }
+
+            /* Slim, unobtrusive custom scrollbar for desktop panels */
+            .overflow-y-auto::-webkit-scrollbar,
+            .overflow-y-scroll::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            .overflow-y-auto::-webkit-scrollbar-track,
+            .overflow-y-scroll::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .overflow-y-auto::-webkit-scrollbar-thumb,
+            .overflow-y-scroll::-webkit-scrollbar-thumb {
+                background: rgba(99, 102, 241, 0.35);
+                border-radius: 8px;
+            }
+            .overflow-y-auto::-webkit-scrollbar-thumb:hover,
+            .overflow-y-scroll::-webkit-scrollbar-thumb:hover {
+                background: rgba(99, 102, 241, 0.55);
+            }
+
+            /* Login card: a bit more presence and a crisper edge on the wider screen */
+            #login-section > div {
+                box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.55), var(--neumorphic-flat) !important;
+            }
+            #login-section input[type="text"]:focus,
+            #login-section input[type="password"]:focus {
+                box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+            }
+
+            /* Materials & feed cards: slightly richer border on hover to match the lift */
+            #materials-grid .glass-card:hover,
+            #feed-stream .glass-card:hover {
+                border-color: rgba(99, 102, 241, 0.4) !important;
+            }
+
+            /* ----- New: extra motion, kept desktop-only on purpose ----- */
+
+            /* Active nav accent bar breathes gently instead of sitting static */
+            @keyframes navBarGlow {
+                0%, 100% { opacity: 0.65; box-shadow: 0 0 6px rgba(129, 140, 248, 0.4); }
+                50% { opacity: 1; box-shadow: 0 0 12px rgba(129, 140, 248, 0.8); }
+            }
+            .nav-btn.bg-indigo-600\/15::before {
+                animation: navBarGlow 2.4s ease-in-out infinite;
+            }
+
+            /* Profile avatar gets a slow, subtle float — alive, not distracting */
+            @keyframes avatarFloat {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-3px); }
+            }
+            #profile-avatar {
+                animation: avatarFloat 4s ease-in-out infinite;
+            }
+
+            /* Primary buttons: soft sweeping shine on hover */
+            @keyframes buttonSheen {
+                0% { transform: translateX(-120%) skewX(-15deg); }
+                100% { transform: translateX(220%) skewX(-15deg); }
+            }
+            button.bg-indigo-600::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 35%;
+                height: 100%;
+                background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+                opacity: 0;
+                pointer-events: none;
+            }
+            button.bg-indigo-600:hover::after {
+                opacity: 1;
+                animation: buttonSheen 0.9s ease forwards;
+            }
+
+            /* Icons nudge and brighten on nav hover for a livelier feel */
+            .nav-btn:hover [data-lucide] {
+                transform: scale(1.1);
+                transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+
+            /* Tab content eases in with a touch more spring than the base animation */
+            .view-panel {
+                animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1) !important;
+            }
+        }
+        /* ===================================================================== */
+        /* 📱✨ MOBILE PREMIUM POLISH PASS v2 — additive-only visual refinement  */
+        /* for phones, tuned to stay cheap (no blur/animation additions, since  */
+        /* the perf-focused rules above already strip those on touch devices). */
+        /* Nothing here changes layout, structure, or spacing — only look/feel.*/
+        /* ===================================================================== */
+        @media (max-width: 767px) {
+
+            /* Same layered depth as desktop, but static (no animated blobs) so
+               it costs nothing extra on a phone GPU/battery. */
+            .dark-theme body {
+                background:
+                    radial-gradient(ellipse 500px 350px at 15% -5%, rgba(99, 102, 241, 0.12), transparent 60%),
+                    radial-gradient(ellipse 450px 400px at 100% 15%, rgba(6, 182, 212, 0.08), transparent 55%),
+                    radial-gradient(ellipse 400px 350px at 50% 115%, rgba(139, 92, 246, 0.09), transparent 55%),
+                    var(--bg-main) !important;
+            }
+            .light-theme body {
+                background:
+                    radial-gradient(ellipse 500px 350px at 15% -5%, rgba(99, 102, 241, 0.07), transparent 60%),
+                    radial-gradient(ellipse 450px 400px at 100% 15%, rgba(6, 182, 212, 0.05), transparent 55%),
+                    #f8fafc !important;
+            }
+
+            /* Real tap feedback everywhere touch replaces hover */
+            .glass-card, .glass-panel {
+                transition: transform 0.15s ease, border-color 0.2s ease !important;
+            }
+            .glass-card:active, .glass-panel:active {
+                transform: scale(0.985);
+            }
+            button.bg-indigo-600, .ripple-btn {
+                transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+            }
+            button.bg-indigo-600:active {
+                transform: scale(0.96);
+            }
+
+            /* Active tab in the pill bar gets a small glowing underline instead
+               of just a flat tint, so it reads clearly while thumb-scrolling. */
+            .glass-sidebar nav .nav-btn.bg-indigo-600\/15 {
+                position: relative;
+                box-shadow: 0 4px 14px -4px rgba(99, 102, 241, 0.5) !important;
+            }
+            .glass-sidebar nav .nav-btn.bg-indigo-600\/15::after {
+                content: '';
+                position: absolute;
+                left: 16%;
+                right: 16%;
+                bottom: 2px;
+                height: 2px;
+                border-radius: 2px;
+                background: linear-gradient(90deg, #818cf8, #6366f1);
+            }
+
+            /* Crisper card edges and a touch more lift on the login card */
+            #login-section > div {
+                box-shadow: 0 20px 45px -18px rgba(0, 0, 0, 0.55), var(--neumorphic-flat) !important;
+            }
+            .glass-card, #materials-grid > div, #feed-stream > div {
+                border-radius: 18px !important;
+            }
+
+            /* Slightly punchier focus ring on inputs — easier to see mid-tap */
+            input:focus, textarea:focus, select:focus {
+                box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18) !important;
+            }
+        }
+    </style>
 
 </head>
 <body class="bg-[#05070c] text-white font-sans min-h-screen flex flex-col relative overflow-x-hidden">
@@ -2396,6 +2637,11 @@
                     <label class="block text-xs font-semibold text-gray-400 mb-1.5">Secret Password</label>
                     <input type="password" id="login-password" required placeholder="••••••••" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 placeholder-gray-600 transition backdrop-blur-sm">
                 </div>
+
+                <label class="flex items-center gap-2.5 cursor-pointer select-none py-1 group">
+                    <input type="checkbox" id="login-remember" class="w-4 h-4 rounded accent-indigo-600 cursor-pointer">
+                    <span class="text-xs font-semibold text-gray-400 group-hover:text-gray-300 transition">Keep me logged on this device</span>
+                </label>
 
                 <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-xs transition duration-200 shadow-lg shadow-indigo-600/25">
                     Access Website
@@ -3219,7 +3465,8 @@
                 </div>
                 <div class="space-y-1">
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">PDF Link / Location</label>
-                    <input type="text" id="upload-doc-url" required placeholder="https://drive.google.com/... or cloudflare path" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <input type="text" id="upload-doc-url" required placeholder="https://yoursite.com/files/sheet.pdf" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <p class="text-[9px] text-gray-500 leading-relaxed pt-0.5">Use a direct PDF link (ends in .pdf) hosted somewhere public — Cloudflare R2, GitHub, Archive.org, etc. For Google Drive, share the file "Anyone with the link", then swap the link's <span class="font-mono">/view</span> ending for <span class="font-mono">&amp;export=download</span> so it downloads instead of opening a preview.</p>
                 </div>
                 <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-xs transition">
                     Publish Study Sheet
@@ -3453,6 +3700,47 @@
         let activeTab = 'dashboard';
         let selectedMaterialFilter = 'all';
 
+        // -----------------------------------------------------------------
+        // 🗓️ REAL DATE/TIME STAMPS — replaces old hardcoded "Today" / fixed
+        // date strings so every post, comment, reply and uploaded material
+        // always shows the date it actually happened, forever.
+        // -----------------------------------------------------------------
+        function nowStamp() {
+            return new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+        }
+        function nowDateLabel() {
+            return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        // -----------------------------------------------------------------
+        // 🔐 "KEEP ME LOGGED ON THIS DEVICE" — remembers a session locally
+        // so the student/teacher doesn't have to log in again on this
+        // browser. Cleared automatically on explicit logout.
+        // -----------------------------------------------------------------
+        const REMEMBER_KEY = 'rememberedSession';
+        function saveRememberedSession(user, remember) {
+            try {
+                if (remember) {
+                    localStorage.setItem(REMEMBER_KEY, JSON.stringify(user));
+                } else {
+                    localStorage.removeItem(REMEMBER_KEY);
+                }
+            } catch (e) { /* storage unavailable — fail silently */ }
+        }
+        function clearRememberedSession() {
+            try { localStorage.removeItem(REMEMBER_KEY); } catch (e) {}
+        }
+        function attemptAutoLogin() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(REMEMBER_KEY));
+                if (saved && (saved.id || saved.phone)) {
+                    currentUser = saved;
+                    if (!currentUser.role) currentUser.role = 'student';
+                    loadPortal();
+                }
+            } catch (e) { /* corrupted/no saved session — show login as normal */ }
+        }
+
         // 🔓 Forced client-app installation has been removed.
         // The portal is now reachable directly from any standard browser.
 
@@ -3521,6 +3809,10 @@
 
         let feedPosts = JSON.parse(localStorage.getItem('feedPosts')) || [];
 
+        // Try to restore a remembered session immediately, before any network
+        // round-trip, so a returning student lands straight on their dashboard.
+        attemptAutoLogin();
+
         // -----------------------------------------------------------------
         // REFRESH LOCAL COPIES & METRICS
         // -----------------------------------------------------------------
@@ -3585,7 +3877,7 @@
         function feedPostPayload(post) {
             return {
                 author: post.author,
-                date: post.date || 'Today',
+                date: post.date || nowStamp(),
                 text: post.text,
                 attachment_name: post.attachmentName || post.attachment_name || null,
                 image: post.image || null,
@@ -3879,6 +4171,7 @@
             const errorBlock = document.getElementById('login-error');
 
             errorBlock.classList.add('hidden');
+            const remember = document.getElementById('login-remember')?.checked || false;
 
             if (activeRole === 'student') {
                 // Find student
@@ -3886,6 +4179,7 @@
                 if (student && student.password === pass) {
                     currentUser = { ...student };
                     if (!currentUser.role) currentUser.role = 'student';
+                    saveRememberedSession(currentUser, remember);
                     loadPortal();
                 } else {
                     errorBlock.textContent = "Invalid Student credentials. Please contact MR. Ahmed's assistants to provision your account.";
@@ -3895,6 +4189,7 @@
                 // Teacher bypass check
                 if (id === 'admin' && pass === 'admin123') {
                     currentUser = { id: 'admin', name: 'Administrator', role: 'teacher', gender: 'Boy', title: 'Director' };
+                    saveRememberedSession(currentUser, remember);
                     loadPortal();
                 } else {
                     errorBlock.textContent = "Invalid teacher credentials.";
@@ -3959,9 +4254,12 @@
 
         function handleLogout() {
             currentUser = null;
+            clearRememberedSession();
             document.getElementById('portal-section').classList.add('hidden');
             document.getElementById('login-section').classList.remove('hidden');
             document.getElementById('login-password').value = '';
+            const rememberBox = document.getElementById('login-remember');
+            if (rememberBox) rememberBox.checked = false;
             
             // Stop video playing if any
             const securePlayer = document.getElementById('secure-player');
@@ -4334,8 +4632,28 @@
             });
         }
 
+        // Triggers a real browser download of the material's PDF. If the file
+        // is hosted on a server that allows it (same-origin, or a host that
+        // sends Access-Control-Allow-Origin / Content-Disposition), the
+        // browser saves it directly under a clean filename. If the host
+        // blocks that (most third-party link-sharing sites do), it falls
+        // back to opening the file in a new tab so the student can still
+        // view/save it with the browser's own "Download" / "Save as" control.
         function downloadStudySheet(title, url) {
-            showToast(`Downloading secure study packet: ${title}`, 'success');
+            if (!url || url === 'undefined' || url === 'null') {
+                showToast('This material has no file attached yet. Ask your teacher to add a link.', 'warning');
+                return;
+            }
+            const safeName = (title || 'study-material').replace(/[^a-z0-9\-_ ]/gi, '').trim().replace(/\s+/g, '_') || 'study-material';
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = safeName.toLowerCase().endsWith('.pdf') ? safeName : `${safeName}.pdf`;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            showToast(`Downloading: ${title}`, 'success');
         }
 
         // -----------------------------------------------------------------
@@ -5213,7 +5531,7 @@
                 id: Date.now(),
                 author: currentUser.name,
                 ...authorDetails,
-                date: 'Today',
+                date: nowStamp(),
                 text: text,
                 attachmentType: pendingFeedAttachment || null,
                 attachmentName: pendingFeedAttachment === 'pdf' ? 'Handout_Attachment.pdf' : null,
@@ -5283,7 +5601,7 @@
                     id: Date.now() + Math.random(),
                     author: currentUser.name,
                     ...getFeedAuthorDetails(),
-                    date: 'Just now',
+                    date: nowStamp(),
                     text: text,
                     likes: 0,
                     likedBy: [],
@@ -5338,7 +5656,7 @@
                         id: Date.now() + Math.random(),
                         author: currentUser.name,
                         ...getFeedAuthorDetails(),
-                        date: 'Just now',
+                        date: nowStamp(),
                         text: text,
                         likes: 0,
                         likedBy: []
@@ -5652,7 +5970,7 @@
             const grade = document.getElementById('upload-doc-grade').value;
             const url = document.getElementById('upload-doc-url').value;
 
-            const newMaterial = { id: Date.now(), title, type, grade, file_url: url, uploaded_at: '2026-09-08' };
+            const newMaterial = { id: Date.now(), title, type, grade, file_url: url, uploaded_at: nowDateLabel() };
             materials.unshift(newMaterial);
             syncLocalDB();
             closeUploadMaterialModal();
@@ -6559,13 +6877,16 @@
         });
 
         // Smooth cursor lerping using GPU translate3d (avoids triggering layout cycles/reflow)
+        // Only runs with a real mouse — skipped on touch devices, where the
+        // custom cursor is hidden anyway, so there's no point paying for it.
+        const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
         function animateCursor() {
             cX += (mX - cX) * 0.18; // Smoother tracking coefficient
             cY += (mY - cY) * 0.18;
             customCursor.style.transform = `translate3d(calc(${cX}px - 50%), calc(${cY}px - 50%), 0)`;
-            requestAnimationFrame(animateCursor);
+            if (hasFinePointer) requestAnimationFrame(animateCursor);
         }
-        requestAnimationFrame(animateCursor);
+        if (hasFinePointer) requestAnimationFrame(animateCursor);
 
         // Hover expansions for buttons & interactive panels
         document.addEventListener('mouseover', (e) => {
@@ -6740,16 +7061,23 @@
         }
 
         window.addEventListener('mousemove', (e) => {
-            injectFluidEddy(e.clientX, e.clientY);
+            if (fluidSimEnabled) injectFluidEddy(e.clientX, e.clientY);
         });
 
         window.addEventListener('touchmove', (e) => {
+            if (!fluidSimEnabled) return;
             const t = e.touches[0];
             injectFluidEddy(t.clientX, t.clientY);
         });
 
         // Draw and update loop
         function fluidRenderLoop() {
+            // Skip entirely when the canvas isn't visible (phones/tablets, or
+            // the tab is backgrounded) — running this every frame for nothing
+            // rendered is exactly what was making the portal feel laggy on
+            // mobile, since the loop used to run unconditionally forever.
+            if (!fluidSimEnabled || document.hidden) return;
+
             const isDark = !document.documentElement.classList.contains('light-theme');
 
             // High performance trailing fade
@@ -6925,7 +7253,7 @@
                 if (f) {
                     f.rating = feedbackSelectedRating;
                     f.text = text;
-                    f.date = 'Updated Today';
+                    f.date = `Updated ${nowDateLabel()}`;
                     D1.updateFeedback(f);
                     showToast('Feedback updated successfully!', 'success');
                 }
@@ -6949,7 +7277,7 @@
                     idVal: currentUser.id || 'student-guest',
                     rating: feedbackSelectedRating,
                     text: text,
-                    date: 'Today'
+                    date: nowDateLabel()
                 };
                 feedbacks.unshift(newFeedback);
                 showToast('Thank you for your feedback and suggestion!', 'success');
@@ -7090,8 +7418,23 @@
         }
     }
 
-// Start flow background loop
-      fluidRenderLoop();
+// Start flow background loop — desktop-only. The canvas was already
+// hidden by CSS under 1024px, but the simulation kept computing every
+// single frame regardless, burning CPU/battery for nothing visible.
+// That hidden cost is the main thing that was making things feel laggy
+// on phones, so it now only runs where it's actually seen — and pauses
+// itself whenever the browser tab isn't in focus.
+      let fluidSimEnabled = window.innerWidth >= 1024;
+      window.addEventListener('resize', () => {
+          const shouldRun = window.innerWidth >= 1024;
+          const wasOff = !fluidSimEnabled;
+          fluidSimEnabled = shouldRun;
+          if (shouldRun && wasOff) fluidRenderLoop();
+      });
+      document.addEventListener('visibilitychange', () => {
+          if (!document.hidden && fluidSimEnabled) fluidRenderLoop();
+      });
+      if (fluidSimEnabled) fluidRenderLoop();
     </script> <!-- 1. Close the inline JavaScript block here -->
 
     <!-- 2. Now include db.js -->
