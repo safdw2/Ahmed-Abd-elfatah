@@ -2419,11 +2419,14 @@
                 letter-spacing: -0.01em;
             }
 
-            /* Slim, unobtrusive custom scrollbar for desktop panels */
+            /* Slim-looking but full-size-hit-box custom scrollbar for desktop
+               panels: the scrollbar track/hit area stays a comfortable width
+               to grab, but the visible thumb is rendered much thinner via a
+               transparent border + background-clip trick, with a soft glow. */
             .overflow-y-auto::-webkit-scrollbar,
             .overflow-y-scroll::-webkit-scrollbar {
-                width: 8px;
-                height: 8px;
+                width: 10px;
+                height: 10px;
             }
             .overflow-y-auto::-webkit-scrollbar-track,
             .overflow-y-scroll::-webkit-scrollbar-track {
@@ -2431,12 +2434,22 @@
             }
             .overflow-y-auto::-webkit-scrollbar-thumb,
             .overflow-y-scroll::-webkit-scrollbar-thumb {
-                background: rgba(99, 102, 241, 0.35);
-                border-radius: 8px;
+                background-color: rgba(129, 140, 248, 0.6);
+                background-clip: padding-box;
+                border: 3.5px solid transparent;
+                border-radius: 999px;
+                box-shadow: 0 0 6px rgba(99, 102, 241, 0.55), 0 0 2px rgba(129, 140, 248, 0.9);
+                transition: background-color 0.2s ease, box-shadow 0.2s ease;
             }
             .overflow-y-auto::-webkit-scrollbar-thumb:hover,
             .overflow-y-scroll::-webkit-scrollbar-thumb:hover {
-                background: rgba(99, 102, 241, 0.55);
+                background-color: rgba(129, 140, 248, 0.9);
+                box-shadow: 0 0 10px rgba(99, 102, 241, 0.85), 0 0 4px rgba(129, 140, 248, 1);
+            }
+            /* Firefox: closest equivalent (no glow/thumb-shrink support there) */
+            .overflow-y-auto, .overflow-y-scroll {
+                scrollbar-width: thin;
+                scrollbar-color: rgba(129, 140, 248, 0.6) transparent;
             }
 
             /* Login card: a bit more presence and a crisper edge on the wider screen */
@@ -4312,7 +4325,13 @@
             // Remove active style from side buttons
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 if (btn.id !== 'nav-co-assistant') {
+                    // Preserve a permission-based "hidden" state (e.g. the Admin
+                    // Console button for non-admin accounts) — otherwise this
+                    // reset wipes it and the button reappears after the very
+                    // next tab switch, even for accounts with no admin grant.
+                    const wasHidden = btn.classList.contains('hidden');
                     btn.className = "nav-btn ripple-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-300 ease-out";
+                    if (wasHidden) btn.classList.add('hidden');
                 }
             });
             const coBtn = document.getElementById('nav-co-assistant');
