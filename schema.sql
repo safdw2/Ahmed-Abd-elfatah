@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS students_table (
     phone                   TEXT UNIQUE NOT NULL,
     name                    TEXT NOT NULL,
     password                TEXT NOT NULL DEFAULT '123456',
-    grade                   TEXT DEFAULT 'Grade 10 (Secandory 1)',
+    grade                   TEXT DEFAULT 'Grade 10 (Secondary 1)',
     gender                  TEXT DEFAULT 'Boy',
     title                   TEXT,
     xp                      INTEGER DEFAULT 0,
