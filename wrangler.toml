@@ -11,7 +11,7 @@
 # The binding name "DB" must match env.DB used in functions/[[path]].js.
 # =====================================================================
 
-name = "ahmed-abdelfatah-portal"
+name = "ahmed-abd-elfatah"
 compatibility_date = "2026-09-14"
 compatibility_flags = ["nodejs_compat"]
 
