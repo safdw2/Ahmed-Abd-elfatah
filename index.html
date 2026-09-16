@@ -2375,7 +2375,7 @@
 
                 <button onclick="switchTab('videos')" id="nav-videos" class="nav-btn ripple-btn w-auto md:w-full flex items-center gap-3 px-3.5 py-2 md:px-4 md:py-3 rounded-xl text-xs md:text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-300 ease-out whitespace-nowrap shrink-0">
                     <i data-lucide="film" class="w-4 h-4"></i>
-                    <span>Lectures Catalog</span>
+                    <span>Sessions Catalog</span>
                 </button>
 
                 <button onclick="switchTab('feed')" id="nav-feed" class="nav-btn ripple-btn w-auto md:w-full flex items-center gap-3 px-3.5 py-2 md:px-4 md:py-3 rounded-xl text-xs md:text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-300 ease-out whitespace-nowrap shrink-0">
@@ -3121,7 +3121,7 @@
                         <option value="Grade 7 (Preparatory 1)">Grade 7 (Preparatory 1)</option>
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
-                        <option value="Grade 10 (Secandory 1)">Grade 10 (Secandory 1)</option>
+                        <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
                     </select>
                 </div>
                 <div class="space-y-1">
@@ -3201,7 +3201,7 @@
                         <option value="Grade 7 (Preparatory 1)">Grade 7 (Preparatory 1)</option>
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
-                        <option value="Grade 10 (Secandory 1)">Grade 10 (Secandory 1)</option>
+                        <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
                     </select>
                 </div>
                 <div class="space-y-1">
@@ -3815,7 +3815,7 @@
 
             // Welcome
             document.getElementById('welcome-message').textContent = isStaff ? 'Marhaban, Administrator!' : `Marhaban, ${currentUser.name}!`;
-            document.getElementById('dashboard-grade-info').textContent = isStaff ? 'Administrator Workspace' : `Grade Level: ${currentUser.grade || 'Grade 10 (Secandory 1)'}`;
+            document.getElementById('dashboard-grade-info').textContent = isStaff ? 'Administrator Workspace' : `Grade Level: ${currentUser.grade || 'Grade 10 (Secondary 1)'}`;
 
             // Standings calculation
             const rankBadge = document.getElementById('dashboard-rank-badge');
@@ -5309,7 +5309,7 @@
         const name = nameInput ? nameInput.value.trim() : '';
         const id = phoneInput ? phoneInput.value.trim() : '';
         const pass = passInput ? passInput.value.trim() : '123456';
-        const grade = gradeInput ? gradeInput.value : 'Grade 10 (Secandory 1)';
+        const grade = gradeInput ? gradeInput.value : 'Grade 10 (Secondary 1)';
         const gender = genderInput ? genderInput.value : 'Boy';
         const title = titleInput ? titleInput.value.trim() : '';
 
@@ -5975,7 +5975,7 @@
                         matches.push(`<button onclick="switchTab('materials')" class="${btnClass}"><i data-lucide="file-spreadsheet" class="w-3 h-3"></i><span>Materials & Sheets</span></button>`);
                     }
                     if (txt.includes('video') || txt.includes('lecture') || txt.includes('stream') || txt.includes('catalog') || txt.includes('watch')) {
-                        matches.push(`<button onclick="switchTab('videos')" class="${btnClass}"><i data-lucide="film" class="w-3 h-3"></i><span>Lectures Catalog</span></button>`);
+                        matches.push(`<button onclick="switchTab('videos')" class="${btnClass}"><i data-lucide="film" class="w-3 h-3"></i><span>Sessions Catalog</span></button>`);
                     }
                     if (txt.includes('community') || txt.includes('feed') || txt.includes('announcement') || txt.includes('post') || txt.includes('announcements')) {
                         matches.push(`<button onclick="switchTab('feed')" class="${btnClass}"><i data-lucide="megaphone" class="w-3 h-3"></i><span>Community Feed</span></button>`);
@@ -6134,7 +6134,7 @@
                 showToast('Auto-navigated to Materials & Sheets!', 'info');
             } else if (txt.includes('video') || txt.includes('lecture') || txt.includes('stream') || txt.includes('catalog') || txt.includes('watch')) {
                 switchTab('videos');
-                showToast('Auto-navigated to Lectures Catalog!', 'info');
+                showToast('Auto-navigated to Sessions Catalog!', 'info');
             } else if (txt.includes('community') || txt.includes('feed') || txt.includes('announcement') || txt.includes('post') || txt.includes('announcements')) {
                 switchTab('feed');
                 showToast('Auto-navigated to Community Feed!', 'info');
