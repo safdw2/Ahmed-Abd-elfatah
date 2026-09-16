@@ -1,0 +1,40 @@
+#=====================================================================
+# ⚡WRANGLER CONFIG — MR. Ahmed Abd-ElFatah Unified Student Portal
+# Cloudflare Pages project + D1 database binding
+#
+# This file mainly matters for LOCAL development (`wrangler pages dev`).
+# In production, Cloudflare Pages is connected through GitHub, and the
+# D1 binding must ALSO be set (or confirmed) in the dashboard:
+#   Cloudflare Dashboard -> Workers & Pages -> your Pages project
+#   -> Settings -> Functions -> D1 database bindings
+#   -> Variable name: DB   ->   D1 database: ahmed-abdelfatah-db
+# The binding name "DB" must match env.DB used in functions/[[path]].js.
+# =====================================================================
+
+name = "ahmed-abdelfatah-portal"
+compatibility_date = "2026-09-14"
+compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare Pages: the directory that gets deployed as static assets.
+# "." means the repo root, where index.html lives, and /functions holds
+# the [[path]].js router that Cloudflare Pages auto-detects.
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ahmed-abdelfatah-db"
+database_id = "48d0a802-ac09-4084-ba2f-51231553b465"
+
+# -----------------------------------------------------------------
+# Optional: AI proxy keys used by functions/[[path]].js (/api/ai/chat).
+# Prefer setting these as encrypted secrets instead of committing them:
+#   wrangler pages secret put CEREBRAS_API_KEY
+#   wrangler pages secret put GROQ_API_KEY
+# The router already has hardcoded fallbacks, but secrets are safer.
+# -----------------------------------------------------------------
+# [vars]
+# CEREBRAS_API_KEY = "your-key-here"
+# GROQ_API_KEY = "your-key-here"
+
+# Required for signed portal sessions. Set this as a secret before deployment:
+#   wrangler pages secret put SESSION_SECRET
