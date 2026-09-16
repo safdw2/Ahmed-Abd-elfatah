@@ -4,8 +4,8 @@
  * Project: MR. Ahmed Abd-ElFatah - Unified Student Workspace Portal
  * 
  * 🗄️ D1 Database Binding: env.DB
- * 🆔 Database ID: ca82b308-d3d0-4f8e-9c41-beb54f0b0413
- * 📛 Database Name: ahmed-abdelfatah-db
+ * 🆔 Database ID: 690c177a-0e63-4bcd-ae11-5fb684dd463f
+ * 📛 Database Name: ahmedabdelfatah-db
  */
 
 export async function onRequest(context) {
@@ -364,6 +364,31 @@ export async function onRequest(context) {
                 } catch (err) {
                     return jsonResponse({ error: err.message }, 400);
                 }
+            }
+        }
+
+        // Editing a review only ever changes its rating, text and date —
+        // the author, gender and id_val stay put so the review still
+        // belongs to whoever originally posted it.
+        if (pathname.startsWith('/api/db/feedbacks/') && request.method === 'PUT') {
+            try {
+                const fbId = pathname.split('/').pop();
+                const fb = await request.json();
+                if (d1 && fbId) {
+                    await d1.prepare(`
+                        UPDATE portal_feedbacks SET rating=?, text=?, date=?
+                        WHERE id=?
+                    `).bind(
+                        fb.rating || 0,
+                        fb.text,
+                        fb.date || 'Today',
+                        fbId
+                    ).run();
+                    return jsonResponse({ success: true, message: 'Feedback updated.' });
+                }
+                return jsonResponse({ success: true, mock: true });
+            } catch (err) {
+                return jsonResponse({ error: err.message }, 400);
             }
         }
 
