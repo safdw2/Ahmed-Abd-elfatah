@@ -1,9 +1,9 @@
 -- =====================================================================
--- 🗄️ CLOUDFLARE D1 SCHEMA — "ahmed-abdelfatah-db"
+-- 🗄️ CLOUDFLARE D1 SCHEMA — "ahmedabdelfatah-db"
 -- Project: MR. Ahmed Abd-ElFatah - Unified Student Workspace Portal
 -- Bind this database to your Cloudflare Pages project as: DB
 -- Apply with:
---   wrangler d1 execute ahmed-abdelfatah-db --file=./schema.sql --remote
+--   wrangler d1 execute ahmedabdelfatah-db --file=./schema.sql --remote
 -- (drop --remote to apply to your local dev DB instead)
 -- =====================================================================
 
