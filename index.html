@@ -1431,12 +1431,12 @@
             h3 { font-size: 0.9rem !important; }
             p, span { font-size: 11px !important; }
             .text-xs { font-size: 10px !important; }
-            .text-\[10px\], .text-\[11px\], .text-\[9px\] { font-size: 9px !important; }
+            .text-[10px], .text-[11px], .text-[9px] { font-size: 9px !important; }
             
             /* Bento box columns must stay readable - stack single columns */
-            .md\:col-span-2, .lg\:col-span-2, .xl\:col-span-2,
-            .md\:col-span-3, .lg\:col-span-3, .xl\:col-span-3,
-            .md\:col-span-1, .lg\:col-span-1, .xl\:col-span-1 {
+            .md:col-span-2, .lg:col-span-2, .xl:col-span-2,
+            .md:col-span-3, .lg:col-span-3, .xl:col-span-3,
+            .md:col-span-1, .lg:col-span-1, .xl:col-span-1 {
                 grid-column: span 1 / span 1 !important;
             }
             
@@ -1566,7 +1566,7 @@
                 border-radius: 14px !important;
             }
             #video-watermark-teacher, #video-watermark-student {
-                font-size: 9px !important;
+                font-size: 7px !important;
                 white-space: nowrap;
                 max-width: 90%;
                 overflow: hidden;
@@ -1574,6 +1574,12 @@
             }
             #secure-player, #youtube-player {
                 border-radius: 14px !important;
+            }
+
+            /* Force-install shield: comfortable full screen card on small phones */
+            #force-install-overlay > div {
+                max-height: 94vh !important;
+                overflow-y: auto !important;
             }
 
             /* Toasts float above thumb-reach, not under it */
@@ -1661,12 +1667,12 @@
         html.theme-transitioning *,
         html.theme-transitioning *::before,
         html.theme-transitioning *::after {
-            transition: background-color 0.25s ease-in-out,
-                        border-color 0.25s ease-in-out,
-                        color 0.25s ease-in-out,
-                        fill 0.25s ease-in-out,
-                        stroke 0.25s ease-in-out,
-                        box-shadow 0.25s ease-in-out,
+            transition: background-color 0.25s ease-in-out !important,
+                        border-color 0.25s ease-in-out !important,
+                        color 0.25s ease-in-out !important,
+                        fill 0.25s ease-in-out !important,
+                        stroke 0.25s ease-in-out !important,
+                        box-shadow 0.25s ease-in-out !important,
                         opacity 0.25s ease-in-out !important;
         }
 
@@ -1996,7 +2002,7 @@
            ------------------------------------------------------------------ */
         .glass-card, .glass-panel, .glass-sidebar, .glass-header, .glass-main-panel,
         .glass-modal, .dashboard-header-glow, input, select, textarea,
-        #toast-container > * {
+        #force-install-overlay, #toast-container > * {
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
         }
@@ -2251,11 +2257,6 @@
             #view-feed { padding-left: 2px !important; padding-right: 2px !important; }
         }
 
-        /* Staff dashboards intentionally focus on welcome, live rankings, and feedback. */
-        #dashboard-grid.dashboard-staff #dashboard-welcome-card,
-        #dashboard-grid.dashboard-staff #dashboard-leaderboard-card {
-            grid-column: 1 / -1;
-        }
 </style>
 
 </head>
@@ -2265,6 +2266,65 @@
     
     <!-- 👁️ Inverted Blend-Mode Custom Cursor -->
     
+
+    <!-- FORCE APP INSTALLATION OVERLAY (DRM SHIELD) -->
+    <div id="force-install-overlay" class="fixed inset-0 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-6 z-[100] hidden">
+        <div class="w-full max-w-md glass-modal p-8 rounded-3xl space-y-6 text-center border border-white/10 relative shadow-2xl">
+            
+            <!-- Animated visual anchor -->
+            <div id="force-install-shield-icon" onclick="handleShieldTapBypass()" class="w-16 h-16 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center mx-auto text-indigo-400 animate-pulse cursor-pointer select-none active:scale-95 transition-transform" title="Secure portal">
+                <i data-lucide="shield-alert" class="w-8 h-8"></i>
+            </div>
+
+            <div class="space-y-2">
+                <h2 class="text-lg font-black text-white tracking-tight">Official Client App Required</h2>
+                <p class="text-xs text-gray-400 leading-relaxed">
+                    To protect educational copyrights and stream secure lectures, MR. Ahmed's Academy requires accessing the portal through our official application.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 pt-2">
+                <button onclick="downloadApp('Windows')" class="flex items-center justify-between p-3 bg-slate-900/50 border border-white/5 rounded-2xl text-left download-btn-glow group">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-xl bg-indigo-950/80 text-indigo-400 group-hover:scale-110 transition">
+                            <i data-lucide="monitor" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white">Download for Windows</p>
+                            <p class="text-[9px] text-gray-500">Standalone Installer (.exe)</p>
+                        </div>
+                    </div>
+                    <i data-lucide="download" class="w-4 h-4 text-gray-500 group-hover:text-white transition"></i>
+                </button>
+
+                <button onclick="downloadApp('macOS')" class="flex items-center justify-between p-3 bg-slate-900/50 border border-white/5 rounded-2xl text-left download-btn-glow group">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-xl bg-indigo-950/80 text-indigo-400 group-hover:scale-110 transition">
+                            <i data-lucide="laptop" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white">Download for macOS</p>
+                            <p class="text-[9px] text-gray-500">App Bundle (.dmg)</p>
+                        </div>
+                    </div>
+                    <i data-lucide="download" class="w-4 h-4 text-gray-500 group-hover:text-white transition"></i>
+                </button>
+
+                <button onclick="downloadApp('Android')" class="flex items-center justify-between p-3 bg-slate-900/50 border border-white/5 rounded-2xl text-left download-btn-glow group">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-xl bg-indigo-950/80 text-indigo-400 group-hover:scale-110 transition">
+                            <i data-lucide="smartphone" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white">Download for Android</p>
+                            <p class="text-[9px] text-gray-500">Package Installer (.apk)</p>
+                        </div>
+                    </div>
+                    <i data-lucide="download" class="w-4 h-4 text-gray-500 group-hover:text-white transition"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- ⚡ Dynamic Floating Background Blobs (Self-controlled in CSS) -->
     <div class="bg-blob-indigo"></div>
@@ -2319,11 +2379,6 @@
                     <input type="password" id="login-password" required placeholder="••••••••" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 placeholder-gray-600 transition backdrop-blur-sm">
                 </div>
 
-                <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none">
-                    <input id="stay-logged-in" type="checkbox" class="w-3.5 h-3.5 accent-indigo-500">
-                    <span>Stay logged in on this device</span>
-                </label>
-
                 <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-xs transition duration-200 shadow-lg shadow-indigo-600/25">
                     Access Website
                 </button>
@@ -2375,7 +2430,7 @@
 
                 <button onclick="switchTab('videos')" id="nav-videos" class="nav-btn ripple-btn w-auto md:w-full flex items-center gap-3 px-3.5 py-2 md:px-4 md:py-3 rounded-xl text-xs md:text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-300 ease-out whitespace-nowrap shrink-0">
                     <i data-lucide="film" class="w-4 h-4"></i>
-                    <span>Sessions Catalog</span>
+                    <span>Lectures Catalog</span>
                 </button>
 
                 <button onclick="switchTab('feed')" id="nav-feed" class="nav-btn ripple-btn w-auto md:w-full flex items-center gap-3 px-3.5 py-2 md:px-4 md:py-3 rounded-xl text-xs md:text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-300 ease-out whitespace-nowrap shrink-0">
@@ -2398,6 +2453,10 @@
                         <img src="ai.png" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220%22 fill=%22none%22 stroke=%22#6366f1%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/></svg>';" class="w-3.5 h-3.5 rounded-md shrink-0">
                         <span class="text-[9px] font-black text-white uppercase tracking-wider">Co Assistant</span>
                     </div>
+                    <button onclick="switchTab('co-assistant')" class="text-[8px] bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/30 text-indigo-300 hover:text-white px-1.5 py-0.5 rounded font-black transition flex items-center gap-0.5" title="Open full chat tab">
+                        <span>Go to Co Assistant</span>
+                        <i data-lucide="arrow-up-right" class="w-2.5 h-2.5"></i>
+                    </button>
                 </div>
 
                 <!-- Center: Dynamic Suggestion Prompt Cards -->
@@ -2445,10 +2504,10 @@
                 <!-- 1. DASHBOARD VIEW -->
                 <div id="view-dashboard" class="view-panel space-y-6">
                     <!-- Premium Bento Box UI Layout -->
-                    <div id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 md:gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4 md:gap-6">
                         
                         <!-- Cell 1: Profile & Standing -->
-                        <div id="dashboard-welcome-card" class="bg-gradient-to-br from-indigo-950/20 via-slate-900/40 to-slate-900/40 backdrop-blur-md border border-white/10 p-5 rounded-2xl flex flex-col justify-between space-y-6 relative overflow-hidden shadow-2xl group hover:border-indigo-500/30 hover:shadow-[0_8px_32px_0_rgba(99,102,241,0.15)] transition-all duration-300 tilt-lift-card tilt-less md:col-span-2 lg:col-span-2 xl:col-span-2">
+                        <div class="bg-gradient-to-br from-indigo-950/20 via-slate-900/40 to-slate-900/40 backdrop-blur-md border border-white/10 p-5 rounded-2xl flex flex-col justify-between space-y-6 relative overflow-hidden shadow-2xl group hover:border-indigo-500/30 hover:shadow-[0_8px_32px_0_rgba(99,102,241,0.15)] transition-all duration-300 tilt-lift-card tilt-less md:col-span-2 lg:col-span-2 xl:col-span-2">
                             <div class="absolute -top-12 -left-12 w-24 h-24 bg-indigo-600/10 rounded-full blur-2xl group-hover:bg-indigo-600/20 transition-all duration-500 pointer-events-none"></div>
                             <div class="space-y-3 z-10">
                                 <div class="flex items-center gap-3.5">
@@ -2465,7 +2524,7 @@
                             </div>
                             
                             <!-- Premium A-AI Assistant Quick Chat Field -->
-                            <div id="dashboard-welcome-ai" class="z-10 my-1 bg-slate-950/50 border border-white/5 p-3.5 rounded-xl space-y-2">
+                            <div class="z-10 my-1 bg-slate-950/50 border border-white/5 p-3.5 rounded-xl space-y-2">
                                 <div class="flex items-center gap-1.5">
                                     <img src="ai.png" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220%22 fill=%22none%22 stroke=%22%236366f1%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/></svg>';" class="w-4 h-4 object-contain rounded-md animate-pulse shrink-0" alt="AI">
                                     <span class="text-[10px] font-black uppercase tracking-wider text-indigo-300">Co-Assistant AI</span>
@@ -2479,7 +2538,7 @@
                                 </div>
                             </div>
 
-                            <div id="dashboard-standing" class="pt-2 z-10">
+                            <div class="pt-2 z-10">
                                 <span class="text-[10px] text-gray-500 uppercase tracking-widest font-black block mb-1">Your Academic Standing</span>
                                 <div id="dashboard-rank-badge" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black shadow-lg border transition-all duration-300">
                                     Calculating...
@@ -2488,7 +2547,7 @@
                         </div>
                         
                         <!-- Cell 2: The Radial Course Progress Wheel -->
-                        <div id="dashboard-course-card" class="bg-slate-900/30 backdrop-blur-md border border-white/10 p-5 rounded-2xl flex flex-col items-center justify-center space-y-4 shadow-2xl relative overflow-hidden group hover:border-indigo-500/30 hover:shadow-[0_8px_32px_0_rgba(99,102,241,0.15)] transition-all duration-300 tilt-lift-card md:col-span-1 xl:col-span-1">
+                        <div class="bg-slate-900/30 backdrop-blur-md border border-white/10 p-5 rounded-2xl flex flex-col items-center justify-center space-y-4 shadow-2xl relative overflow-hidden group hover:border-indigo-500/30 hover:shadow-[0_8px_32px_0_rgba(99,102,241,0.15)] transition-all duration-300 tilt-lift-card md:col-span-1 xl:col-span-1">
                             <div class="absolute -right-12 -bottom-12 w-24 h-24 bg-cyan-500/5 rounded-full blur-2xl group-hover:bg-cyan-500/10 transition-all duration-500 pointer-events-none"></div>
                             <div class="relative flex items-center justify-center w-20 h-20 z-10">
                                 <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -2524,7 +2583,7 @@
                         </div>
                         
                         <!-- Cell 3: Class XP & Leveling Progress System -->
-                        <div id="dashboard-xp-card" class="bg-slate-900/30 backdrop-blur-md border border-white/10 p-5 rounded-2xl flex flex-col justify-between space-y-4 shadow-2xl relative overflow-hidden group hover:border-indigo-500/30 hover:shadow-[0_8px_32px_0_rgba(99,102,241,0.15)] transition-all duration-300 tilt-lift-card md:col-span-1 xl:col-span-1">
+                        <div class="bg-slate-900/30 backdrop-blur-md border border-white/10 p-5 rounded-2xl flex flex-col justify-between space-y-4 shadow-2xl relative overflow-hidden group hover:border-indigo-500/30 hover:shadow-[0_8px_32px_0_rgba(99,102,241,0.15)] transition-all duration-300 tilt-lift-card md:col-span-1 xl:col-span-1">
                             <div class="absolute -right-12 -top-12 w-24 h-24 bg-purple-600/5 rounded-full blur-2xl group-hover:bg-purple-600/10 transition-all duration-500 pointer-events-none"></div>
                             
                             <div class="flex items-center justify-between border-b border-white/5 pb-2">
@@ -2577,7 +2636,7 @@
                         </div>
                         
                         <!-- Cell 6: Academy Hall of Fame Leaderboard Card -->
-                        <div id="dashboard-leaderboard-card" class="bg-gradient-to-br from-indigo-950/10 via-slate-900/30 to-slate-900/30 backdrop-blur-md border border-white/10 p-5 rounded-2xl space-y-4 shadow-2xl relative overflow-hidden group hover:border-indigo-500/20 transition-all duration-300 md:col-span-3 lg:col-span-3 xl:col-span-3 tilt-lift-card tilt-less">
+                        <div class="bg-gradient-to-br from-indigo-950/10 via-slate-900/30 to-slate-900/30 backdrop-blur-md border border-white/10 p-5 rounded-2xl space-y-4 shadow-2xl relative overflow-hidden group hover:border-indigo-500/20 transition-all duration-300 md:col-span-2 lg:col-span-2 xl:col-span-2 tilt-lift-card tilt-less">
                             <div class="absolute -left-12 -top-12 w-32 h-32 bg-indigo-600/5 rounded-full blur-3xl group-hover:bg-indigo-600/10 transition-all duration-500 pointer-events-none"></div>
                             <div class="flex items-center justify-between border-b border-white/5 pb-3">
                                 <div class="flex items-center gap-2">
@@ -2598,8 +2657,37 @@
                             </div>
                         </div>
 
+                        <!-- Cell 5: Wrapped Application Downloads (Linked to Cloud & Archive.org) -->
+                        <div class="bg-slate-900/30 backdrop-blur-md border border-white/10 p-5 rounded-2xl flex flex-col justify-between space-y-4 shadow-2xl relative overflow-hidden group hover:border-indigo-500/30 transition-all duration-300 md:col-span-1 lg:col-span-1 xl:col-span-1 tilt-lift-card">
+                            <div class="absolute -bottom-12 -left-12 w-24 h-24 bg-cyan-600/5 rounded-full blur-2xl group-hover:bg-cyan-600/10 pointer-events-none"></div>
+                            <div>
+                                <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-2">Download Client Apps</h3>
+                                <p class="text-[10px] text-gray-400 leading-relaxed mb-4">Access video lectures & homework worksheets through unified native software clients.</p>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pb-2">
+                                <button onclick="downloadApp('Windows')" class="flex flex-col items-center justify-center p-2.5 bg-slate-950/40 border border-white/5 rounded-xl transition group interactive-btn backdrop-blur-sm download-btn-glow">
+                                    <i data-lucide="monitor" class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition"></i>
+                                    <span class="text-[10px] font-bold text-white mt-1.5">Windows</span>
+                                    <span class="text-[8px] text-gray-500">1.0.0.exe</span>
+                                </button>
+                                <button onclick="downloadApp('macOS')" class="flex flex-col items-center justify-center p-2.5 bg-slate-950/40 border border-white/5 rounded-xl transition group interactive-btn backdrop-blur-sm download-btn-glow">
+                                    <i data-lucide="laptop" class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition"></i>
+                                    <span class="text-[10px] font-bold text-white mt-1.5">macOS</span>
+                                    <span class="text-[8px] text-gray-500">1.0.0.dmg</span>
+                                </button>
+                                <button onclick="downloadApp('Android')" class="flex flex-col items-center justify-center p-2.5 bg-slate-950/40 border border-white/5 rounded-xl transition group interactive-btn backdrop-blur-sm download-btn-glow">
+                                    <i data-lucide="smartphone" class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition"></i>
+                                    <span class="text-[10px] font-bold text-white mt-1.5">Android</span>
+                                    <span class="text-[8px] text-gray-500">1.0.0.apk</span>
+                                </button>
+                            </div>
+                            <div class="pt-2 border-t border-white/5 text-[9px] text-gray-500 flex flex-col items-center justify-center">
+                                <span>Verifiable security logs registered per license download.</span>
+                            </div>
+                        </div>
+
                         <!-- Cell 4: Learning Analytics -->
-                        <div id="dashboard-analytics-card" class="bg-slate-900/30 backdrop-blur-md border border-white/10 p-5 rounded-2xl flex flex-col justify-between space-y-4 shadow-2xl relative overflow-hidden group hover:border-indigo-500/30 hover:shadow-[0_8px_32px_0_rgba(99,102,241,0.15)] transition-all duration-300 tilt-lift-card md:col-span-1 lg:col-span-1 xl:col-span-1">
+                        <div class="bg-slate-900/30 backdrop-blur-md border border-white/10 p-5 rounded-2xl flex flex-col justify-between space-y-4 shadow-2xl relative overflow-hidden group hover:border-indigo-500/30 transition-all duration-300 md:col-span-1 lg:col-span-1 xl:col-span-1 tilt-lift-card">
                             <div class="absolute -top-12 -right-12 w-24 h-24 bg-violet-600/5 rounded-full blur-2xl group-hover:bg-violet-600/10 transition-all duration-500 pointer-events-none"></div>
                             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest z-10">Learning Analytics</h3>
                             <div class="space-y-3 z-10">
@@ -2864,16 +2952,16 @@
                         <div class="lg:col-span-2 space-y-4">
                             <div id="video-theater" class="relative bg-black rounded-2xl border border-white/10 aspect-video overflow-hidden group shadow-2xl">
                                 <!-- Embedded YouTube Player -->
-                                <iframe id="youtube-player" title="YouTube lecture player" class="w-full h-full object-cover hidden shadow-2xl" frameborder="0" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                                <iframe id="youtube-player" class="w-full h-full object-cover hidden shadow-2xl" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                                 
                                 <!-- Embedded Secure Player (Streams Archive.org natively with DRM elements) -->
                                 <video id="secure-player" class="w-full h-full object-cover hidden shadow-2xl" controls controlsList="nodownload" oncontextmenu="return false;" playsinline></video>
                                 
                                 <!-- Floating Active Device Watermarks (Defense against local screen recorders) -->
-                                <div id="video-watermark-teacher" class="absolute no-select text-white font-black tracking-widest font-mono text-xs select-none text-center pointer-events-none z-30 hidden" style="background: rgba(2,6,23,.78); border: 1px solid rgba(255,255,255,.55); border-radius: .5rem; padding: .35rem .55rem; box-shadow: 0 2px 10px rgba(0,0,0,.72); text-shadow: 1px 1px 2px rgba(0,0,0,1); transition: left 1.5s ease-in-out, top 1.5s ease-in-out;">
+                                <div id="video-watermark-teacher" class="absolute no-select text-white/15 font-black tracking-widest font-mono text-[10px] select-none text-center pointer-events-none z-30 hidden" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8); transition: left 1.5s ease-in-out, top 1.5s ease-in-out;">
                                     MR. Ahmed Abd-ElFatah
                                 </div>
-                                <div id="video-watermark-student" class="absolute no-select text-white font-black font-mono text-xs select-none text-center pointer-events-none z-30 hidden" style="background: rgba(79,70,229,.8); border: 1px solid rgba(255,255,255,.65); border-radius: .5rem; padding: .35rem .55rem; box-shadow: 0 2px 10px rgba(0,0,0,.72); text-shadow: 1px 1px 2px rgba(0,0,0,1); transition: left 1.5s ease-in-out, top 1.5s ease-in-out;">
+                                <div id="video-watermark-student" class="absolute no-select text-white/20 font-black font-mono text-[10px] select-none text-center pointer-events-none z-30 hidden" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8); transition: left 1.5s ease-in-out, top 1.5s ease-in-out;">
                                     STUDENT_DUMMY
                                 </div>
 
@@ -2895,11 +2983,8 @@
                                         <h3 id="current-video-title" class="font-extrabold text-white text-sm">No lecture selected</h3>
                                     </div>
                                     <div id="video-checkpoint-actions" class="flex items-center gap-2 hidden">
-                                        <label class="flex items-center gap-2 bg-slate-950/60 border border-white/10 rounded-xl px-2 py-1.5" title="Choose a checkpoint time">
-                                            <span id="checkpoint-time-display" class="w-10 text-[10px] font-mono font-bold text-indigo-300">00:00</span>
-                                            <input id="checkpoint-time-picker" type="range" min="0" max="1" value="0" step="1" aria-label="Choose checkpoint time" oninput="updateTimestampPickerDisplay('checkpoint')" class="w-20 accent-indigo-500 cursor-pointer">
-                                        </label>
-                                        <button onclick="saveManualCheckpoint()" class="bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 text-[10px] font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 interactive-btn" title="Save the selected time as a checkpoint">
+                                        <input id="checkpoint-time-input" type="text" inputmode="numeric" placeholder="MM:SS" aria-label="Checkpoint time" class="w-20 bg-slate-950/60 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] font-mono text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500">
+                                        <button onclick="saveManualCheckpoint()" class="bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 text-[10px] font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 interactive-btn" title="Save the typed time as a checkpoint">
                                             <i data-lucide="flag" class="w-3.5 h-3.5"></i>
                                             <span>Save Checkpoint</span>
                                         </button>
@@ -2923,10 +3008,7 @@
 
                                     <div class="flex flex-col gap-2">
                                         <input type="text" id="bookmark-title-input" onkeydown="if(event.key==='Enter') addBookmarkAtCurrentTime()" placeholder="e.g. Chemistry Part, Important Concept..." class="flex-1 bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 placeholder-gray-500 transition">
-                                        <label class="flex items-center gap-3 w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2" title="Choose a bookmark time">
-                                            <span id="bookmark-time-display" class="w-12 text-xs font-mono font-bold text-indigo-300">00:00</span>
-                                            <input id="bookmark-time-picker" type="range" min="0" max="1" value="0" step="1" aria-label="Choose bookmark time" oninput="updateTimestampPickerDisplay('bookmark')" class="flex-1 accent-indigo-500 cursor-pointer">
-                                        </label>
+                                        <input type="text" id="bookmark-time-input" inputmode="numeric" onkeydown="if(event.key==='Enter') addBookmarkAtCurrentTime()" placeholder="Bookmark time — type MM:SS, e.g. 12:30" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-indigo-500 placeholder-gray-500 transition">
                                         <button onclick="addBookmarkAtCurrentTime()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 interactive-btn">
                                             <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
                                             <span>+ Add Bookmark</span>
@@ -3121,7 +3203,7 @@
                         <option value="Grade 7 (Preparatory 1)">Grade 7 (Preparatory 1)</option>
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
-                        <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
+                        <option value="Grade 10 (Secandory 1)">Grade 10 (Secandory 1)</option>
                     </select>
                 </div>
                 <div class="space-y-1">
@@ -3135,7 +3217,7 @@
         </div>
     </div>
 
-   <!-- Video Registry Upload Modal -->
+    <!-- Video Registry Upload Modal -->
     <div id="video-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md items-center justify-center p-4 z-50 flex hidden">
         <div class="w-full max-w-md glass-modal p-6 rounded-2xl space-y-4 relative">
             <button onclick="closeAddVideoModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white transition">
@@ -3156,16 +3238,16 @@
                     <input type="number" id="video-lesson" min="1" step="1" required value="1" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
                 </div>
                 <div class="space-y-1">
-                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Video Stream URL (YouTube Link or Direct MP4)</label>
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Direct Archive.org Stream URL (MP4)</label>
                     <input type="url" id="video-url" required placeholder="https://www.youtube.com/watch?v=... or Archive.org MP4 URL" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
                 </div>
-                <div class="space-y-1">
+                                <div class="space-y-1">
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Grade Level</label>
                     <select id="video-grade" required class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
                         <option value="Grade 7 (Preparatory 1)">Grade 7 (Preparatory 1)</option>
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
-                        <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
+                        <option value="Grade 10 (Secandory 1)">Grade 10 (Secandory 1)</option>
                     </select>
                 </div>
                 <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-xs transition">
@@ -3201,7 +3283,7 @@
                         <option value="Grade 7 (Preparatory 1)">Grade 7 (Preparatory 1)</option>
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
-                        <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
+                        <option value="Grade 10 (Secandory 1)">Grade 10 (Secandory 1)</option>
                     </select>
                 </div>
                 <div class="space-y-1">
@@ -3297,8 +3379,12 @@
         // -----------------------------------------------------------------
         // GLOBAL CLIENT DATABASES (AUTOMATICALLY SEED LOCAL STORAGE / CLOUD STORAGE REST ENDPOINTS)
         // -----------------------------------------------------------------
-        // Keep the last successful local copy while D1 is loading. Clearing these
-        // values on every refresh made a temporarily unavailable D1 row disappear.
+        // 🧼 Self-cleaning storage arrays on every fresh load to guarantee NO FAKE DATA persists
+        localStorage.removeItem('lectures');
+        localStorage.removeItem('materials');
+        localStorage.removeItem('students');
+        localStorage.removeItem('feedPosts');
+        localStorage.removeItem('force_install_bypass');
 
         
     // 🏆 10-LEVEL ACADEMIC EXP & LEVELING CONFIGURATION
@@ -3351,12 +3437,69 @@
         return `<span class="bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-[8px] px-1.5 py-0.5 rounded-lg ml-1 font-black font-mono inline-block">Lvl ${lvl.level}: ${lvl.title}</span>`;
     }
 
+    // 🛡️ MOBILE 10-TAP SHIELD ICON BYPASS ENGINE
+    let shieldTapCount = 0;
+    let shieldTapTimer = null;
+
+    function handleShieldTapBypass() {
+        shieldTapCount++;
+        const remaining = 10 - shieldTapCount;
+
+        if (shieldTapTimer) clearTimeout(shieldTapTimer);
+        
+        shieldTapTimer = setTimeout(() => {
+            shieldTapCount = 0;
+        }, 3000);
+
+        if (remaining > 0 && remaining <= 5) {
+            showToast(`Tap shield ${remaining} more time${remaining > 1 ? 's' : ''} to bypass installation!`, 'info');
+        }
+
+        if (shieldTapCount >= 10) {
+            shieldTapCount = 0;
+            if (shieldTapTimer) clearTimeout(shieldTapTimer);
+            bypassForceInstall();
+        }
+    }
+
     let activeRole = 'student';
         let currentUser = null;
         let activeTab = 'dashboard';
         let selectedMaterialFilter = 'all';
 
-        // Global security keyboard listener
+        // 🛡️ DRM SECURITY & APP CHECK INTEGRATION
+        // We enforce the installation screen on standard web browsers. It will always trigger at page startup!
+        const isApp = navigator.userAgent.includes("AhmedAcademySecureApp_SecureVideoSessionEngine") || 
+                      navigator.userAgent.includes("AhmedAcademyMobileAppSecureChannel");
+
+        // 📱 PLATFORM DETECTION ENGINE — decides who sees the "Install the App" shield.
+        // Android / Windows / macOS visitors on a normal browser => forced install screen.
+        // iPhone / iPad (iOS & iPadOS) visitors => skip the shield completely, land on the login screen instantly.
+        function detectClientPlatform() {
+            const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+            const platformStr = navigator.platform || '';
+
+            // iOS / iPadOS detection (iPadOS 13+ reports as "MacIntel" but exposes multi-touch)
+            const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+            const isIPadOS13Up = platformStr === 'MacIntel' && navigator.maxTouchPoints && navigator.maxTouchPoints > 1;
+
+            if (isIOS || isIPadOS13Up) return 'iOS';
+            if (/android/i.test(ua)) return 'Android';
+            if (/Mac/i.test(platformStr) || /Macintosh/i.test(ua)) return 'macOS';
+            if (/Win/i.test(platformStr) || /Windows/i.test(ua)) return 'Windows';
+            return 'Other';
+        }
+
+        const clientPlatform = detectClientPlatform();
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // iPhone/iPad visitors bypass the force-install shield entirely and go straight to the login screen.
+            if (!isApp && clientPlatform !== 'iOS') {
+                document.getElementById('force-install-overlay').classList.remove('hidden');
+            }
+        });
+
+        // Global DRM keyboard shortcut listener (ALT + CTRL + SHIFT + Q) and Developer Console blocking
         window.addEventListener('keydown', (e) => {
             // Block F12
             if (e.key === 'F12' || e.keyCode === 123) {
@@ -3374,6 +3517,11 @@
                 showToast("Security Notice: View Source is disabled on this secure student portal.", "error");
             }
 
+            // Normal bypass check
+            if (e.altKey && e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'Q') {
+                e.preventDefault();
+                bypassForceInstall();
+            }
         });
 
         // Prevent right click inspect element
@@ -3396,6 +3544,18 @@
                 submitAIChatMessage();
             }
         }
+
+        function bypassForceInstall() {
+            localStorage.setItem('force_install_bypass', 'true');
+            document.getElementById('force-install-overlay').classList.add('hidden');
+            showToast('Force app installation bypassed (Admin Mode Loaded via Shortcut).', 'success');
+            
+            // Developer shortcut auto-logs in as Administrator (with staff permissions)
+            currentUser = { id: 'admin', name: 'Administrator', role: 'teacher', gender: 'Boy', title: 'Director' };
+            loadPortal();
+        }
+
+
 
         // High quality mock data fallback (seeds automatically, replaces on D1 Fetch)
         let lectures = JSON.parse(localStorage.getItem('lectures')) || [];
@@ -3428,38 +3588,18 @@
             try {
                 const res = await fetch(`${D1_API_BASE}${path}`, {
                     method: options.method || 'GET',
-                    credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
                     body: options.body ? JSON.stringify(options.body) : undefined
                 });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || `D1 request failed (${res.status})`);
-                return data;
+                if (!res.ok) throw new Error(`D1 request failed (${res.status})`);
+                return await res.json();
             } catch (err) {
                 console.warn(`D1 Sync notice [${path}]:`, err.message);
-                return { success: false, error: err.message };
-            }
-        }
-
-        async function authRequest(path, options = {}) {
-            try {
-                const res = await fetch(`/api/auth${path}`, {
-                    method: options.method || 'GET',
-                    credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: options.body ? JSON.stringify(options.body) : undefined
-                });
-                const data = await res.json();
-                return res.ok ? data : { error: data.error || 'Authentication failed.' };
-            } catch (_) {
-                return { error: 'Unable to contact the authentication service.' };
+                return null;
             }
         }
 
         const D1 = {
-            login: (id, password, remember) => authRequest('/login', { method: 'POST', body: { id, password, remember } }),
-            getSession: () => authRequest('/session'),
-            logout: () => authRequest('/logout', { method: 'POST' }),
             getStudents: () => d1Request('/students'),
             saveStudent: (student) => d1Request('/students', { method: 'POST', body: student }),
             grantXP: (id, xpAmount) => d1Request('/students/xp', { method: 'POST', body: { id, xpAmount } }),
@@ -3586,7 +3726,6 @@
 
             syncLocalDB();
             if (typeof syncFeedbackDB === 'function') syncFeedbackDB();
-            await restoreRememberedSession();
 
             // Re-render whatever is currently on screen with the freshly hydrated data
             if (currentUser) {
@@ -3594,7 +3733,7 @@
                 if (typeof renderVideos === 'function') renderVideos();
                 if (typeof renderMaterials === 'function') renderMaterials();
                 if (typeof renderFeed === 'function') renderFeed();
-                if (typeof renderAdmin === 'function' && hasAdminGrant()) renderAdmin();
+                if (typeof renderAdmin === 'function' && currentUser.role === 'teacher') renderAdmin();
             }
             if (typeof renderFeedbacks === 'function') renderFeedbacks();
         }
@@ -3604,26 +3743,6 @@
         // -----------------------------------------------------------------
         // LOGIN MANAGER & SESSION SYSTEMS
         // -----------------------------------------------------------------
-        const REMEMBERED_SESSION_KEY = 'portal_remembered_student_session';
-
-        function hasAdminGrant(user = currentUser) {
-            return user?.role === 'admin';
-        }
-
-        function saveLoginPreference() {
-            // Session persistence is handled by the signed HttpOnly cookie.
-            localStorage.removeItem(REMEMBERED_SESSION_KEY);
-        }
-
-        async function restoreRememberedSession() {
-            if (currentUser) return;
-            const session = await D1.getSession();
-            if (session?.user) {
-                currentUser = { ...session.user, role: session.user.role || 'student' };
-                loadPortal();
-            }
-        }
-
         function toggleLoginRole(role) {
             activeRole = role;
             const tabStudent = document.getElementById('tab-student');
@@ -3644,22 +3763,35 @@
             }
         }
 
-        async function handleLogin(e) {
+        function handleLogin(e) {
             e.preventDefault();
             const id = document.getElementById('login-id').value.trim();
             const pass = document.getElementById('login-password').value;
             const errorBlock = document.getElementById('login-error');
 
             errorBlock.classList.add('hidden');
-            const result = await D1.login(id, pass, document.getElementById('stay-logged-in')?.checked);
-            if (!result?.user) {
-                errorBlock.textContent = result?.error || 'Invalid credentials.';
-                errorBlock.classList.remove('hidden');
-                return;
+
+            if (activeRole === 'student') {
+                // Find student
+                const student = students.find(s => String(s.id) === id || String(s.phone) === id);
+                if (student && student.password === pass) {
+                    currentUser = { ...student };
+                    if (!currentUser.role) currentUser.role = 'student';
+                    loadPortal();
+                } else {
+                    errorBlock.textContent = "Invalid Student credentials. Please contact MR. Ahmed's assistants to provision your account.";
+                    errorBlock.classList.remove('hidden');
+                }
+            } else {
+                // Teacher bypass check
+                if (id === 'admin' && pass === 'admin123') {
+                    currentUser = { id: 'admin', name: 'Administrator', role: 'teacher', gender: 'Boy', title: 'Director' };
+                    loadPortal();
+                } else {
+                    errorBlock.textContent = "Invalid teacher credentials.";
+                    errorBlock.classList.remove('hidden');
+                }
             }
-            currentUser = { ...result.user, role: result.user.role || 'student' };
-            saveLoginPreference();
-            loadPortal();
         }
 
         function loadPortal() {
@@ -3670,7 +3802,7 @@
             document.getElementById('user-name').textContent = currentUser.name;
             const avatar = document.getElementById('profile-avatar');
             
-            if (hasAdminGrant()) {
+            if (currentUser.role === 'teacher' || currentUser.role === 'admin') {
                 document.getElementById('nav-admin').classList.remove('hidden');
                 document.getElementById('admin-material-upload-btn').classList.remove('hidden');
                 document.getElementById('admin-video-upload-btn').classList.remove('hidden');
@@ -3702,13 +3834,9 @@
 
         function handleLogout() {
             currentUser = null;
-            D1.logout();
-            localStorage.removeItem(REMEMBERED_SESSION_KEY);
             document.getElementById('portal-section').classList.add('hidden');
             document.getElementById('login-section').classList.remove('hidden');
             document.getElementById('login-password').value = '';
-            const stayLoggedIn = document.getElementById('stay-logged-in');
-            if (stayLoggedIn) stayLoggedIn.checked = false;
             
             // Stop video playing if any
             const securePlayer = document.getElementById('secure-player');
@@ -3728,10 +3856,6 @@
         // TAB NAVIGATOR SWITCH SYSTEM
         // -----------------------------------------------------------------
         function switchTab(tabId) {
-            if (tabId === 'admin' && !hasAdminGrant()) {
-                showToast('Access denied: an administrator grant is required.', 'error');
-                return;
-            }
             activeTab = tabId;
             // Hide floating trigger inside Co Assistant tab to avoid visual replication
             const floatCont = document.getElementById('floating-co-assistant-container');
@@ -3807,19 +3931,17 @@
         function renderDashboard() {
             if (!currentUser) return;
 
-            const isStaff = currentUser.role === 'teacher' || currentUser.role === 'admin';
-            const dashboardGrid = document.getElementById('dashboard-grid');
-            dashboardGrid?.classList.toggle('dashboard-staff', isStaff);
-            ['dashboard-course-card', 'dashboard-xp-card', 'dashboard-analytics-card', 'dashboard-welcome-ai', 'dashboard-standing']
-                .forEach(id => document.getElementById(id)?.classList.toggle('hidden', isStaff));
-
             // Welcome
-            document.getElementById('welcome-message').textContent = isStaff ? 'Marhaban, Administrator!' : `Marhaban, ${currentUser.name}!`;
-            document.getElementById('dashboard-grade-info').textContent = isStaff ? 'Administrator Workspace' : `Grade Level: ${currentUser.grade || 'Grade 10 (Secondary 1)'}`;
+            document.getElementById('welcome-message').textContent = `Marhaban, ${currentUser.name}!`;
+            document.getElementById('dashboard-grade-info').textContent = currentUser.role === 'teacher' ? 'Workspace Director' : `Grade Level: ${currentUser.grade || 'Grade 10 (Secandory 1)'}`;
+
+            // Administrators and teachers have no student level or XP card.
+            const xpCard = document.getElementById('dashboard-xp-badge-level')?.parentElement?.parentElement;
+            if (xpCard) xpCard.classList.toggle('hidden', currentUser.role === 'teacher' || currentUser.role === 'admin');
 
             // Standings calculation
             const rankBadge = document.getElementById('dashboard-rank-badge');
-            if (isStaff) {
+            if (currentUser.role === 'teacher') {
                 rankBadge.textContent = 'SYSTEM CONSOLE ADMINISTRATOR';
                 rankBadge.className = "inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black shadow-lg border transition-all duration-300 rank-red";
             } else {
@@ -3836,12 +3958,9 @@
                 rankBadge.className = `inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black shadow-lg border transition-all duration-300 ${badgeClass}`;
             }
 
-            // Calculate completion strictly from this student's own completed-lecture list.
-            const completedIds = new Set((currentUser.completed_lecture_ids || []).map(String));
-            const availableLectures = isStaff ? lectures : lectures.filter(lecture => lecture.grade === currentUser.grade);
-            const watchedLectures = availableLectures.filter(lecture => completedIds.has(String(lecture.id)));
-            const watchedList = watchedLectures.length;
-            const totalLectures = availableLectures.length || 1;
+            // Radial Course Progress Wheel Math (Calculate watched lectures ratio)
+            const watchedList = lectures.filter(l => l.completed).length;
+            const totalLectures = lectures.length || 1;
             const watchPercentage = Math.round((watchedList / totalLectures) * 100);
 
             document.getElementById('dashboard-progress-percent').textContent = `${watchPercentage}%`;
@@ -3851,8 +3970,8 @@
             document.getElementById('dashboard-progress-ring').style.strokeDashoffset = ringOffset;
 
             // Calculate hours watched vs remaining for supporting stats
-            const totalLecturesDuration = availableLectures.reduce((acc, lecture) => acc + (Number(lecture.duration_mins) || 0), 0);
-            const watchedMinutes = watchedLectures.reduce((acc, lecture) => acc + (Number(lecture.duration_mins) || 0), 0);
+            const totalLecturesDuration = lectures.reduce((acc, l) => acc + (l.duration_mins || 0), 0);
+            const watchedMinutes = lectures.filter(l => l.completed).reduce((acc, l) => acc + (l.duration_mins || 0), 0);
             const hoursWatched = (watchedMinutes / 60).toFixed(1);
             const hoursRemaining = (Math.max(0, totalLecturesDuration - watchedMinutes) / 60).toFixed(1);
 
@@ -3873,8 +3992,8 @@
 
             // Learning analytics numbers
             document.getElementById('dashboard-total-minutes').textContent = `${currentUser.watch_mins || 0} mins`;
-            document.getElementById('dashboard-lectures-finished').textContent = `${watchedList} / ${availableLectures.length}`;
-            document.getElementById('dashboard-lecture-count').textContent = `Currently active with ${availableLectures.length} live courses listed.`;
+            document.getElementById('dashboard-lectures-finished').textContent = `${watchedList} / ${lectures.length}`;
+            document.getElementById('dashboard-lecture-count').textContent = `Currently active with ${lectures.length} live courses listed.`;
 
             // Milestone Badges logic
             const minutesPlayed = currentUser.watch_mins || 0;
@@ -4045,29 +4164,15 @@
         function renderVideos() {
             const sessionsList = document.getElementById('video-sessions-list');
             sessionsList.innerHTML = '';
-            const completedIds = new Set((currentUser?.completed_lecture_ids || []).map(String));
 
-            const displayLectures = lectures.filter(l => {
+            const filteredLectures = lectures.filter(l => {
                 if (currentUser.role === 'student' && l.grade !== currentUser.grade) return false;
                 return true;
             });
 
-            // `lectures` is hydrated once at startup. If that request raced the
-            // login/session startup, retry the D1 read before reporting an empty
-            // catalog. This keeps an already-saved lecture visible after refresh.
-            if (lectures.length === 0) {
-                D1.getLectures().then(rows => {
-                    if (Array.isArray(rows) && rows.length) {
-                        lectures = rows;
-                        syncLocalDB();
-                        renderVideos();
-                    }
-                });
-            }
+            document.getElementById('videos-count-badge').textContent = `${filteredLectures.length} Lectures`;
 
-            document.getElementById('videos-count-badge').textContent = `${displayLectures.length} Lectures`;
-
-            if (displayLectures.length === 0) {
+            if (filteredLectures.length === 0) {
                 sessionsList.innerHTML = `
                     <div class="text-center py-8 text-xs text-gray-500 font-semibold bg-slate-950/20 border border-white/5 rounded-2xl w-full">
                         No video lectures listed for your grade yet.
@@ -4076,7 +4181,7 @@
                 return;
             }
 
-            displayLectures.sort((a, b) => Number(a.lesson || 0) - Number(b.lesson || 0)).forEach(lec => {
+            filteredLectures.sort((a, b) => Number(a.lesson || 0) - Number(b.lesson || 0)).forEach(lec => {
                 const row = document.createElement('div');
                 row.className = "w-full text-left p-3 rounded-xl bg-slate-950/40 border border-white/5 hover:border-indigo-500/20 flex items-center justify-between group transition cursor-pointer hover:bg-slate-900/35";
                 row.onclick = () => loadSecureLecture(lec);
@@ -4098,7 +4203,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        ${completedIds.has(String(lec.id)) ? '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500 shrink-0"></i>' : ''}
+                        ${lec.completed ? '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500 shrink-0"></i>' : ''}
                         ${deleteLectureBtn}
                     </div>
                 `;
@@ -4138,39 +4243,17 @@
             return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
-        function getTimestampPickerElements(kind) {
-            return {
-                picker: document.getElementById(`${kind}-time-picker`),
-                display: document.getElementById(`${kind}-time-display`)
-            };
-        }
-
-        function updateTimestampPickerDisplay(kind) {
-            const { picker, display } = getTimestampPickerElements(kind);
-            if (picker && display) display.textContent = formatTimeDisplay(Number(picker.value));
-        }
-
-        function setTimestampPicker(kind, seconds, resetMaximum = false) {
-            const { picker, display } = getTimestampPickerElements(kind);
-            if (!picker) return;
-            const selectedTime = Math.max(0, Math.round(Number(seconds) || 0));
-            const nativePlayer = document.getElementById('secure-player');
-            const duration = nativePlayer && Number.isFinite(nativePlayer.duration) ? Math.ceil(nativePlayer.duration) : 0;
-            const maximum = Math.max(1, duration, selectedTime);
-            if (resetMaximum) picker.max = maximum;
-            else picker.max = Math.max(Number(picker.max) || 1, maximum);
-            picker.value = Math.min(selectedTime, Number(picker.max));
-            if (display) display.textContent = formatTimeDisplay(Number(picker.value));
-        }
-
-        function syncTimestampPickerLimits(currentTime = 0) {
-            ['checkpoint', 'bookmark'].forEach(kind => {
-                const { picker } = getTimestampPickerElements(kind);
-                if (!picker) return;
-                const nativePlayer = document.getElementById('secure-player');
-                const duration = nativePlayer && Number.isFinite(nativePlayer.duration) ? Math.ceil(nativePlayer.duration) : 0;
-                picker.max = Math.max(Number(picker.max) || 1, duration, Math.ceil(Number(currentTime) || 0));
-            });
+        function parseTypedTimestamp(value) {
+            const clean = String(value || '').trim();
+            if (!clean) return null;
+            if (/^\d+$/.test(clean)) return Number(clean);
+            const parts = clean.split(':');
+            if (parts.length < 2 || parts.length > 3 || parts.some(part => !/^\d+$/.test(part))) return null;
+            const numbers = parts.map(Number);
+            const seconds = parts.length === 3
+                ? numbers[0] * 3600 + numbers[1] * 60 + numbers[2]
+                : numbers[0] * 60 + numbers[1];
+            return Number.isFinite(seconds) && seconds >= 0 ? seconds : null;
         }
 
         function updateCheckpointUI() {
@@ -4239,18 +4322,19 @@
         }
 
         function saveManualCheckpoint() {
-            const picker = document.getElementById('checkpoint-time-picker');
-            const curTime = picker ? Number(picker.value) : null;
+            const input = document.getElementById('checkpoint-time-input');
+            const curTime = parseTypedTimestamp(input ? input.value : '');
             if (!activeLectureObj) {
                 showToast('Please select a lecture first.', 'warning');
                 return;
             }
-            if (!Number.isFinite(curTime)) {
-                showToast('Choose a checkpoint time using the slider.', 'warning');
+            if (curTime === null) {
+                showToast('Type the checkpoint time as MM:SS, for example 12:30.', 'warning');
                 return;
             }
             const formatted = formatTimeDisplay(curTime);
             if (saveCheckpointAt(curTime)) {
+                if (input) input.value = formatted;
                 showToast(`Checkpoint saved at ${formatted}!`, 'success');
             }
         }
@@ -4266,14 +4350,14 @@
         }
 
         function addBookmarkAtCurrentTime() {
-            const timePicker = document.getElementById('bookmark-time-picker');
-            const curTime = timePicker ? Number(timePicker.value) : null;
+            const timeInput = document.getElementById('bookmark-time-input');
+            const curTime = parseTypedTimestamp(timeInput ? timeInput.value : '');
             if (!activeLectureObj) {
                 showToast('Please select a lecture first.', 'warning');
                 return;
             }
-            if (!Number.isFinite(curTime)) {
-                showToast('Choose a bookmark time using the slider.', 'warning');
+            if (curTime === null) {
+                showToast('Type the bookmark time as MM:SS, for example 12:30.', 'warning');
                 return;
             }
             const timeFormatted = formatTimeDisplay(curTime);
@@ -4293,6 +4377,7 @@
 
             localStorage.setItem('video_bookmarks', JSON.stringify(videoBookmarks));
             if (input) input.value = '';
+            if (timeInput) timeInput.value = '';
             renderBookmarks();
             showToast(`Bookmark "${bookmarkTitle}" added at ${timeFormatted}!`, 'success');
         }
@@ -4372,71 +4457,22 @@
 // Secure Watermark Moving System (Anti-Piracy Screen Recording System)
         let watermarkTimer = null;
         
-        function extractYouTubeId(value) {
-            if (typeof value !== 'string') return null;
-            const urlText = value.trim();
-            // A pasted video ID is useful too, but only accept YouTube's 11-character ID format.
-            if (/^[A-Za-z0-9_-]{11}$/.test(urlText)) return urlText;
-
-            let parsed;
-            try {
-                parsed = new URL(urlText);
-            } catch (_) {
-                return null;
-            }
-
-            const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
-            const isYouTube = host === 'youtube.com' || host.endsWith('.youtube.com') ||
-                host === 'youtube-nocookie.com' || host.endsWith('.youtube-nocookie.com');
-            let id = null;
-
-            if (host === 'youtu.be' || host.endsWith('.youtu.be')) {
-                id = parsed.pathname.split('/').filter(Boolean)[0];
-            } else if (isYouTube) {
-                id = parsed.searchParams.get('v');
-                if (!id) {
-                    const parts = parsed.pathname.split('/').filter(Boolean);
-                    if (['embed', 'shorts', 'live', 'v'].includes(parts[0])) id = parts[1];
-                }
-            }
-            return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
-        }
-
-        function completeActiveLecture() {
-            if (!activeLectureObj || !currentUser || currentUser.role !== 'student') return;
-            if (!Array.isArray(currentUser.completed_lecture_ids)) currentUser.completed_lecture_ids = [];
-            const alreadyDone = currentUser.completed_lecture_ids.some(id => String(id) === String(activeLectureObj.id));
-            if (alreadyDone) return;
-
-            currentUser.completed_lecture_ids.push(activeLectureObj.id);
-            currentUser.xp = (Number(currentUser.xp) || 0) + 150;
-            currentUser.watch_mins = (Number(currentUser.watch_mins) || 0) + (Number(activeLectureObj.duration_mins) || 0);
-
-            const index = students.findIndex(student => String(student.id) === String(currentUser.id) || String(student.phone) === String(currentUser.id));
-            if (index !== -1) {
-                students[index] = { ...students[index], ...currentUser };
-            }
-
-            syncLocalDB();
-            renderDashboard();
-            renderVideos();
-            D1.saveStudent(currentUser);
-            showToast('Congratulations! Lecture completed. +150 XP awarded!', 'success');
+        function extractYouTubeId(url) {
+            if (!url) return null;
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
         }
 
         window.addEventListener('message', (event) => {
             if (event.origin !== 'https://www.youtube.com') return;
             let payload;
             try { payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; } catch (_) { return; }
-            if (!activeLectureObj || !isYouTubeLectureActive()) return;
-            const playerState = Number(payload?.info?.playerState ?? payload?.info);
-            if (playerState === 0) completeActiveLecture();
             const currentTime = payload && payload.info && Number(payload.info.currentTime);
-            if (!Number.isFinite(currentTime)) return;
+            if (!Number.isFinite(currentTime) || !activeLectureObj || !isYouTubeLectureActive()) return;
             youtubeCurrentTime = currentTime;
             const display = document.getElementById('active-video-time-display');
             if (display) display.textContent = formatTimeDisplay(currentTime);
-            syncTimestampPickerLimits(currentTime);
             if (currentTime > 2) saveCheckpointAt(currentTime);
         });
     
@@ -4454,8 +4490,6 @@
             const bookmarksDiv = document.getElementById('video-bookmarks-container');
             if (actionsDiv) actionsDiv.classList.remove('hidden');
             if (bookmarksDiv) bookmarksDiv.classList.remove('hidden');
-            setTimestampPicker('checkpoint', 0, true);
-            setTimestampPicker('bookmark', 0, true);
 
             const ytId = extractYouTubeId(lec.archive_url);
             if (ytId) {
@@ -4466,22 +4500,9 @@
                 if (youtubePlayer) {
                     youtubeCurrentTime = 0;
                     if (youtubeClock) clearInterval(youtubeClock);
-                    const embedParams = new URLSearchParams({
-                        enablejsapi: '1',
-                        autoplay: '1',
-                        rel: '0',
-                        playsinline: '1'
-                    });
-                    // YouTube requires this parameter for JavaScript API messages on real web origins.
-                    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-                        embedParams.set('origin', window.location.origin);
-                    }
-                    youtubePlayer.src = `https://www.youtube.com/embed/${encodeURIComponent(ytId)}?${embedParams.toString()}`;
+                    youtubePlayer.src = `https://www.youtube.com/embed/${ytId}?enablejsapi=1&autoplay=1&rel=0&origin=${encodeURIComponent(window.location.origin)}`;
                     youtubePlayer.classList.remove('hidden');
-                    youtubePlayer.onload = () => {
-                        requestYouTubeTime();
-                        youtubePlayer.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }), 'https://www.youtube.com');
-                    };
+                    youtubePlayer.onload = () => requestYouTubeTime();
                     youtubeClock = setInterval(requestYouTubeTime, 800);
                 }
             } else {
@@ -4510,16 +4531,35 @@
                 player.ontimeupdate = () => {
                     const display = document.getElementById('active-video-time-display');
                     if (display) display.textContent = formatTimeDisplay(player.currentTime);
-                    syncTimestampPickerLimits(player.currentTime);
 
                     if (player.currentTime > 2 && !player.paused) {
                         saveCheckpointAt(player.currentTime);
                     }
                 };
 
-                player.onloadedmetadata = () => syncTimestampPickerLimits(player.currentTime);
-
-                player.onended = completeActiveLecture;
+                player.onended = () => {
+                    if (currentUser && currentUser.role === 'student') {
+                        if (!currentUser.completed_lecture_ids) currentUser.completed_lecture_ids = [];
+                        const alreadyDoneByThisStudent = currentUser.completed_lecture_ids.includes(lec.id);
+                        if (!alreadyDoneByThisStudent) {
+                            currentUser.completed_lecture_ids.push(lec.id);
+                            lec.completed = true;
+                            currentUser.xp += 150;
+                            currentUser.watch_mins += lec.duration_mins;
+                            const index = students.findIndex(s => s.id === currentUser.id);
+                            if (index !== -1) {
+                                students[index].xp = currentUser.xp;
+                                students[index].watch_mins = currentUser.watch_mins;
+                                students[index].completed_lecture_ids = currentUser.completed_lecture_ids;
+                            }
+                            syncLocalDB();
+                            showToast("Congratulations! Lecture completed. +150 XP awarded!", "success");
+                            renderDashboard();
+                            renderVideos();
+                            D1.saveStudent(currentUser); // 🗄️ mirror updated XP/watch_mins/progress into D1
+                        }
+                    }
+                };
             }
 
             if (teacherMark) {
@@ -4672,9 +4712,12 @@
 
                         repliesHTML += `
                             <div class="p-2.5 rounded-xl bg-slate-950/20 border border-white/5 space-y-1">
-                                <div class="feed-reply-header flex items-center gap-1.5">
-                                    <img src="${replyAvatar}" class="w-4 h-4 rounded-full border border-white/10 shrink-0" alt="">
-                                    <span class="text-[10px] font-black text-white">${reply.author}</span>
+                                <div class="feed-reply-header flex items-center justify-between">
+                                    <div class="feed-reply-author flex items-center gap-1.5 min-w-0">
+                                        <img src="${replyAvatar}" class="w-4 h-4 rounded-full border border-white/10 shrink-0">
+                                        <span class="text-[10px] font-black text-white">${reply.author}</span>
+                                    </div>
+                                    <span class="text-[8px] text-gray-500 font-mono">${reply.date}</span>
                                 </div>
                                 <p class="text-[11px] text-gray-300 leading-relaxed">${reply.text}</p>
                                 <div class="flex items-center gap-2 mt-0.5 text-[8px] text-gray-500">
@@ -4691,9 +4734,12 @@
 
                     commentsHTML += `
                         <div class="p-3 rounded-xl bg-slate-950/35 border border-white/5 space-y-2 hover:border-white/10 transition-all">
-                            <div class="feed-comment-header flex items-center gap-2">
-                                <img src="${commentAvatar}" class="w-5 h-5 rounded-full border border-white/10 shrink-0" alt="">
-                                <span class="text-[11px] font-black text-white">${comment.author}</span>
+                            <div class="feed-comment-header flex items-center justify-between">
+                                <div class="feed-comment-author flex items-center gap-2 min-w-0">
+                                    <img src="${commentAvatar}" class="w-5 h-5 rounded-full border border-white/10 shrink-0">
+                                    <span class="text-[11px] font-black text-white">${comment.author}</span>
+                                </div>
+                                <span class="text-[8px] text-gray-500 font-mono">${comment.date}</span>
                             </div>
                             <p class="text-xs text-gray-300 leading-relaxed">${comment.text}</p>
                             
@@ -5033,10 +5079,6 @@
         // ADMIN CONSOLE INTERACTIVE DIRECT D1 SIMULATION ENGINE
         // -----------------------------------------------------------------
         function renderAdmin() {
-            if (!hasAdminGrant()) {
-                showToast('Access denied: an administrator grant is required.', 'error');
-                return;
-            }
             const listContainer = document.getElementById('admin-students-list');
             listContainer.innerHTML = '';
 
@@ -5098,7 +5140,7 @@
                     row.innerHTML = `
                         <div>
                             <h4 class="font-extrabold text-white">${lec.title}</h4>
-                            <p class="text-[9px] text-gray-500">D1 Stream Path: ${lec.archive_url.substring(0,35)}... · ${lec.grade}</p>
+                            <p class="text-[9px] text-gray-500">D1 Stream Path: ${lec.archive_url.substring(0,35)}... · Target: ${lec.grade}</p>
                         </div>
                         <button onclick="deleteLectureRegistry(${lec.id})" class="p-1 text-red-400 hover:text-white hover:bg-red-950/40 rounded-lg transition"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
                     `;
@@ -5110,15 +5152,13 @@
         }
 
         function toggleAdminPrivilege(id) {
-            if (!hasAdminGrant()) return;
             const student = students.find(s => s.id === id);
             if (student) {
                 student.role = student.role === 'admin' ? 'student' : 'admin';
                 syncLocalDB();
-                D1.saveStudent(student);
                 renderAdmin();
                 showToast(`Admin privilege updated for ${student.name}.`, 'success');
-                if (currentUser && (String(currentUser.id) === String(id) || String(currentUser.phone) === String(id))) {
+                if (currentUser && currentUser.id === id) {
                     currentUser.role = student.role;
                     loadPortal();
                 }
@@ -5126,7 +5166,6 @@
         }
 
         function toggleFeedPrivilege(id) {
-            if (!hasAdminGrant()) return;
             const student = students.find(s => s.id === id);
             if (student) {
                 student.can_post_feed = !student.can_post_feed;
@@ -5134,7 +5173,7 @@
                 D1.saveStudent(student);
                 renderAdmin();
                 showToast(`Feed posting privilege updated for ${student.name}.`, 'success');
-                if (currentUser && (String(currentUser.id) === String(id) || String(currentUser.phone) === String(id))) {
+                if (currentUser && currentUser.id === id) {
                     currentUser.can_post_feed = student.can_post_feed;
                     loadPortal();
                 }
@@ -5142,7 +5181,6 @@
         }
 
         function executeSQL() {
-            if (!hasAdminGrant()) return;
             const sql = document.getElementById('admin-sql-input').value.trim();
             const output = document.getElementById('sql-console-output');
             if (!sql) return;
@@ -5195,7 +5233,6 @@
         }
 
         function exportDatabase() {
-            if (!hasAdminGrant()) return;
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ students, lectures, materials, feedPosts }));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
@@ -5207,7 +5244,6 @@
         }
 
         function modifyStudentXP(id) {
-            if (!hasAdminGrant()) return;
             const student = students.find(s => s.id === id);
             if (student) {
                 student.xp += 100;
@@ -5219,7 +5255,6 @@
         }
 
         function deleteStudentAccount(id) {
-            if (!hasAdminGrant()) return;
             students = students.filter(s => s.id !== id);
             syncLocalDB();
             renderAdmin();
@@ -5231,7 +5266,6 @@
         }
 
         function deleteLectureRegistry(id) {
-            if (!hasAdminGrant()) return;
             lectures = lectures.filter(l => l.id !== id);
             syncLocalDB();
             renderAdmin();
@@ -5269,7 +5303,7 @@
 
         function openAddVideoModal() { document.getElementById('video-modal').classList.remove('hidden'); }
         function closeAddVideoModal() { document.getElementById('video-modal').classList.add('hidden'); }
-        async function handleVideoUploadSubmit(e) {
+        function handleVideoUploadSubmit(e) {
             e.preventDefault();
             const title = document.getElementById('video-title').value;
             const description = document.getElementById('video-desc').value;
@@ -5278,21 +5312,21 @@
             const grade = document.getElementById('video-grade').value;
             const lesson = Math.max(1, Number(document.getElementById('video-lesson').value) || 1);
 
-            const newLecture = { title, description, lesson, archive_url: url, duration_mins: duration, grade, watched_mins: 0, completed: false };
-            const result = await D1.saveLecture(newLecture);
-
-            if (!result?.success || !result.id) {
-                showToast(`Lecture was not saved to D1: ${result?.error || 'unknown database error'}`, 'error');
-                return;
-            }
-
-            newLecture.id = result.id;
+            const newLecture = { id: Date.now(), title, description, lesson, archive_url: url, duration_mins: duration, grade, watched_mins: 0, completed: false };
             lectures.push(newLecture);
             syncLocalDB();
             closeAddVideoModal();
-            showToast(extractYouTubeId(url) ? 'YouTube lecture linked and indexed!' : 'Video URL linked and indexed!', 'success');
+            showToast(extractYouTubeId(url) ? 'YouTube lecture linked and indexed!' : 'Secure Video Archive.org URL Indexed!', 'success');
             renderVideos();
             if (activeTab === 'admin') renderAdmin();
+
+            // 🗄️ Persist into D1 and swap in the real row id once we get it back
+            D1.saveLecture(newLecture).then(res => {
+                if (res && res.success && res.id) {
+                    newLecture.id = res.id;
+                    syncLocalDB();
+                }
+            });
         }
 
         function openProvisionAccountModal() { document.getElementById('student-modal').classList.remove('hidden'); }
@@ -5309,7 +5343,7 @@
         const name = nameInput ? nameInput.value.trim() : '';
         const id = phoneInput ? phoneInput.value.trim() : '';
         const pass = passInput ? passInput.value.trim() : '123456';
-        const grade = gradeInput ? gradeInput.value : 'Grade 10 (Secondary 1)';
+        const grade = gradeInput ? gradeInput.value : 'Grade 10 (Secandory 1)';
         const gender = genderInput ? genderInput.value : 'Boy';
         const title = titleInput ? titleInput.value.trim() : '';
 
@@ -5659,15 +5693,9 @@
                 .replace(/\\theta/g, 'θ')
                 .replace(/\\int/g, '∫')
                 .replace(/\\sqrt/g, '√')
-                .replace(/\*\*/g, '')
-                .replace(/__/g, '')
                 // Keep chat bubbles clean: raw markup punctuation is never useful
                 // to students and was showing up as visual clutter.
                 .replace(/[\\|{}\[\]]/g, '');
-        }
-
-        function cleanAIText(text) {
-            return String(text || '').replace(/\*\*/g, '').replace(/__/g, '');
         }
 
         function copyAIText(text) {
@@ -5793,7 +5821,7 @@
             const apiHistory = [
                 {
                     role: "system",
-                    content: "You are Co Assistant, MR. Ahmed Abd-ElFatah's Unified Portal AI Copilot. Your primary purpose is to help students navigate the website features such as the Portal Dashboard, Syllabus Materials & PDF Documents, Secure Video Lectures Center, and Community Feed Announcements. You must decline doing their homework, solving full worksheets, or doing their exams directly, and prioritize website assistance. Be encouraging, organized, and helpful. Write out scientific formulas and equations cleanly using unicode or text where appropriate. Never use Markdown emphasis markers such as ** or __; use plain text headings and sentences instead. Emphasize that you may make mistakes, and remind them to not message too rapidly if they request repeatedly. If they ask about the admin console, decline to help with it.\n\n" + getFeedSummaryForAI() + "\n\nIf the student asks about the community feed, recent announcements, who liked what, or comments, use this data to answer them accurately and friendly!"
+                    content: "You are Co Assistant, MR. Ahmed Abd-ElFatah's Unified Portal AI Copilot. Your primary purpose is to help students navigate the website features such as the Portal Dashboard, Syllabus Materials & PDF Documents, Secure Video Lectures Center, and Community Feed Announcements. You must decline doing their homework, solving full worksheets, or doing their exams directly, and prioritize website assistance. Be encouraging, organized, and helpful. Write out scientific formulas and equations cleanly using unicode or text where appropriate. Emphasize that you may make mistakes, and remind them to not message too rapidly if they request repeatedly. If they ask about the admin console, decline to help with it.\n\n" + getFeedSummaryForAI() + "\n\nIf the student asks about the community feed, recent announcements, who liked what, or comments, use this data to answer them accurately and friendly!"
                 }
             ];
 
@@ -5918,7 +5946,7 @@
 
                 if (success && response) {
                     const data = await response.json();
-                    const aiText = cleanAIText(data.choices[0].message.content);
+                    const aiText = data.choices[0].message.content;
                     activeChat.messages.push({ role: 'assistant', text: aiText });
                     saveAIChatsToStorage();
                     renderAIChatBoard();
@@ -5975,7 +6003,7 @@
                         matches.push(`<button onclick="switchTab('materials')" class="${btnClass}"><i data-lucide="file-spreadsheet" class="w-3 h-3"></i><span>Materials & Sheets</span></button>`);
                     }
                     if (txt.includes('video') || txt.includes('lecture') || txt.includes('stream') || txt.includes('catalog') || txt.includes('watch')) {
-                        matches.push(`<button onclick="switchTab('videos')" class="${btnClass}"><i data-lucide="film" class="w-3 h-3"></i><span>Sessions Catalog</span></button>`);
+                        matches.push(`<button onclick="switchTab('videos')" class="${btnClass}"><i data-lucide="film" class="w-3 h-3"></i><span>Lectures Catalog</span></button>`);
                     }
                     if (txt.includes('community') || txt.includes('feed') || txt.includes('announcement') || txt.includes('post') || txt.includes('announcements')) {
                         matches.push(`<button onclick="switchTab('feed')" class="${btnClass}"><i data-lucide="megaphone" class="w-3 h-3"></i><span>Community Feed</span></button>`);
@@ -6134,7 +6162,7 @@
                 showToast('Auto-navigated to Materials & Sheets!', 'info');
             } else if (txt.includes('video') || txt.includes('lecture') || txt.includes('stream') || txt.includes('catalog') || txt.includes('watch')) {
                 switchTab('videos');
-                showToast('Auto-navigated to Sessions Catalog!', 'info');
+                showToast('Auto-navigated to Lectures Catalog!', 'info');
             } else if (txt.includes('community') || txt.includes('feed') || txt.includes('announcement') || txt.includes('post') || txt.includes('announcements')) {
                 switchTab('feed');
                 showToast('Auto-navigated to Community Feed!', 'info');
@@ -6622,7 +6650,7 @@
 
         
     function inspectStudentAnalytics(studentId) {
-        if (!hasAdminGrant()) {
+        if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'admin')) {
             showToast('Access Denied: Only administrators can view student statistics.', 'error');
             return;
         }
@@ -6679,7 +6707,6 @@
     }
 
     function modifyStudentXP(id) {
-        if (!hasAdminGrant()) return;
         const student = students.find(s => s.id === id || s.phone === id);
         if (student) {
             const inputVal = prompt(`Enter EXP amount to inject into ${student.name}'s profile:`, "250");
@@ -6708,5 +6735,7 @@
       fluidRenderLoop();
     </script> <!-- 1. Close the inline JavaScript block here -->
 
+    <!-- 2. Now include db.js -->
+    <script src="db.js"></script> 
   </body>
 </html>
