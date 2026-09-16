@@ -251,7 +251,7 @@ export async function onRequest(context) {
                             student.phone || student.id,
                             student.name,
                             student.password || '123456',
-                            student.grade || 'Grade 10 (Secandory 1)',
+                            student.grade || 'Grade 10 (Secondary 1)',
                             student.gender || 'Boy',
                             student.title || null,
                             student.xp || 0,
