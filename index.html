@@ -2294,10 +2294,50 @@
             #view-feed { padding-left: 2px !important; padding-right: 2px !important; }
         }
 
+        /* ═════════════════════════════════════════════════════════════════════ */
+        /* ✨ CURSOR PARTICLE FIELD — desktop only.                               */
+        /* A drifting constellation of dots that gently reacts to the mouse,     */
+        /* sitting behind every panel at z-index 0 (same layer as the aurora     */
+        /* mesh above). Below 1024px it never renders — initCursorParticles()    */
+        /* keeps the canvas hidden and skips the animation loop entirely on      */
+        /* phones/tablets, and the JS re-checks this on every resize.            */
+        /* ═════════════════════════════════════════════════════════════════════ */
+        #cursor-particles {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            display: none; /* initCursorParticles() only switches this on for desktop viewports */
+        }
+
+        /* Bring the glass blur back, but only at desktop widths, so the particle
+           field is visible — softly frosted — through every tab panel, card,
+           sidebar, header and modal. Mobile/tablet keeps the opaque, faster
+           panels from the clarity pass above untouched. Matches the selector
+           list of the rule that turned blur off, plus every Tailwind
+           backdrop-blur-* utility, so this wins the cascade by coming later. */
+        @media (min-width: 1024px) {
+            .glass-card, .glass-panel, .glass-sidebar, .glass-header, .glass-main-panel,
+            .glass-modal, #video-bookmarks-container, #admin-feed-composer, #feed-stream > div,
+            [class*="backdrop-blur"] {
+                backdrop-filter: blur(18px) saturate(150%) !important;
+                -webkit-backdrop-filter: blur(18px) saturate(150%) !important;
+            }
+            .glass-card:hover, .glass-panel:hover, .glass-sidebar:hover, .glass-header:hover,
+            .glass-main-panel:hover, .glass-modal:hover, #video-bookmarks-container:hover,
+            #admin-feed-composer:hover, #feed-stream > div:hover, [class*="backdrop-blur"]:hover {
+                backdrop-filter: blur(18px) saturate(150%) !important;
+                -webkit-backdrop-filter: blur(18px) saturate(150%) !important;
+            }
+        }
+
 </style>
 
 </head>
 <body class="bg-[#05070c] text-white font-sans min-h-screen flex flex-col relative overflow-x-hidden">
+<canvas id="cursor-particles" aria-hidden="true"></canvas>
     <!-- 🧬 Fluid Simulation Canvas Background -->
     <canvas id="fluid-canvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
     
@@ -3662,7 +3702,152 @@
             if (typeof renderFeedbacks === 'function') renderFeedbacks();
         }
 
+        // -----------------------------------------------------------------
+        // ✨ CURSOR PARTICLE FIELD — a soft constellation of dots drifting
+        // behind the whole app that gently parts around the mouse. Desktop
+        // only: it stays off on phones/tablets and re-checks on every resize,
+        // so dragging a browser window down past 1024px turns it off live.
+        // -----------------------------------------------------------------
+        function initCursorParticles() {
+            const canvas = document.getElementById('cursor-particles');
+            if (!canvas) return;
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+            const ctx = canvas.getContext('2d');
+            const isDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
+            const COLORS = ['#6366f1', '#8b5cf6', '#06b6d4', '#2dd4bf'];
+            const LINK_DIST = 130;
+            const MOUSE_RADIUS = 150;
+
+            let particles = [];
+            let mouse = { x: -9999, y: -9999 };
+            let width = 0, height = 0;
+            let running = false;
+            let rafId = null;
+
+            function seedParticles() {
+                const count = Math.min(110, Math.max(40, Math.round((width * height) / 14000)));
+                particles = Array.from({ length: count }, () => ({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 0.25,
+                    vy: (Math.random() - 0.5) * 0.25,
+                    r: Math.random() * 1.6 + 0.6,
+                    color: COLORS[Math.floor(Math.random() * COLORS.length)]
+                }));
+            }
+
+            function resize() {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                canvas.style.width = width + 'px';
+                canvas.style.height = height + 'px';
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                seedParticles();
+            }
+
+            function step() {
+                ctx.clearRect(0, 0, width, height);
+
+                for (const p of particles) {
+                    // Gentle ambient drift
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    // Softly part around the cursor
+                    const dx = p.x - mouse.x;
+                    const dy = p.y - mouse.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist < MOUSE_RADIUS) {
+                        const force = (MOUSE_RADIUS - dist) / MOUSE_RADIUS;
+                        p.x += (dx / (dist || 1)) * force * 1.6;
+                        p.y += (dy / (dist || 1)) * force * 1.6;
+                    }
+
+                    // Wrap around edges so the field feels endless
+                    if (p.x < -10) p.x = width + 10;
+                    if (p.x > width + 10) p.x = -10;
+                    if (p.y < -10) p.y = height + 10;
+                    if (p.y > height + 10) p.y = -10;
+
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = 0.55;
+                    ctx.fill();
+                }
+
+                // Faint constellation links between nearby particles
+                ctx.globalAlpha = 1;
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const a = particles[i], b = particles[j];
+                        const dx = a.x - b.x, dy = a.y - b.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist < LINK_DIST) {
+                            ctx.strokeStyle = `rgba(129, 140, 248, ${0.12 * (1 - dist / LINK_DIST)})`;
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(a.x, a.y);
+                            ctx.lineTo(b.x, b.y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                rafId = requestAnimationFrame(step);
+            }
+
+            function start() {
+                if (running) return;
+                running = true;
+                canvas.style.display = 'block';
+                resize();
+                rafId = requestAnimationFrame(step);
+            }
+
+            function stop() {
+                running = false;
+                canvas.style.display = 'none';
+                if (rafId) cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+
+            function evaluateViewport() {
+                if (isDesktop()) start(); else stop();
+            }
+
+            window.addEventListener('mousemove', (e) => {
+                mouse.x = e.clientX;
+                mouse.y = e.clientY;
+            }, { passive: true });
+
+            window.addEventListener('mouseout', () => {
+                mouse.x = -9999;
+                mouse.y = -9999;
+            });
+
+            window.addEventListener('resize', () => {
+                evaluateViewport();
+                if (running) resize();
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    if (rafId) cancelAnimationFrame(rafId);
+                } else if (running) {
+                    rafId = requestAnimationFrame(step);
+                }
+            });
+
+            evaluateViewport();
+        }
+
         window.addEventListener('DOMContentLoaded', hydrateFromD1);
+        window.addEventListener('DOMContentLoaded', initCursorParticles);
 
         // -----------------------------------------------------------------
         // LOGIN MANAGER & SESSION SYSTEMS
