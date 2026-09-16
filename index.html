@@ -4578,7 +4578,11 @@
             grid.innerHTML = '';
 
             const activeMaterials = materials.filter(item => {
-                if (currentUser.role === 'student' && item.grade !== currentUser.grade) return false;
+                if (currentUser.role === 'student') {
+                    const studentGrade = (currentUser.grade || '').trim().toLowerCase();
+                    const itemGrade = (item.grade || '').trim().toLowerCase();
+                    if (studentGrade !== itemGrade) return false;
+                }
                 if (selectedMaterialFilter !== 'all' && item.type !== selectedMaterialFilter) return false;
                 return true;
             });
@@ -4692,13 +4696,28 @@
             const sessionsList = document.getElementById('video-sessions-list');
             sessionsList.innerHTML = '';
 
+            // Debug: log current user and all lectures
+            console.log('📹 Video Render Debug:', {
+                currentUser: currentUser,
+                currentUserGrade: currentUser?.grade,
+                currentUserRole: currentUser?.role,
+                allLectures: lectures,
+                lectureCount: lectures.length
+            });
+
             // Filter by grade - handle both student and teacher/admin roles
             const filteredLectures = lectures.filter(l => {
                 if (currentUser.role === 'student') {
-                    return l.grade && l.grade.trim() === (currentUser.grade || '').trim();
+                    const studentGrade = (currentUser.grade || '').trim().toLowerCase();
+                    const lectureGrade = (l.grade || '').trim().toLowerCase();
+                    const match = studentGrade === lectureGrade;
+                    console.log(`Checking lecture: "${l.title}" | Lecture Grade: "${lectureGrade}" vs Student Grade: "${studentGrade}" | Match: ${match}`);
+                    return match && l.grade;
                 }
                 return true; // Teachers/admins see all
             });
+
+            console.log('📹 Filtered lectures count:', filteredLectures.length);
 
             document.getElementById('videos-count-badge').textContent = `${filteredLectures.length} Sessions`;
 
@@ -6023,7 +6042,16 @@
             });
         }
 
-        function openAddVideoModal() { document.getElementById('video-modal').classList.remove('hidden'); }
+        function openAddVideoModal() { 
+            document.getElementById('video-modal').classList.remove('hidden');
+            // Clear form fields
+            document.getElementById('video-title').value = '';
+            document.getElementById('video-desc').value = '';
+            document.getElementById('video-url').value = '';
+            document.getElementById('video-lesson').value = '1';
+            document.getElementById('video-part').value = '1';
+            document.getElementById('video-grade').value = 'Grade 10 (Secandory 1)';
+        }
         function closeAddVideoModal() { document.getElementById('video-modal').classList.add('hidden'); }
         function handleVideoUploadSubmit(e) {
             e.preventDefault();
