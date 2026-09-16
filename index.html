@@ -3504,9 +3504,15 @@
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Session Description</label>
                     <textarea id="video-desc" required placeholder="Detail the concepts covered..." class="w-full h-16 bg-slate-950/60 border border-white/5 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500 resize-none"></textarea>
                 </div>
-                <div class="space-y-1">
-                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Lesson Number</label>
-                    <input type="number" id="video-lesson" min="1" step="1" required value="1" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="space-y-1">
+                        <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Lesson Number</label>
+                        <input type="number" id="video-lesson" min="1" step="1" required value="1" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Part Number</label>
+                        <input type="number" id="video-part" min="1" step="1" value="1" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" placeholder="Optional">
+                    </div>
                 </div>
                 <div class="space-y-1">
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Direct Archive.org Stream URL (MP4)</label>
@@ -4698,7 +4704,12 @@
                 return;
             }
 
-            filteredLectures.sort((a, b) => Number(a.lesson || 0) - Number(b.lesson || 0)).forEach(lec => {
+            filteredLectures.sort((a, b) => {
+                const lessonA = Number(a.lesson || 0);
+                const lessonB = Number(b.lesson || 0);
+                if (lessonA !== lessonB) return lessonA - lessonB;
+                return Number(a.part || 1) - Number(b.part || 1);
+            }).forEach(lec => {
                 const row = document.createElement('div');
                 row.className = "w-full text-left p-3 rounded-xl bg-slate-950/40 border border-white/5 hover:border-indigo-500/20 flex items-center justify-between group transition cursor-pointer hover:bg-slate-900/35";
                 row.onclick = () => loadSecureLecture(lec);
@@ -4716,7 +4727,7 @@
                         </div>
                         <div class="overflow-hidden">
                             <h4 class="text-xs font-extrabold text-white truncate w-[160px] md:w-[300px]">${lec.title}</h4>
-                            <p class="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mt-0.5">Lesson ${lec.lesson || 1} · ${lec.grade}</p>
+                            <p class="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mt-0.5">Lesson ${lec.lesson || 1}${lec.part && lec.part > 1 ? ` Part ${lec.part}` : ''} · ${lec.grade}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -5843,7 +5854,7 @@
                     row.innerHTML = `
                         <div>
                             <h4 class="font-extrabold text-white">${lec.title}</h4>
-                            <p class="text-[9px] text-gray-500">D1 Stream Path: ${lec.archive_url.substring(0,35)}... · Target: ${lec.grade}</p>
+                            <p class="text-[9px] text-gray-500">Lesson ${lec.lesson || 1}${lec.part && lec.part > 1 ? ` Part ${lec.part}` : ''} · Target: ${lec.grade} · D1 Stream Path: ${lec.archive_url.substring(0,30)}...</p>
                         </div>
                         <button onclick="deleteLectureRegistry(${lec.id})" class="p-1 text-red-400 hover:text-white hover:bg-red-950/40 rounded-lg transition"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
                     `;
@@ -6015,8 +6026,9 @@
             const duration = 45; // Defaulted internally as requested
             const grade = document.getElementById('video-grade').value;
             const lesson = Math.max(1, Number(document.getElementById('video-lesson').value) || 1);
+            const part = Math.max(1, Number(document.getElementById('video-part').value) || 1);
 
-            const newSession = { id: Date.now(), title, description, lesson, archive_url: url, duration_mins: duration, grade, watched_mins: 0, completed: false };
+            const newSession = { id: Date.now(), title, description, lesson, part, archive_url: url, duration_mins: duration, grade, watched_mins: 0, completed: false };
             lectures.push(newSession);
             syncLocalDB();
             closeAddVideoModal();
