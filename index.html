@@ -4002,7 +4002,19 @@
                 }));
             }
             if (Array.isArray(dbSessions) && dbSessions.length) lectures = dbSessions;
-            if (Array.isArray(dbMaterials) && dbMaterials.length) materials = dbMaterials;
+            if (Array.isArray(dbMaterials) && dbMaterials.length) {
+                // D1's materials_table column is called "filename" (schema.sql),
+                // but renderMaterials()/downloadStudySheet() read "file_url".
+                // A material added on THIS browser stays fine because the
+                // in-memory object it builds already has file_url set — but
+                // any browser that loads materials fresh from D1 (every other
+                // browser, or this one after a reload) got raw rows with only
+                // "filename", so item.file_url was undefined and the download
+                // button always hit the "no file attached" fallback. Map it
+                // here once so every material has file_url no matter which
+                // field the row came back with.
+                materials = dbMaterials.map(m => ({ ...m, file_url: m.file_url || m.filename }));
+            }
             if (Array.isArray(dbFeed) && dbFeed.length) {
                 feedPosts = dbFeed.map(p => ({
                     // Older posts did not have presentation fields in D1. Match
@@ -4734,7 +4746,7 @@
                         <p class="text-[9px] text-gray-500 font-semibold uppercase tracking-wider">Level: ${item.grade}</p>
                     </div>
                     <div class="pt-3 border-t border-white/5 flex items-center justify-between">
-                        <button onclick="downloadStudySheet('${item.title}', '${item.file_url}')" class="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 hover:text-white transition">
+                        <button onclick="downloadStudySheet('${item.title}', '${item.file_url || item.filename || ''}')" class="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 hover:text-white transition">
                             <i data-lucide="download" class="w-3.5 h-3.5"></i>
                             <span>Download PDF</span>
                         </button>
