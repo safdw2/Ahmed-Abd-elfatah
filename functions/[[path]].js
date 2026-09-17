@@ -224,13 +224,14 @@ export async function onRequest(context) {
                     const lec = await request.json();
                     if (d1) {
                         const result = await d1.prepare(`
-                            INSERT INTO videos_table (title, description, lesson, grade, filename, archive_url, duration_mins)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                            INSERT INTO videos_table (title, description, lesson, part, grade, filename, archive_url, duration_mins)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         `).bind(
                             lec.title,
                             lec.description || '',
                             lec.lesson || '1',
-                            parseInt(lec.grade) || 10,
+                            lec.part || 1,
+                            lec.grade || 'Grade 10 (Secondary 1)',
                             lec.filename || lec.archive_url || 'video.mp4',
                             lec.archive_url || lec.filename || '',
                             lec.duration_mins || 45
@@ -273,7 +274,7 @@ export async function onRequest(context) {
                         `).bind(
                             mat.title,
                             mat.type || 'Worksheet',
-                            parseInt(mat.grade) || 10,
+                            mat.grade || 'Grade 10 (Secondary 1)',
                             mat.desc || mat.type || '',
                             mat.file_url || mat.filename || 'sheet.pdf'
                         ).run();
