@@ -200,6 +200,65 @@ export async function onRequest(context) {
             }
         }
 
+        // 📈 STUDENT PROGRESS ENDPOINT (/api/db/students/progress)
+        // Called ONLY from markLectureCompleted() on the frontend when a
+        // student finishes a video. Deliberately narrow: touches ONLY xp,
+        // watch_mins and completed_lecture_ids — never password, name,
+        // grade or role.
+        //
+        // Why this exists: the general /api/db/students upsert (above)
+        // does `student.password || '123456'`. The frontend's currentUser
+        // object never carries a password field (the login endpoint
+        // strips it before sending the user back to the browser), so
+        // every time a student finished a video and that upsert ran with
+        // currentUser, it silently reset their real password back to
+        // '123456' in D1. They'd keep typing their actual password on a
+        // later login and get rejected as "invalid credentials" even
+        // though the row was right there. Routing progress saves through
+        // this endpoint instead means a video completion can never touch
+        // the password column at all, no matter what the client sends.
+        //
+        // This also reads the row back after the write and returns the
+        // authoritative values, instead of firing the request and trusting
+        // it worked. The old call (D1.saveStudent(currentUser), unawaited
+        // and unchecked) meant a dropped/failed request left the checkmark
+        // and EXP showing locally while D1 still had the old row — the
+        // next hydrateFromD1() would then overwrite local state with that
+        // stale row, and the "finished" video would look unfinished again.
+        if (pathname === '/api/db/students/progress' && request.method === 'POST') {
+            try {
+                const { id, xp, watch_mins, completed_lecture_ids } = await request.json();
+                if (!id) return jsonResponse({ error: 'Missing student id.' }, 400);
+                if (d1) {
+                    await d1.prepare(`
+                        UPDATE students_table
+                        SET xp = ?, watch_mins = ?, completed_lecture_ids = ?
+                        WHERE phone = ? OR id = ?
+                    `).bind(
+                        xp || 0,
+                        watch_mins || 0,
+                        JSON.stringify(completed_lecture_ids || []),
+                        id, id
+                    ).run();
+
+                    const row = await d1.prepare('SELECT xp, watch_mins, completed_lecture_ids FROM students_table WHERE phone = ? OR id = ?')
+                        .bind(id, id).first();
+
+                    if (!row) return jsonResponse({ error: 'Student not found.' }, 404);
+                    return jsonResponse({
+                        success: true,
+                        xp: row.xp,
+                        watch_mins: row.watch_mins,
+                        completed_lecture_ids: row.completed_lecture_ids,
+                        message: 'Progress saved.'
+                    });
+                }
+                return jsonResponse({ success: true, mock: true });
+            } catch (err) {
+                return jsonResponse({ error: err.message }, 400);
+            }
+        }
+
         if (pathname.startsWith('/api/db/students/') && request.method === 'DELETE') {
             const studentId = pathname.split('/').pop();
             if (d1 && studentId) {
