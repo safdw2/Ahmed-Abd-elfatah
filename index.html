@@ -3473,7 +3473,7 @@
                         <option value="Grade 7 (Preparatory 1)">Grade 7 (Preparatory 1)</option>
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
-                        <option value="Grade 10 (Secandory 1)">Grade 10 (Secandory 1)</option>
+                        <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
                     </select>
                 </div>
                 <div class="space-y-1">
@@ -3524,7 +3524,7 @@
                         <option value="Grade 7 (Preparatory 1)">Grade 7 (Preparatory 1)</option>
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
-                        <option value="Grade 10 (Secandory 1)">Grade 10 (Secandory 1)</option>
+                        <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
                     </select>
                 </div>
                 <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-xs transition">
@@ -3560,7 +3560,7 @@
                         <option value="Grade 7 (Preparatory 1)">Grade 7 (Preparatory 1)</option>
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
-                        <option value="Grade 10 (Secandory 1)">Grade 10 (Secandory 1)</option>
+                        <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
                     </select>
                 </div>
                 <div class="space-y-1">
@@ -4394,7 +4394,7 @@
 
             // Welcome
             document.getElementById('welcome-message').textContent = `Marhaban, ${currentUser.name}!`;
-            document.getElementById('dashboard-grade-info').textContent = hasAdminGrant() ? 'Workspace Director' : `Grade Level: ${currentUser.grade || 'Grade 10 (Secandory 1)'}`;
+            document.getElementById('dashboard-grade-info').textContent = hasAdminGrant() ? 'Workspace Director' : `Grade Level: ${currentUser.grade || 'Grade 10 (Secondary 1)'}`;
 
             // 🔐 STAFF DASHBOARD LAYOUT
             // An Admin-Granted account sees only two things on the dashboard:
@@ -6050,7 +6050,7 @@
             document.getElementById('video-url').value = '';
             document.getElementById('video-lesson').value = '1';
             document.getElementById('video-part').value = '1';
-            document.getElementById('video-grade').value = 'Grade 10 (Secandory 1)';
+            document.getElementById('video-grade').value = 'Grade 10 (Secondary 1)';
         }
         function closeAddVideoModal() { document.getElementById('video-modal').classList.add('hidden'); }
         function handleVideoUploadSubmit(e) {
@@ -6094,7 +6094,7 @@
         const name = nameInput ? nameInput.value.trim() : '';
         const id = phoneInput ? phoneInput.value.trim() : '';
         const pass = passInput ? passInput.value.trim() : '123456';
-        const grade = gradeInput ? gradeInput.value : 'Grade 10 (Secandory 1)';
+        const grade = gradeInput ? gradeInput.value : 'Grade 10 (Secondary 1)';
         const gender = genderInput ? genderInput.value : 'Boy';
         const title = titleInput ? titleInput.value.trim() : '';
 
