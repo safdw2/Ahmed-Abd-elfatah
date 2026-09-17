@@ -1,11 +1,11 @@
 /**
- * 🚀 CLOUDFLARE PAGES SERVERLESS ROUTER ENGINE (functions/[[path]].js)
+ * CLOUDFLARE PAGES SERVERLESS ROUTER ENGINE (functions/[[path]].js)
  * Architecture: Cloudflare Pages Functions + D1 Database + Secure AI API Proxy
  * Project: MR. Ahmed Abd-ElFatah - Unified Student Workspace Portal
  * 
- * 🗄️ D1 Database Binding: env.DB
- * 🆔 Database ID: 690c177a-0e63-4bcd-ae11-5fb684dd463f
- * 📛 Database Name: ahmedabdelfatah-db
+ * D1 Database Binding: env.DB
+ * Database ID: 690c177a-0e63-4bcd-ae11-5fb684dd463f
+ * Database Name: ahmedabdelfatah-db
  */
 
 export async function onRequest(context) {
