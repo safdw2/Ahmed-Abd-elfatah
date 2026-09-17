@@ -6159,7 +6159,7 @@
 
         function openProvisionAccountModal() { document.getElementById('student-modal').classList.remove('hidden'); }
         function closeProvisionAccountModal() { document.getElementById('student-modal').classList.add('hidden'); }
-        function handleProvisionSubmit(e) {
+        async function handleProvisionSubmit(e) {
         e.preventDefault();
         const nameInput = document.getElementById('student-name');
         const phoneInput = document.getElementById('student-phone');
@@ -6200,15 +6200,27 @@
             can_post_feed: 0
         };
 
+        // 🗄️ Persist to Cloudflare D1 FIRST and wait for confirmation. Saving
+        // locally and showing "success" before D1 answers meant a failed
+        // cloud write looked identical to a real one in the UI — the student
+        // would appear provisioned, but /api/auth/login (which only checks
+        // D1) would reject them every time with correct credentials, and
+        // re-submitting the form would be blocked by the duplicate check
+        // above since the local copy already "existed".
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+
+        const res = await D1.saveStudent(newStudent);
+
+        if (submitBtn) submitBtn.disabled = false;
+
+        if (!res || !res.success) {
+            showToast(`⚠️ '${name}' was NOT saved to the cloud database — they will not be able to log in. Check your connection and try again.`, 'error');
+            return; // don't touch local state or close the modal; let the admin retry with the same values
+        }
+
         students.push(newStudent);
         syncLocalDB();
-
-        // 🗄️ Persist the new student straight into Cloudflare D1 (ahmed-abdelfatah-db)
-        D1.saveStudent(newStudent).then(res => {
-            if (res && res.success) {
-                console.log('Student account provisioned in Cloud Database:', res);
-            }
-        });
 
         closeProvisionAccountModal();
 
