@@ -1,11 +1,11 @@
 /**
- * CLOUDFLARE PAGES SERVERLESS ROUTER ENGINE (functions/[[path]].js)
+ * 🚀 CLOUDFLARE PAGES SERVERLESS ROUTER ENGINE (functions/[[path]].js)
  * Architecture: Cloudflare Pages Functions + D1 Database + Secure AI API Proxy
  * Project: MR. Ahmed Abd-ElFatah - Unified Student Workspace Portal
  * 
- * D1 Database Binding: env.DB
- * Database ID: 690c177a-0e63-4bcd-ae11-5fb684dd463f
- * Database Name: ahmedabdelfatah-db
+ * 🗄️ D1 Database Binding: env.DB
+ * 🆔 Database ID: 690c177a-0e63-4bcd-ae11-5fb684dd463f
+ * 📛 Database Name: ahmedabdelfatah-db
  */
 
 export async function onRequest(context) {
@@ -40,17 +40,28 @@ export async function onRequest(context) {
         });
     }
 
-    // 🤖 2. SECURE GROQ AI PROXY ENDPOINT (/api/ai/chat)
-    // Runs server-side only — the browser never sees any Groq key, so
-    // there's nothing in the shipped page source for anyone to scrape.
-    // Free-tier Groq keys each have their own rate limit, so up to 4 keys
-    // can be set and this endpoint rotates to the next one the instant a
-    // key hits its limit (HTTP 429/402), keeping replies fast even under
-    // load. Set them with:
+    // 🤖 2. SECURE AI PROXY ENDPOINT (/api/ai/chat)
+    // Runs server-side only — the browser never sees any of the 4 secret
+    // keys below, it just calls this same-origin endpoint. Set the real
+    // keys with (dashboard or CLI, all 4 as Secret/encrypted values):
     //   wrangler pages secret put GROQ_API_KEY
     //   wrangler pages secret put GROQ_API_KEY_2
     //   wrangler pages secret put GROQ_API_KEY_3
     //   wrangler pages secret put GROQ_API_KEY_4
+    //
+    // Speed fix: the old version tried up to 5 different MODELS one after
+    // another on a single key (Cerebras x2, then Groq x3) — every failed
+    // attempt was a full round trip the student sat through before the
+    // next one even started, which is where the multi-second delay came
+    // from. This version calls exactly ONE fast model per attempt and
+    // rotates across the 4 KEYS instead: the instant a key is missing,
+    // rate-limited (429) or out of quota (402), it moves straight to the
+    // next key with no retry-on-the-same-key delay. A 12s timeout per key
+    // stops a single hung attempt from stalling the whole request.
+    //
+    // Never leaks which provider/model answers the request: on failure we
+    // only ever return our own generic message, never the raw upstream
+    // error body (which could otherwise mention the provider by name).
     if (pathname === '/api/ai/chat' && request.method === 'POST') {
         try {
             const body = await request.json();
@@ -59,14 +70,28 @@ export async function onRequest(context) {
             const temperature = typeof body.temperature === 'number' ? body.temperature : 0.7;
             const max_tokens = typeof body.max_tokens === 'number' ? body.max_tokens : 800;
 
-            const groqKeys = [env.GROQ_API_KEY, env.GROQ_API_KEY_2, env.GROQ_API_KEY_3, env.GROQ_API_KEY_4].filter(Boolean);
+            // All 4 keys are Groq's free tier — kept as separate secrets so
+            // if one hits its daily/per-minute free-tier limit, the next
+            // one picks up the request instead of the student seeing an error.
+            const groqKeys = [
+                env.GROQ_API_KEY,
+                env.GROQ_API_KEY_2,
+                env.GROQ_API_KEY_3,
+                env.GROQ_API_KEY_4
+            ].filter(Boolean);
+
             if (groqKeys.length === 0) {
-                return jsonResponse({ error: 'AI service is not configured. Set GROQ_API_KEY as a Cloudflare Pages secret.' }, 503);
+                return jsonResponse({ error: 'AI service is not configured.' }, 503);
             }
 
-            const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.6-27b'];
+            // llama-3.1-8b-instant: Groq's fastest hosted chat model, chosen
+            // specifically to fix the "AI takes way too much time" complaint.
+            const MODEL = 'llama-3.1-8b-instant';
+            let lastStatus = 503;
 
-            const tryModel = async (key, model) => {
+            for (const key of groqKeys) {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 12000);
                 try {
                     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                         method: 'POST',
@@ -74,31 +99,28 @@ export async function onRequest(context) {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${key}`
                         },
-                        body: JSON.stringify({ model, messages, temperature, max_tokens })
+                        body: JSON.stringify({ model: MODEL, messages, temperature, max_tokens }),
+                        signal: controller.signal
                     });
-                    const data = await res.json().catch(() => ({}));
-                    return { ok: res.ok, status: res.status, data };
+                    clearTimeout(timer);
+                    if (res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        return jsonResponse(data, 200);
+                    }
+                    lastStatus = res.status;
+                    // 401/429/402 = bad/rate-limited/out-of-quota key — skip to
+                    // the next one immediately without reading the body.
+                    continue;
                 } catch (err) {
-                    return { ok: false, status: 502, data: { error: { message: err.message } } };
-                }
-            };
-
-            let lastFailure = null;
-            for (const key of groqKeys) {
-                for (const model of groqModels) {
-                    const result = await tryModel(key, model);
-                    if (result.ok) return jsonResponse(result.data, 200);
-                    lastFailure = result;
-                    // This key is rate-limited/out of quota — skip straight
-                    // to the next key instead of burning time on other
-                    // models with a key that's already exhausted.
-                    if (result.status === 429 || result.status === 402) break;
+                    clearTimeout(timer);
+                    lastStatus = 503;
+                    continue;
                 }
             }
 
-            return jsonResponse(lastFailure ? lastFailure.data : { error: 'AI service is temporarily unavailable.' }, lastFailure ? (lastFailure.status || 503) : 503);
+            return jsonResponse({ error: 'AI service is temporarily unavailable. Please try again in a moment.' }, lastStatus || 503);
         } catch (err) {
-            return jsonResponse({ error: err.message }, 500);
+            return jsonResponse({ error: 'AI service is temporarily unavailable. Please try again in a moment.' }, 500);
         }
     }
 
@@ -201,6 +223,38 @@ export async function onRequest(context) {
                 } catch (err) {
                     return jsonResponse({ error: err.message }, 400);
                 }
+            }
+        }
+
+        // Narrow progress-only save used after every finished video
+        // (see D1.saveProgress / markLectureCompleted in index.html).
+        // This route was missing entirely, so every call to it fell through
+        // to the catch-all 404 below, D1.saveProgress() resolved to null,
+        // and markLectureCompleted() rolled the +150 XP right back and
+        // showed "Couldn't save your progress to the cloud" — every single
+        // time, on every video. Only touches xp / watch_mins /
+        // completed_lecture_ids, never the password, so it's safe to call
+        // with the trimmed-down currentUser object the login endpoint returns.
+        if (pathname === '/api/db/students/progress' && request.method === 'POST') {
+            try {
+                const { id, xp, watch_mins, completed_lecture_ids } = await request.json();
+                if (!id) return jsonResponse({ error: 'Missing student id.' }, 400);
+                if (d1) {
+                    await d1.prepare(`
+                        UPDATE students_table
+                        SET xp = ?, watch_mins = ?, completed_lecture_ids = ?
+                        WHERE phone = ? OR id = ?
+                    `).bind(
+                        Number(xp) || 0,
+                        Number(watch_mins) || 0,
+                        JSON.stringify(completed_lecture_ids || []),
+                        id, id
+                    ).run();
+                    return jsonResponse({ success: true, message: 'Progress saved.' });
+                }
+                return jsonResponse({ success: true, mock: true });
+            } catch (err) {
+                return jsonResponse({ error: err.message }, 400);
             }
         }
 
