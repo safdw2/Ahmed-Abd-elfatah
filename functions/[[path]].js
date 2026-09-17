@@ -41,44 +41,64 @@ export async function onRequest(context) {
     }
 
     // 🤖 2. SECURE CEREBRAS & GROQ AI PROXY ENDPOINT (/api/ai/chat)
+    // Runs server-side only. The browser never sees CEREBRAS_API_KEY or
+    // GROQ_API_KEY — it just calls this same-origin endpoint, so there's
+    // nothing for anyone to scrape out of the shipped page source.
+    // Set the real keys with:
+    //   wrangler pages secret put CEREBRAS_API_KEY
+    //   wrangler pages secret put GROQ_API_KEY
     if (pathname === '/api/ai/chat' && request.method === 'POST') {
         try {
             const body = await request.json();
+            const messages = Array.isArray(body.messages) ? body.messages : null;
+            if (!messages) return jsonResponse({ error: 'A "messages" array is required.' }, 400);
+            const temperature = typeof body.temperature === 'number' ? body.temperature : 0.7;
+            const max_tokens = typeof body.max_tokens === 'number' ? body.max_tokens : 800;
+
+            const tryModel = async (url, key, model) => {
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${key}`
+                        },
+                        body: JSON.stringify({ model, messages, temperature, max_tokens })
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    return { ok: res.ok, status: res.status, data };
+                } catch (err) {
+                    return { ok: false, status: 502, data: { error: { message: err.message } } };
+                }
+            };
+
+            let lastFailure = null;
             const cerebrasKey = env.CEREBRAS_API_KEY;
-            if (!cerebrasKey) return jsonResponse({ error: 'AI service is not configured yet.' }, 503);
+            const groqKey = env.GROQ_API_KEY;
 
-            const aiResponse = await fetch('https://api.cerebras.ai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${cerebrasKey}`
-                },
-                body: JSON.stringify(body)
-            });
-
-            if (aiResponse.ok) {
-                const data = await aiResponse.json();
-                return jsonResponse(data, 200);
+            if (cerebrasKey) {
+                // gpt-oss-120b is Cerebras's current flagship chat model;
+                // llama-3.3-70b / llama3.1-8b were deprecated in 2026.
+                for (const model of ['gpt-oss-120b', 'zai-glm-4.7']) {
+                    const result = await tryModel('https://api.cerebras.ai/v1/chat/completions', cerebrasKey, model);
+                    if (result.ok) return jsonResponse(result.data, 200);
+                    lastFailure = result;
+                }
             }
 
-            const groqKey = env.GROQ_API_KEY;
-            if (!groqKey) return jsonResponse({ error: 'AI service is temporarily unavailable.' }, 503);
-            const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${groqKey}`
-                },
-                body: JSON.stringify({
-                    model: 'openai/gpt-oss-120b',
-                    messages: body.messages,
-                    temperature: body.temperature || 0.7,
-                    max_tokens: body.max_tokens || 800
-                })
-            });
+            if (groqKey) {
+                for (const model of ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.6-27b']) {
+                    const result = await tryModel('https://api.groq.com/openai/v1/chat/completions', groqKey, model);
+                    if (result.ok) return jsonResponse(result.data, 200);
+                    lastFailure = result;
+                }
+            }
 
-            const groqData = await groqResponse.json();
-            return jsonResponse(groqData, groqResponse.status);
+            if (!cerebrasKey && !groqKey) {
+                return jsonResponse({ error: 'AI service is not configured. Set CEREBRAS_API_KEY and/or GROQ_API_KEY as Cloudflare Pages secrets.' }, 503);
+            }
+
+            return jsonResponse(lastFailure ? lastFailure.data : { error: 'AI service is temporarily unavailable.' }, lastFailure ? (lastFailure.status || 503) : 503);
         } catch (err) {
             return jsonResponse({ error: err.message }, 500);
         }
@@ -193,65 +213,6 @@ export async function onRequest(context) {
                     await d1.prepare('UPDATE students_table SET xp = MAX(0, xp + ?) WHERE phone = ? OR id = ?')
                         .bind(xpAmount, id, id).run();
                     return jsonResponse({ success: true, message: `Granted ${xpAmount} EXP to student.` });
-                }
-                return jsonResponse({ success: true, mock: true });
-            } catch (err) {
-                return jsonResponse({ error: err.message }, 400);
-            }
-        }
-
-        // 📈 STUDENT PROGRESS ENDPOINT (/api/db/students/progress)
-        // Called ONLY from markLectureCompleted() on the frontend when a
-        // student finishes a video. Deliberately narrow: touches ONLY xp,
-        // watch_mins and completed_lecture_ids — never password, name,
-        // grade or role.
-        //
-        // Why this exists: the general /api/db/students upsert (above)
-        // does `student.password || '123456'`. The frontend's currentUser
-        // object never carries a password field (the login endpoint
-        // strips it before sending the user back to the browser), so
-        // every time a student finished a video and that upsert ran with
-        // currentUser, it silently reset their real password back to
-        // '123456' in D1. They'd keep typing their actual password on a
-        // later login and get rejected as "invalid credentials" even
-        // though the row was right there. Routing progress saves through
-        // this endpoint instead means a video completion can never touch
-        // the password column at all, no matter what the client sends.
-        //
-        // This also reads the row back after the write and returns the
-        // authoritative values, instead of firing the request and trusting
-        // it worked. The old call (D1.saveStudent(currentUser), unawaited
-        // and unchecked) meant a dropped/failed request left the checkmark
-        // and EXP showing locally while D1 still had the old row — the
-        // next hydrateFromD1() would then overwrite local state with that
-        // stale row, and the "finished" video would look unfinished again.
-        if (pathname === '/api/db/students/progress' && request.method === 'POST') {
-            try {
-                const { id, xp, watch_mins, completed_lecture_ids } = await request.json();
-                if (!id) return jsonResponse({ error: 'Missing student id.' }, 400);
-                if (d1) {
-                    await d1.prepare(`
-                        UPDATE students_table
-                        SET xp = ?, watch_mins = ?, completed_lecture_ids = ?
-                        WHERE phone = ? OR id = ?
-                    `).bind(
-                        xp || 0,
-                        watch_mins || 0,
-                        JSON.stringify(completed_lecture_ids || []),
-                        id, id
-                    ).run();
-
-                    const row = await d1.prepare('SELECT xp, watch_mins, completed_lecture_ids FROM students_table WHERE phone = ? OR id = ?')
-                        .bind(id, id).first();
-
-                    if (!row) return jsonResponse({ error: 'Student not found.' }, 404);
-                    return jsonResponse({
-                        success: true,
-                        xp: row.xp,
-                        watch_mins: row.watch_mins,
-                        completed_lecture_ids: row.completed_lecture_ids,
-                        message: 'Progress saved.'
-                    });
                 }
                 return jsonResponse({ success: true, mock: true });
             } catch (err) {
