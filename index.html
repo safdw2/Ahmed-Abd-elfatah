@@ -3811,10 +3811,38 @@
 
         // ALT + CTRL + SHIFT + Q — developer/administrator shortcut sign-in.
         // Intentionally preserved: it logs straight in with staff permissions.
-        function bypassForceInstall() {
+        async function bypassForceInstall() {
+            // 🔐 Route this through the real /api/auth/login too, so the
+            // signed session cookie requireAdmin() checks for actually gets
+            // set. Without it, this shortcut looked like an admin session
+            // locally but every admin-gated D1 write it made was silently
+            // rejected with 403 — same root cause as handleLogin() below.
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: 'admin', password: 'admin123', remember: false })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user) {
+                        currentUser = {
+                            ...data.user,
+                            can_post_feed: !!data.user.can_post_feed,
+                            completed_lecture_ids: (() => { try { return JSON.parse(data.user.completed_lecture_ids || '[]'); } catch (e) { return []; } })()
+                        };
+                        loadPortal();
+                        showToast('Administrator session loaded via shortcut.', 'success');
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.warn('Server admin login unavailable, using local-only session:', err.message);
+            }
+            // Offline fallback — no real session cookie, so admin writes won't persist to D1.
             currentUser = { id: 'admin', name: 'Administrator', role: 'teacher', gender: 'Boy', title: 'Director' };
             loadPortal();
-            showToast('Administrator session loaded via shortcut.', 'success');
+            showToast('Administrator session loaded via shortcut (offline — cloud saves disabled).', 'warning');
         }
 
 
@@ -4183,7 +4211,7 @@
             }
         }
 
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault();
             const id = document.getElementById('login-id').value.trim();
             const pass = document.getElementById('login-password').value;
@@ -4192,8 +4220,54 @@
             errorBlock.classList.add('hidden');
             const remember = document.getElementById('login-remember')?.checked || false;
 
+            // 🔐 Authenticate with the server FIRST so the signed session
+            // cookie actually gets set. requireAdmin()/authenticatedUser()
+            // on the backend read that cookie for every admin-gated D1
+            // write (add/delete video or material, provision a student,
+            // grant XP) AND for a student's own XP/watch-time save. Without
+            // this call that cookie never existed, so those writes were
+            // being silently rejected with 403 — the local list still
+            // *looked* updated because of the optimistic UI push, but
+            // nothing was actually saved, so it vanished again on the next
+            // refresh/hydrate. Falls back to the old local-only check only
+            // if the API genuinely can't be reached (offline preview, no D1).
+            let serverHandled = false;
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, password: pass, remember })
+                });
+
+                if (res.status !== 503) {
+                    serverHandled = true;
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.user) {
+                            currentUser = {
+                                ...data.user,
+                                can_post_feed: !!data.user.can_post_feed,
+                                completed_lecture_ids: (() => { try { return JSON.parse(data.user.completed_lecture_ids || '[]'); } catch (e) { return []; } })()
+                            };
+                            if (!currentUser.role) currentUser.role = 'student';
+                            saveRememberedSession(currentUser, remember);
+                            loadPortal();
+                            return;
+                        }
+                    }
+                    errorBlock.textContent = activeRole === 'student'
+                        ? "Invalid Student credentials. Please contact MR. Ahmed's assistants to provision your account."
+                        : "Invalid teacher credentials.";
+                    errorBlock.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.warn('Server login unavailable, falling back to local check:', err.message);
+            }
+
+            if (serverHandled) return; // server answered definitively (success handled above, failure shown above)
+
+            // --- Offline/local fallback (no D1-backed /api routes reachable) ---
             if (activeRole === 'student') {
-                // Find student
                 const student = students.find(s => String(s.id) === id || String(s.phone) === id);
                 if (student && student.password === pass) {
                     currentUser = { ...student };
@@ -4205,7 +4279,6 @@
                     errorBlock.classList.remove('hidden');
                 }
             } else {
-                // Teacher bypass check
                 if (id === 'admin' && pass === 'admin123') {
                     currentUser = { id: 'admin', name: 'Administrator', role: 'teacher', gender: 'Boy', title: 'Director' };
                     saveRememberedSession(currentUser, remember);
@@ -6076,6 +6149,10 @@
                 if (res && res.success && res.id) {
                     newSession.id = res.id;
                     syncLocalDB();
+                } else {
+                    // Cloud save failed (expired session, offline, etc). Say so
+                    // now instead of letting it vanish silently on next refresh.
+                    showToast('⚠️ This session was NOT saved to the cloud database — it will disappear on refresh. Please log out and back in, then try again.', 'error');
                 }
             });
         }
