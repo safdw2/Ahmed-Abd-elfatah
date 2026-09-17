@@ -84,9 +84,13 @@ export async function onRequest(context) {
                 return jsonResponse({ error: 'AI service is not configured.' }, 503);
             }
 
-            // llama-3.1-8b-instant: Groq's fastest hosted chat model, chosen
-            // specifically to fix the "AI takes way too much time" complaint.
-            const MODEL = 'llama-3.1-8b-instant';
+            // Groq decommissioned llama-3.1-8b-instant for free/developer-tier
+            // accounts on 2026-08-16 — that's why every one of the 4 keys was
+            // failing identically ("model not found" from Groq, on every key,
+            // every time), not a problem with the keys themselves.
+            // openai/gpt-oss-20b is Groq's current recommended fast
+            // replacement for it.
+            const MODEL = 'openai/gpt-oss-20b';
             let lastStatus = 503;
 
             for (const key of groqKeys) {
