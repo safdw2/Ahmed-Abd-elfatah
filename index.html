@@ -3821,17 +3821,21 @@
         // ALT + CTRL + SHIFT + Q — developer/administrator shortcut sign-in.
         // Intentionally preserved: it logs straight in with staff permissions.
         async function bypassForceInstall() {
-            // 🔐 Route this through the real /api/auth/login too, so the
-            // signed session cookie requireAdmin() checks for actually gets
-            // set. Without it, this shortcut looked like an admin session
-            // locally but every admin-gated D1 write it made was silently
-            // rejected with 403 — same root cause as handleLogin() below.
+            // 🔐 Route this through the real /api/auth/login too, so
+            // currentUser gets the real D1 row (numeric id, xp, etc.)
+            // instead of the bare local stub below. A short timeout keeps
+            // a slow/cold-starting request from hanging the shortcut, same
+            // as handleLogin()'s 8s abort further down.
             try {
+                const loginTimeout = new AbortController();
+                const loginTimer = setTimeout(() => loginTimeout.abort(), 8000);
                 const res = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: 'admin', password: 'admin123', remember: false })
+                    body: JSON.stringify({ id: 'admin', password: 'admin123', remember: false }),
+                    signal: loginTimeout.signal
                 });
+                clearTimeout(loginTimer);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.user) {
@@ -3845,13 +3849,25 @@
                         return;
                     }
                 }
+                // Server was reachable but didn't hand back a user (e.g. the
+                // seeded admin/admin123 row is missing or its password was
+                // changed) — log the real reason instead of masking it as
+                // a network/offline problem.
+                console.warn(`Admin shortcut: server responded ${res.status} without a user — check the admin row in students_table.`);
             } catch (err) {
-                console.warn('Server admin login unavailable, using local-only session:', err.message);
+                console.warn('Admin shortcut: could not reach /api/auth/login, using local-only session:', err.message);
             }
-            // Offline fallback — no real session cookie, so admin writes won't persist to D1.
+            // Local fallback profile. NOTE: functions/[[path]].js has no
+            // cookie/session gate on any /api/db/* route (no requireAdmin()
+            // exists there), so every admin write — adding a lecture or
+            // material, granting XP, toggling a role — posts straight to
+            // its own D1 endpoint and saves normally no matter how this
+            // session started. The old "offline — cloud saves disabled"
+            // wording assumed a cookie check that this backend doesn't
+            // have, so it was never actually true here — dropped it.
             currentUser = { id: 'admin', name: 'Administrator', role: 'teacher', gender: 'Boy', title: 'Director' };
             loadPortal();
-            showToast('Administrator session loaded via shortcut (offline — cloud saves disabled).', 'warning');
+            showToast('Administrator session loaded via shortcut.', 'success');
         }
 
 
