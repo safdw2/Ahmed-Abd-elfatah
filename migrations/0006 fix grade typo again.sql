@@ -1,45 +1,81 @@
 -- =====================================================================
--- Fix: same "grade string mismatch" bug as 0005, applied defensively
--- across EVERY grade (not just Grade 10) and every table that stores a
--- grade string. Two ways this can silently break the exact-match grade
--- filter in renderVideos() / renderMaterials():
+-- Fix: normalize grade values to the 4 canonical strings, for EVERY
+-- grade (7, 8, 9, 10) and every table that stores a grade string.
 --
---   1. "Secandory" vs "Secondary" — the front-end dropdowns had reverted
---      back to the typo after 0005 ran, so any student/video/material
---      added in between is mismatched again. (The dropdowns themselves
---      are now fixed in index.html too — this just repairs the data.)
---   2. Stray leading/trailing whitespace on ANY grade value (e.g.
---      "Grade 9 (Preparatory 3) " with a trailing space) fails the
---      exact-match filter exactly like a spelling typo would.
+-- Why this is broader than 0005: 0005 only patched Grade 10's
+-- "Secandory" -> "Secondary" typo. But the same exact-match filter in
+-- renderVideos() / renderMaterials() breaks just as silently for ANY
+-- grade if the stored value doesn't byte-for-byte match the dropdown's
+-- canonical string — e.g. a legacy row saved as a bare number ("9"),
+-- "Grade 9" with no parenthetical, a "Preperatory" misspelling, or
+-- stray whitespace. This migration sweeps all of those, for all 4
+-- grades, in students_table / videos_table / materials_table.
+--
+-- Canonical values (must match the dropdowns in index.html exactly):
+--   'Grade 7 (Preparatory 1)'
+--   'Grade 8 (Preparatory 2)'
+--   'Grade 9 (Preparatory 3)'
+--   'Grade 10 (Secondary 1)'
 --
 -- Safe to run multiple times.
 -- Apply with:
 --   wrangler d1 execute ahmed-abdelfatah-db --file=./0006_fix_grade_typo_again.sql --remote
 -- =====================================================================
 
--- 1. Re-apply the Grade 10 typo fix, in case any accounts/videos were
---    added between 0005 running and the front-end dropdown being fixed.
-UPDATE students_table  SET grade = 'Grade 10 (Secondary 1)' WHERE grade = 'Grade 10 (Secandory 1)';
-UPDATE videos_table    SET grade = 'Grade 10 (Secondary 1)' WHERE grade = 'Grade 10 (Secandory 1)';
-UPDATE materials_table SET grade = 'Grade 10 (Secondary 1)' WHERE grade = 'Grade 10 (Secandory 1)';
+UPDATE students_table SET grade = CASE TRIM(grade)
+    WHEN '7'                             THEN 'Grade 7 (Preparatory 1)'
+    WHEN '8'                             THEN 'Grade 8 (Preparatory 2)'
+    WHEN '9'                             THEN 'Grade 9 (Preparatory 3)'
+    WHEN '10'                            THEN 'Grade 10 (Secondary 1)'
+    WHEN 'Grade 7'                       THEN 'Grade 7 (Preparatory 1)'
+    WHEN 'Grade 8'                       THEN 'Grade 8 (Preparatory 2)'
+    WHEN 'Grade 9'                       THEN 'Grade 9 (Preparatory 3)'
+    WHEN 'Grade 10'                      THEN 'Grade 10 (Secondary 1)'
+    WHEN 'Grade 7 (Preperatory 1)'       THEN 'Grade 7 (Preparatory 1)'
+    WHEN 'Grade 8 (Preperatory 2)'       THEN 'Grade 8 (Preparatory 2)'
+    WHEN 'Grade 9 (Preperatory 3)'       THEN 'Grade 9 (Preparatory 3)'
+    WHEN 'Grade 10 (Secandory 1)'        THEN 'Grade 10 (Secondary 1)'
+    ELSE TRIM(grade)
+END
+WHERE grade IS NOT NULL;
 
--- 2. Trim stray whitespace off every grade value, for EVERY grade
---    (7, 8, 9, and 10 alike), in every table.
-UPDATE students_table  SET grade = TRIM(grade) WHERE grade IS NOT NULL AND grade != TRIM(grade);
-UPDATE videos_table    SET grade = TRIM(grade) WHERE grade IS NOT NULL AND grade != TRIM(grade);
-UPDATE materials_table SET grade = TRIM(grade) WHERE grade IS NOT NULL AND grade != TRIM(grade);
+UPDATE videos_table SET grade = CASE TRIM(grade)
+    WHEN '7'                             THEN 'Grade 7 (Preparatory 1)'
+    WHEN '8'                             THEN 'Grade 8 (Preparatory 2)'
+    WHEN '9'                             THEN 'Grade 9 (Preparatory 3)'
+    WHEN '10'                            THEN 'Grade 10 (Secondary 1)'
+    WHEN 'Grade 7'                       THEN 'Grade 7 (Preparatory 1)'
+    WHEN 'Grade 8'                       THEN 'Grade 8 (Preparatory 2)'
+    WHEN 'Grade 9'                       THEN 'Grade 9 (Preparatory 3)'
+    WHEN 'Grade 10'                      THEN 'Grade 10 (Secondary 1)'
+    WHEN 'Grade 7 (Preperatory 1)'       THEN 'Grade 7 (Preparatory 1)'
+    WHEN 'Grade 8 (Preperatory 2)'       THEN 'Grade 8 (Preparatory 2)'
+    WHEN 'Grade 9 (Preperatory 3)'       THEN 'Grade 9 (Preparatory 3)'
+    WHEN 'Grade 10 (Secandory 1)'        THEN 'Grade 10 (Secondary 1)'
+    ELSE TRIM(grade)
+END
+WHERE grade IS NOT NULL;
 
--- Confirm no mismatched/whitespace-polluted rows remain (should return
--- 0 rows each):
--- SELECT id, phone, grade FROM students_table  WHERE grade LIKE '%Secandory%' OR grade != TRIM(grade);
--- SELECT id, title, grade FROM videos_table    WHERE grade LIKE '%Secandory%' OR grade != TRIM(grade);
--- SELECT id, title, grade FROM materials_table WHERE grade LIKE '%Secandory%' OR grade != TRIM(grade);
+UPDATE materials_table SET grade = CASE TRIM(grade)
+    WHEN '7'                             THEN 'Grade 7 (Preparatory 1)'
+    WHEN '8'                             THEN 'Grade 8 (Preparatory 2)'
+    WHEN '9'                             THEN 'Grade 9 (Preparatory 3)'
+    WHEN '10'                            THEN 'Grade 10 (Secondary 1)'
+    WHEN 'Grade 7'                       THEN 'Grade 7 (Preparatory 1)'
+    WHEN 'Grade 8'                       THEN 'Grade 8 (Preparatory 2)'
+    WHEN 'Grade 9'                       THEN 'Grade 9 (Preparatory 3)'
+    WHEN 'Grade 10'                      THEN 'Grade 10 (Secondary 1)'
+    WHEN 'Grade 7 (Preperatory 1)'       THEN 'Grade 7 (Preparatory 1)'
+    WHEN 'Grade 8 (Preperatory 2)'       THEN 'Grade 8 (Preparatory 2)'
+    WHEN 'Grade 9 (Preperatory 3)'       THEN 'Grade 9 (Preparatory 3)'
+    WHEN 'Grade 10 (Secandory 1)'        THEN 'Grade 10 (Secondary 1)'
+    ELSE TRIM(grade)
+END
+WHERE grade IS NOT NULL;
 
--- Optional: list every DISTINCT grade value currently in use across all
--- three tables, so you can eyeball anything that still doesn't match one
--- of the 4 canonical values —
---   'Grade 7 (Preparatory 1)', 'Grade 8 (Preparatory 2)',
---   'Grade 9 (Preparatory 3)', 'Grade 10 (Secondary 1)':
+-- Sanity check: this should list ONLY the 4 canonical strings above.
+-- If anything else shows up, that's a format this migration didn't
+-- anticipate and the WHERE clause list above needs another entry.
 -- SELECT DISTINCT grade FROM students_table
 -- UNION SELECT DISTINCT grade FROM videos_table
 -- UNION SELECT DISTINCT grade FROM materials_table;
