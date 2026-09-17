@@ -4233,11 +4233,21 @@
             // if the API genuinely can't be reached (offline preview, no D1).
             let serverHandled = false;
             try {
+                // ⏱️ TEMPORARY DIAGNOSTIC — remove this block once we've
+                // confirmed where the login delay actually is. Shows the
+                // real /api/auth/login round-trip time as a toast, since
+                // DevTools is blocked on this site.
+                const __loginTimerStart = performance.now();
+
                 const res = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id, password: pass, remember })
                 });
+
+                const __loginMs = Math.round(performance.now() - __loginTimerStart);
+                showToast(`⏱️ /api/auth/login took ${__loginMs}ms`, 'info');
+                // ⏱️ END TEMPORARY DIAGNOSTIC
 
                 if (res.status !== 503) {
                     serverHandled = true;
@@ -4529,7 +4539,7 @@
 
             // Radial Course Progress Wheel Math (Calculate watched sessions ratio - for this grade only)
             const gradeFilteredLectures = lectures.filter(l => 
-                l.grade && l.grade.trim() === (currentUser.grade || '').trim()
+                l.grade && String(l.grade).trim() === String(currentUser.grade || '').trim()
             );
             
             const watchedList = gradeFilteredLectures.filter(l => l.completed).length;
@@ -4652,8 +4662,8 @@
 
             const activeMaterials = materials.filter(item => {
                 if (currentUser.role === 'student') {
-                    const studentGrade = (currentUser.grade || '').trim().toLowerCase();
-                    const itemGrade = (item.grade || '').trim().toLowerCase();
+                    const studentGrade = String(currentUser.grade || '').trim().toLowerCase();
+                    const itemGrade = String(item.grade || '').trim().toLowerCase();
                     if (studentGrade !== itemGrade) return false;
                 }
                 if (selectedMaterialFilter !== 'all' && item.type !== selectedMaterialFilter) return false;
@@ -4781,8 +4791,8 @@
             // Filter by grade - handle both student and teacher/admin roles
             const filteredLectures = lectures.filter(l => {
                 if (currentUser.role === 'student') {
-                    const studentGrade = (currentUser.grade || '').trim().toLowerCase();
-                    const lectureGrade = (l.grade || '').trim().toLowerCase();
+                    const studentGrade = String(currentUser.grade || '').trim().toLowerCase();
+                    const lectureGrade = String(l.grade || '').trim().toLowerCase();
                     const match = studentGrade === lectureGrade;
                     console.log(`Checking lecture: "${l.title}" | Lecture Grade: "${lectureGrade}" vs Student Grade: "${studentGrade}" | Match: ${match}`);
                     return match && l.grade;
@@ -7030,41 +7040,51 @@
         // =====================================================================
         
         // --- A. INVERTED BLEND-MODE CURSOR ---
+        // Note: #custom-cursor is CSS-forced to display:none !important
+        // everywhere it's defined (it's not actually used), and the element
+        // itself was never added to the page markup. Every mousemove/mouseover
+        // was crashing trying to read .style/.classList off null — that's
+        // the error flood. Guarding on customCursor existing keeps this
+        // dead-but-harmless unless the element gets added back later.
         const customCursor = document.getElementById('custom-cursor');
         let mX = 0, mY = 0, cX = 0, cY = 0;
         let cursorVisible = false;
 
-        window.addEventListener('mousemove', (e) => {
-            mX = e.clientX;
-            mY = e.clientY;
-            
-            if (!cursorVisible) {
-                customCursor.style.opacity = '1';
-                cursorVisible = true;
-            }
-        });
+        if (customCursor) {
+            window.addEventListener('mousemove', (e) => {
+                mX = e.clientX;
+                mY = e.clientY;
 
-        window.addEventListener('mouseleave', () => {
-            customCursor.style.opacity = '0';
-            cursorVisible = false;
-        });
+                if (!cursorVisible) {
+                    customCursor.style.opacity = '1';
+                    cursorVisible = true;
+                }
+            });
+
+            window.addEventListener('mouseleave', () => {
+                customCursor.style.opacity = '0';
+                cursorVisible = false;
+            });
+        }
 
         // Smooth cursor lerping using GPU translate3d (avoids triggering layout cycles/reflow)
         // Only runs with a real mouse — skipped on touch devices, where the
         // custom cursor is hidden anyway, so there's no point paying for it.
         const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
         function animateCursor() {
+            if (!customCursor) return;
             cX += (mX - cX) * 0.18; // Smoother tracking coefficient
             cY += (mY - cY) * 0.18;
             customCursor.style.transform = `translate3d(calc(${cX}px - 50%), calc(${cY}px - 50%), 0)`;
             if (hasFinePointer) requestAnimationFrame(animateCursor);
         }
-        if (hasFinePointer) requestAnimationFrame(animateCursor);
+        if (customCursor && hasFinePointer) requestAnimationFrame(animateCursor);
 
         // Hover expansions for buttons & interactive panels
         document.addEventListener('mouseover', (e) => {
+            if (!customCursor) return;
             // Enabled in both dark and light modes!
-            
+
             const target = e.target;
             const interactive = target.closest('button, a, input, select, textarea, [onclick], .cursor-pointer, input[type="file"]');
             if (interactive) {
@@ -7609,8 +7629,5 @@
       });
       if (fluidSimEnabled) fluidRenderLoop();
     </script> <!-- 1. Close the inline JavaScript block here -->
-
-    <!-- 2. Now include db.js -->
-    <script src="db.js"></script> 
   </body>
 </html>
