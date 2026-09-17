@@ -6092,7 +6092,7 @@
         // -----------------------------------------------------------------
         function openUploadMaterialModal() { document.getElementById('material-upload-modal').classList.remove('hidden'); }
         function closeUploadMaterialModal() { document.getElementById('material-upload-modal').classList.add('hidden'); }
-        function handleMaterialUploadSubmit(e) {
+        async function handleMaterialUploadSubmit(e) {
             e.preventDefault();
             const title = document.getElementById('upload-doc-title').value;
             const type = document.getElementById('upload-doc-type').value;
@@ -6100,19 +6100,28 @@
             const url = document.getElementById('upload-doc-url').value;
 
             const newMaterial = { id: Date.now(), title, type, grade, file_url: url, uploaded_at: nowDateLabel() };
+
+            // 🗄️ Same fix as the lesson-session upload: wait for D1 to confirm
+            // before adding it locally or claiming success, so a failed cloud
+            // save can't silently vanish on the next refresh.
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const res = await D1.saveMaterial(newMaterial);
+
+            if (submitBtn) submitBtn.disabled = false;
+
+            if (!res || !res.success) {
+                showToast('⚠️ This document was NOT saved to the cloud database. Check your connection and try again.', 'error');
+                return;
+            }
+
+            if (res.id) newMaterial.id = res.id;
             materials.unshift(newMaterial);
             syncLocalDB();
             closeUploadMaterialModal();
             showToast('Document published to Cloud database!', 'success');
             renderMaterials();
-
-            // 🗄️ Persist into D1 and swap in the real row id once we get it back
-            D1.saveMaterial(newMaterial).then(res => {
-                if (res && res.success && res.id) {
-                    newMaterial.id = res.id;
-                    syncLocalDB();
-                }
-            });
         }
 
         function openAddVideoModal() { 
@@ -6126,7 +6135,7 @@
             document.getElementById('video-grade').value = 'Grade 10 (Secondary 1)';
         }
         function closeAddVideoModal() { document.getElementById('video-modal').classList.add('hidden'); }
-        function handleVideoUploadSubmit(e) {
+        async function handleVideoUploadSubmit(e) {
             e.preventDefault();
             const title = document.getElementById('video-title').value;
             const description = document.getElementById('video-desc').value;
@@ -6137,24 +6146,33 @@
             const part = Math.max(1, Number(document.getElementById('video-part').value) || 1);
 
             const newSession = { id: Date.now(), title, description, lesson, part, archive_url: url, duration_mins: duration, grade, watched_mins: 0, completed: false };
+
+            // 🗄️ Wait for D1 to actually confirm the save before touching local
+            // state or telling the admin it worked. Pushing to `lectures` first
+            // and firing D1.saveLecture() in the background (the old code) meant
+            // a failed cloud write still *looked* saved — it would vanish the
+            // moment hydrateFromD1() next pulled the real (session-less) list
+            // from D1 on refresh. This is exactly what "sessions keep
+            // disappearing" was.
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const res = await D1.saveLecture(newSession);
+
+            if (submitBtn) submitBtn.disabled = false;
+
+            if (!res || !res.success) {
+                showToast('⚠️ This session was NOT saved to the cloud database. Check your connection and try again.', 'error');
+                return; // don't add it locally — nothing to disappear later
+            }
+
+            if (res.id) newSession.id = res.id;
             lectures.push(newSession);
             syncLocalDB();
             closeAddVideoModal();
             showToast(extractYouTubeId(url) ? 'YouTube lecture linked and indexed!' : 'Secure Video Archive.org URL Indexed!', 'success');
             renderVideos();
             if (activeTab === 'admin') renderAdmin();
-
-            // 🗄️ Persist into D1 and swap in the real row id once we get it back
-            D1.saveLecture(newSession).then(res => {
-                if (res && res.success && res.id) {
-                    newSession.id = res.id;
-                    syncLocalDB();
-                } else {
-                    // Cloud save failed (expired session, offline, etc). Say so
-                    // now instead of letting it vanish silently on next refresh.
-                    showToast('⚠️ This session was NOT saved to the cloud database — it will disappear on refresh. Please log out and back in, then try again.', 'error');
-                }
-            });
         }
 
         function openProvisionAccountModal() { document.getElementById('student-modal').classList.remove('hidden'); }
