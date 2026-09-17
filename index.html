@@ -2728,7 +2728,7 @@
                 <div class="flex items-center justify-between border-b border-white/5 pb-2 shrink-0">
                     <div class="flex items-center gap-1.5">
                         <img src="ai.png" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220%22 fill=%22none%22 stroke=%22#6366f1%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/></svg>';" class="w-3.5 h-3.5 rounded-md shrink-0">
-                        <span class="text-[9px] font-black text-white uppercase tracking-wider flex items-center gap-1">Co Assistant<svg viewBox="0 0 24 24" width="10" height="10" class="inline-block shrink-0" aria-hidden="true" title="Verified Co Assistant AI"><path fill="#4f9eff" d="M12 1.5l2.35 1.87 2.98-.5.97 2.85 2.85.97-.5 2.98L22.5 12l-1.85 2.33.5 2.98-2.85.97-.97 2.85-2.98-.5L12 22.5l-2.35-1.87-2.98.5-.97-2.85-2.85-.97.5-2.98L1.5 12l1.85-2.33-.5-2.98 2.85-.97.97-2.85 2.98.5z"/><path fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M8 12.2l2.6 2.6 5.4-5.8"/></svg></span>
+                        <span class="text-[9px] font-black text-white uppercase tracking-wider">Co Assistant</span>
                     </div>
                     <button onclick="switchTab('co-assistant')" class="text-[8px] bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/30 text-indigo-300 hover:text-white px-1.5 py-0.5 rounded font-black transition flex items-center gap-0.5" title="Open full chat tab">
                         <span>Go to Co Assistant</span>
@@ -4264,11 +4264,19 @@
             // if the API genuinely can't be reached (offline preview, no D1).
             let serverHandled = false;
             try {
+                // Bounded so a slow/hung connection can never leave the
+                // student staring at a spinner for tens of seconds — after
+                // 8s it aborts and drops to the offline/local check below
+                // instead of waiting indefinitely on the network.
+                const loginTimeout = new AbortController();
+                const loginTimer = setTimeout(() => loginTimeout.abort(), 8000);
                 const res = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, password: pass, remember })
+                    body: JSON.stringify({ id, password: pass, remember }),
+                    signal: loginTimeout.signal
                 });
+                clearTimeout(loginTimer);
 
                 if (res.status !== 503) {
                     serverHandled = true;
