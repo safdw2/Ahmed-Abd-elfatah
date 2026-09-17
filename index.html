@@ -6806,76 +6806,34 @@
             }
 
             try {
-                // 1️⃣ Groq Cloud API — Free Tier, Multi-Key Failover Engine
-                const groqKeys = [
-                    "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",
-                    "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",
-                    "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",
-                    "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"
-                ];
+                // Call our own same-origin backend, which securely proxies to
+                // Cerebras/Groq with server-side keys (see functions/[[path]].js).
+                // Calling those APIs directly from the browser doesn't work —
+                // their CORS policy blocks browser-origin requests — and it
+                // would mean shipping the API key in the page source for
+                // anyone to read, so this endpoint is the only supported path.
+                const response = await fetch('/api/ai/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: apiHistory,
+                        temperature: 0.7,
+                        max_tokens: 800
+                    })
+                });
 
-                const groqModels = [
-                    "openai/gpt-oss-120b",
-                    "openai/gpt-oss-20b",
-                    "qwen/qwen3.6-27b"
-                ];
-
-                let success = false;
-                let response = null;
-                let lastError = "";
-
-                // Loop over our multi-keys for bulletproof free-tier rate limit failover
-                for (let kIdx = 0; kIdx < groqKeys.length; kIdx++) {
-                    const activeKey = groqKeys[kIdx];
-                    for (let model of groqModels) {
-                        try {
-                            response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${activeKey}`
-                                },
-                                body: JSON.stringify({
-                                    model: model,
-                                    messages: apiHistory,
-                                    temperature: 0.7,
-                                    max_tokens: 800
-                                })
-                            });
-
-                            if (response.ok) {
-                                success = true;
-                                break;
-                            } else {
-                                const errData = await response.json().catch(() => ({}));
-                                lastError = errData.error?.message || `HTTP Status ${response.status}`;
-                                console.warn(`Groq Key #${kIdx+1} Model ${model} failed: ${lastError}`);
-
-                                // Limit exceeded or quota expired: Advance to next key immediately
-                                if (response.status === 402 || response.status === 429) {
-                                    break;
-                                }
-                            }
-                        } catch (innerErr) {
-                            lastError = innerErr.message;
-                            console.warn(`Groq Key #${kIdx+1} Model ${model} threw error: ${lastError}`);
-                        }
-                    }
-                    if (success) break;
-                }
-
+                const data = await response.json().catch(() => ({}));
                 const loader = document.getElementById('ai-typing-loader');
                 if (loader) loader.remove();
 
-                if (success && response) {
-                    const data = await response.json();
+                if (response.ok && data?.choices?.[0]?.message?.content) {
                     const aiText = data.choices[0].message.content;
                     activeChat.messages.push({ role: 'assistant', text: aiText });
                     saveAIChatsToStorage();
                     renderAIChatBoard();
                     autoDetectTabRedirect(aiText);
                 } else {
-                    throw new Error(lastError || "Failed to connect to Groq API servers.");
+                    throw new Error(data.error?.message || data.error || `HTTP Status ${response.status}`);
                 }
 
             } catch (err) {
