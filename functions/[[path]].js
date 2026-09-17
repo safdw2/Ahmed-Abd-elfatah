@@ -40,13 +40,17 @@ export async function onRequest(context) {
         });
     }
 
-    // 🤖 2. SECURE CEREBRAS & GROQ AI PROXY ENDPOINT (/api/ai/chat)
-    // Runs server-side only. The browser never sees CEREBRAS_API_KEY or
-    // GROQ_API_KEY — it just calls this same-origin endpoint, so there's
-    // nothing for anyone to scrape out of the shipped page source.
-    // Set the real keys with:
-    //   wrangler pages secret put CEREBRAS_API_KEY
+    // 🤖 2. SECURE GROQ AI PROXY ENDPOINT (/api/ai/chat)
+    // Runs server-side only — the browser never sees any Groq key, so
+    // there's nothing in the shipped page source for anyone to scrape.
+    // Free-tier Groq keys each have their own rate limit, so up to 4 keys
+    // can be set and this endpoint rotates to the next one the instant a
+    // key hits its limit (HTTP 429/402), keeping replies fast even under
+    // load. Set them with:
     //   wrangler pages secret put GROQ_API_KEY
+    //   wrangler pages secret put GROQ_API_KEY_2
+    //   wrangler pages secret put GROQ_API_KEY_3
+    //   wrangler pages secret put GROQ_API_KEY_4
     if (pathname === '/api/ai/chat' && request.method === 'POST') {
         try {
             const body = await request.json();
@@ -55,9 +59,16 @@ export async function onRequest(context) {
             const temperature = typeof body.temperature === 'number' ? body.temperature : 0.7;
             const max_tokens = typeof body.max_tokens === 'number' ? body.max_tokens : 800;
 
-            const tryModel = async (url, key, model) => {
+            const groqKeys = [env.GROQ_API_KEY, env.GROQ_API_KEY_2, env.GROQ_API_KEY_3, env.GROQ_API_KEY_4].filter(Boolean);
+            if (groqKeys.length === 0) {
+                return jsonResponse({ error: 'AI service is not configured. Set GROQ_API_KEY as a Cloudflare Pages secret.' }, 503);
+            }
+
+            const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.6-27b'];
+
+            const tryModel = async (key, model) => {
                 try {
-                    const res = await fetch(url, {
+                    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -73,29 +84,16 @@ export async function onRequest(context) {
             };
 
             let lastFailure = null;
-            const cerebrasKey = env.CEREBRAS_API_KEY;
-            const groqKey = env.GROQ_API_KEY;
-
-            if (cerebrasKey) {
-                // gpt-oss-120b is Cerebras's current flagship chat model;
-                // llama-3.3-70b / llama3.1-8b were deprecated in 2026.
-                for (const model of ['gpt-oss-120b', 'zai-glm-4.7']) {
-                    const result = await tryModel('https://api.cerebras.ai/v1/chat/completions', cerebrasKey, model);
+            for (const key of groqKeys) {
+                for (const model of groqModels) {
+                    const result = await tryModel(key, model);
                     if (result.ok) return jsonResponse(result.data, 200);
                     lastFailure = result;
+                    // This key is rate-limited/out of quota — skip straight
+                    // to the next key instead of burning time on other
+                    // models with a key that's already exhausted.
+                    if (result.status === 429 || result.status === 402) break;
                 }
-            }
-
-            if (groqKey) {
-                for (const model of ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.6-27b']) {
-                    const result = await tryModel('https://api.groq.com/openai/v1/chat/completions', groqKey, model);
-                    if (result.ok) return jsonResponse(result.data, 200);
-                    lastFailure = result;
-                }
-            }
-
-            if (!cerebrasKey && !groqKey) {
-                return jsonResponse({ error: 'AI service is not configured. Set CEREBRAS_API_KEY and/or GROQ_API_KEY as Cloudflare Pages secrets.' }, 503);
             }
 
             return jsonResponse(lastFailure ? lastFailure.data : { error: 'AI service is temporarily unavailable.' }, lastFailure ? (lastFailure.status || 503) : 503);
