@@ -84,6 +84,48 @@ export async function onRequest(context) {
         }
     }
 
+    // 🔐 3. LOGIN ENDPOINT (/api/auth/login)
+    // This route never existed before, which is why login always failed:
+    // the frontend's fetch('/api/auth/login') fell through to the static
+    // asset handler (context.next()), got back a plain 404 page, and
+    // handleLogin() treated that as "server answered: invalid credentials"
+    // without ever actually checking students_table. Newly-provisioned
+    // students (and even the seeded 'admin' row) were always rejected —
+    // not because the row was missing, but because nothing ever looked.
+    if (pathname === '/api/auth/login' && request.method === 'POST') {
+        try {
+            const { id, password } = await request.json();
+            if (!id || !password) {
+                return jsonResponse({ error: 'Missing credentials.' }, 400);
+            }
+
+            const d1 = env.DB;
+            if (!d1) {
+                // No D1 binding reachable (e.g. local static preview) — tell the
+                // frontend to fall back to its local/offline check instead of
+                // pretending this was a definitive "invalid credentials" answer.
+                return jsonResponse({ error: 'Database not configured.' }, 503);
+            }
+
+            // "phone" is the login ID students type in (see schema.sql comment).
+            // The seeded admin row also has phone = 'admin', so this one query
+            // covers both student and teacher/admin logins.
+            const row = await d1.prepare('SELECT * FROM students_table WHERE phone = ?')
+                .bind(String(id).trim())
+                .first();
+
+            if (!row || String(row.password) !== String(password)) {
+                return jsonResponse({ error: 'Invalid credentials.' }, 401);
+            }
+
+            // Never send the password hash/plaintext back to the client.
+            const { password: _pw, ...safeUser } = row;
+            return jsonResponse({ user: safeUser });
+        } catch (err) {
+            return jsonResponse({ error: err.message }, 400);
+        }
+    }
+
         // 🗄️ 3. CLOUDFLARE D1 DATABASE API ENDPOINTS (/api/db/*)
     // Matches exact table names in D1: students_table, videos_table, materials_table, feed_table, portal_feedbacks
     if (pathname.startsWith('/api/db/')) {
