@@ -2728,7 +2728,7 @@
                 <div class="flex items-center justify-between border-b border-white/5 pb-2 shrink-0">
                     <div class="flex items-center gap-1.5">
                         <img src="ai.png" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220%22 fill=%22none%22 stroke=%22#6366f1%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/></svg>';" class="w-3.5 h-3.5 rounded-md shrink-0">
-                        <span class="text-[9px] font-black text-white uppercase tracking-wider">Co Assistant</span>
+                        <span class="text-[9px] font-black text-white uppercase tracking-wider flex items-center gap-1">Co Assistant<svg viewBox="0 0 24 24" width="10" height="10" class="inline-block shrink-0" aria-hidden="true" title="Verified Co Assistant AI"><path fill="#4f9eff" d="M12 1.5l2.35 1.87 2.98-.5.97 2.85 2.85.97-.5 2.98L22.5 12l-1.85 2.33.5 2.98-2.85.97-.97 2.85-2.98-.5L12 22.5l-2.35-1.87-2.98.5-.97-2.85-2.85-.97.5-2.98L1.5 12l1.85-2.33-.5-2.98 2.85-.97.97-2.85 2.98.5z"/><path fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M8 12.2l2.6 2.6 5.4-5.8"/></svg></span>
                     </div>
                     <button onclick="switchTab('co-assistant')" class="text-[8px] bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/30 text-indigo-300 hover:text-white px-1.5 py-0.5 rounded font-black transition flex items-center gap-0.5" title="Open full chat tab">
                         <span>Go to Co Assistant</span>
@@ -3097,6 +3097,7 @@
                                     <div>
                                         <h3 class="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
                                             <span>Co Assistant</span>
+                                            <svg viewBox="0 0 24 24" width="11" height="11" class="inline-block shrink-0" aria-hidden="true" title="Verified Co Assistant AI"><path fill="#4f9eff" d="M12 1.5l2.35 1.87 2.98-.5.97 2.85 2.85.97-.5 2.98L22.5 12l-1.85 2.33.5 2.98-2.85.97-.97 2.85-2.98-.5L12 22.5l-2.35-1.87-2.98.5-.97-2.85-2.85-.97.5-2.98L1.5 12l1.85-2.33-.5-2.98 2.85-.97.97-2.85 2.98.5z"/><path fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M8 12.2l2.6 2.6 5.4-5.8"/></svg>
                                             <span class="inline-flex h-2 w-2 relative">
                                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                                                 <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
@@ -3127,7 +3128,7 @@
                                         1. Co Assistant may make mistakes. My primary function is website guidance (finding lectures, sheets, materials), not doing homework or exams.
                                     </p>
                                     <p class="text-[8px] text-gray-400 leading-normal">
-                                        2. Powered by Groq Cloud API for ultra-fast, high-intelligence responses. If an error occurs, wait a moment and try again.
+                                        2. Co Assistant is built for ultra-fast, high-intelligence responses. If an error occurs, wait a moment and try again.
                                     </p>
                                 </div>
                                 
@@ -3479,7 +3480,7 @@
                 <div class="space-y-1">
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">PDF Link / Location</label>
                     <input type="text" id="upload-doc-url" required placeholder="https://yoursite.com/files/sheet.pdf" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
-                    <p class="text-[9px] text-gray-500 leading-relaxed pt-0.5">Use a direct PDF link (ends in .pdf) hosted somewhere public — Cloudflare R2, GitHub, Archive.org, etc. For Google Drive, share the file "Anyone with the link", then swap the link's <span class="font-mono">/view</span> ending for <span class="font-mono">&amp;export=download</span> so it downloads instead of opening a preview.</p>
+                    <p class="text-[9px] text-gray-500 leading-relaxed pt-0.5">Use a direct PDF link (ends in .pdf) hosted somewhere public — Cloudflare R2, GitHub, Archive.org, etc. For Google Drive, just share the file "Anyone with the link" and paste the normal share link as-is — it's automatically converted into a direct-download link when you publish.</p>
                 </div>
                 <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-xs transition">
                     Publish Study Sheet
@@ -4263,21 +4264,11 @@
             // if the API genuinely can't be reached (offline preview, no D1).
             let serverHandled = false;
             try {
-                // ⏱️ TEMPORARY DIAGNOSTIC — remove this block once we've
-                // confirmed where the login delay actually is. Shows the
-                // real /api/auth/login round-trip time as a toast, since
-                // DevTools is blocked on this site.
-                const __loginTimerStart = performance.now();
-
                 const res = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id, password: pass, remember })
                 });
-
-                const __loginMs = Math.round(performance.now() - __loginTimerStart);
-                showToast(`⏱️ /api/auth/login took ${__loginMs}ms`, 'info');
-                // ⏱️ END TEMPORARY DIAGNOSTIC
 
                 if (res.status !== 503) {
                     serverHandled = true;
@@ -4785,14 +4776,33 @@
         // blocks that (most third-party link-sharing sites do), it falls
         // back to opening the file in a new tab so the student can still
         // view/save it with the browser's own "Download" / "Save as" control.
+        // Auto-converts a Google Drive share link into a direct-download
+        // link, so pasting the normal "Anyone with the link" share URL just
+        // works — no manual /view -> &export=download editing needed.
+        // Handles the 3 shapes Drive's share button actually produces:
+        //   .../file/d/FILE_ID/view?usp=sharing
+        //   .../open?id=FILE_ID
+        //   .../uc?id=FILE_ID&export=download  (already converted)
+        // Anything that isn't a recognizable Drive link (a direct .pdf host,
+        // Cloudflare R2, Archive.org, GitHub, etc.) is returned unchanged.
+        function toDriveDirectDownload(url) {
+            if (!url) return url;
+            const trimmed = String(url).trim();
+            const match = trimmed.match(/drive\.google\.com\/(?:file\/d\/([^/?]+)|open\?id=([^&]+)|uc\?id=([^&]+))/i);
+            const fileId = match ? (match[1] || match[2] || match[3]) : null;
+            if (!fileId) return trimmed;
+            return `https://drive.google.com/uc?export=download&id=${fileId}`;
+        }
+
         function downloadStudySheet(title, url) {
             if (!url || url === 'undefined' || url === 'null') {
                 showToast('This material has no file attached yet. Ask your teacher to add a link.', 'warning');
                 return;
             }
+            const directUrl = toDriveDirectDownload(url);
             const safeName = (title || 'study-material').replace(/[^a-z0-9\-_ ]/gi, '').trim().replace(/\s+/g, '_') || 'study-material';
             const link = document.createElement('a');
-            link.href = url;
+            link.href = directUrl;
             link.download = safeName.toLowerCase().endsWith('.pdf') ? safeName : `${safeName}.pdf`;
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
@@ -6171,7 +6181,7 @@
             const title = document.getElementById('upload-doc-title').value;
             const type = document.getElementById('upload-doc-type').value;
             const grade = document.getElementById('upload-doc-grade').value;
-            const url = document.getElementById('upload-doc-url').value;
+            const url = toDriveDirectDownload(document.getElementById('upload-doc-url').value);
 
             const newMaterial = { id: Date.now(), title, type, grade, file_url: url, uploaded_at: nowDateLabel() };
 
@@ -6712,7 +6722,7 @@
 
             const now = Date.now();
             if (window.lastAISubmitTime && (now - window.lastAISubmitTime < 2500)) {
-                showToast('Please do not text rapidly! The Groq API is extremely fast, but please maintain a steady pace.', 'error');
+                showToast('Please do not text rapidly! Co Assistant is fast, but please maintain a steady pace.', 'error');
                 return;
             }
             window.lastAISubmitTime = now;
@@ -6744,7 +6754,7 @@
             const apiHistory = [
                 {
                     role: "system",
-                    content: "You are Co Assistant, MR. Ahmed Abd-ElFatah's Unified Portal AI Copilot. Your primary purpose is to help students navigate the website features such as the Portal Dashboard, Syllabus Materials & PDF Documents, Secure Video Sessions Center, and Community Feed Announcements. You must decline doing their homework, solving full worksheets, or doing their exams directly, and prioritize website assistance. Be encouraging, organized, and helpful. Write out scientific formulas and equations cleanly using unicode or text where appropriate. Emphasize that you may make mistakes, and remind them to not message too rapidly if they request repeatedly. If they ask about the admin console, decline to help with it. Never use any of these characters anywhere in your replies: / \" \\ | { } [ ] * #. Avoid all markdown formatting: no asterisks for bold or bullet points, no hash symbols for headings, no brackets, no pipes, and no quotation marks or backslashes. Write everything as plain, clean sentences instead.\n\n" + getFeedSummaryForAI() + "\n\nIf the student asks about the community feed, recent announcements, who liked what, or comments, use this data to answer them accurately and friendly!"
+                    content: "You are Co Assistant, MR. Ahmed Abd-ElFatah's Unified Portal AI Copilot. Your primary purpose is to help students navigate the website features such as the Portal Dashboard, Syllabus Materials & PDF Documents, Secure Video Sessions Center, and Community Feed Announcements. You must decline doing their homework, solving full worksheets, or doing their exams directly, and prioritize website assistance. Be encouraging, organized, and helpful. Write out scientific formulas and equations cleanly using unicode or text where appropriate. Emphasize that you may make mistakes, and remind them to not message too rapidly if they request repeatedly. If they ask about the admin console, decline to help with it. If a student asks what powers you, which company built you, or which AI model or provider you run on, never name any underlying provider or model — just say you are Co Assistant, built for this portal. Never use any of these characters anywhere in your replies: / \" \\ | { } [ ] * #. Avoid all markdown formatting: no asterisks for bold or bullet points, no hash symbols for headings, no brackets, no pipes, and no quotation marks or backslashes. Write everything as plain, clean sentences instead.\n\n" + getFeedSummaryForAI() + "\n\nIf the student asks about the community feed, recent announcements, who liked what, or comments, use this data to answer them accurately and friendly!"
                 }
             ];
 
@@ -6920,7 +6930,7 @@
                 bubble.innerHTML = `
                     <div class="flex items-center gap-1.5 ${isAI ? 'self-start' : 'self-end'} select-none">
                         <img src="${isAI ? 'ai.png' : (currentUser && currentUser.gender === 'Admin' ? 'admin.png' : (currentUser && currentUser.gender === 'Girl' ? 'student2.png' : (currentUser && currentUser.gender === 'Website Developer' ? 'WD.png' : 'student1.png')))}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/></svg>';" class="w-3.5 h-3.5 rounded-full shrink-0">
-                        <span class="text-[9px] font-mono font-black text-gray-500">${isAI ? 'Co Assistant' : (currentUser ? currentUser.name : 'Enrolled Student')}</span>
+                        <span class="text-[9px] font-mono font-black text-gray-500 flex items-center gap-1">${isAI ? 'Co Assistant' : (currentUser ? currentUser.name : 'Enrolled Student')}${isAI ? '<svg viewBox="0 0 24 24" width="9" height="9" class="inline-block shrink-0" aria-hidden="true" title="Verified Co Assistant AI"><path fill="#4f9eff" d="M12 1.5l2.35 1.87 2.98-.5.97 2.85 2.85.97-.5 2.98L22.5 12l-1.85 2.33.5 2.98-2.85.97-.97 2.85-2.98-.5L12 22.5l-2.35-1.87-2.98.5-.97-2.85-2.85-.97.5-2.98L1.5 12l1.85-2.33-.5-2.98 2.85-.97.97-2.85 2.98.5z"/><path fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M8 12.2l2.6 2.6 5.4-5.8"/></svg>' : ''}</span>
                     </div>
                     <div class="${cardBg} p-3 shadow-xl">
                         <p class="text-xs leading-relaxed break-words font-medium whitespace-pre-wrap">${formatMathInText(msg.text)}</p>
