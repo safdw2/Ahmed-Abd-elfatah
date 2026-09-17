@@ -3905,6 +3905,19 @@
             getStudents: () => d1Request('/students'),
             saveStudent: (student) => d1Request('/students', { method: 'POST', body: student }),
             grantXP: (id, xpAmount) => d1Request('/students/xp', { method: 'POST', body: { id, xpAmount } }),
+            // Narrow, password-safe progress save — see markLectureCompleted().
+            // Never routes through the general /students upsert, which resets
+            // the password to '123456' whenever currentUser.password is
+            // undefined (which it always is, since /api/auth/login strips it).
+            saveProgress: (student) => d1Request('/students/progress', {
+                method: 'POST',
+                body: {
+                    id: student.phone || student.id,
+                    xp: student.xp,
+                    watch_mins: student.watch_mins,
+                    completed_lecture_ids: student.completed_lecture_ids
+                }
+            }),
             deleteStudent: (id) => d1Request(`/students/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
             getLectures: () => d1Request('/lectures'),
@@ -5301,15 +5314,23 @@
         // Awards EXP, credits watched minutes and mirrors it all into D1 so
         // the live rankings and analytics update from either video source.
         // -----------------------------------------------------------------
-        function markLectureCompleted(lec) {
+        async function markLectureCompleted(lec) {
             if (!lec || !currentUser || currentUser.role !== 'student') return;
             if (!Array.isArray(currentUser.completed_lecture_ids)) currentUser.completed_lecture_ids = [];
             if (currentUser.completed_lecture_ids.includes(lec.id)) return;
 
+            // Snapshot so a failed/rejected D1 write can be rolled back instead
+            // of leaving the checkmark and EXP showing locally when the cloud
+            // never actually got them (that mismatch is what made progress
+            // silently vanish on a later login/hydrate).
+            const previousIds = [...currentUser.completed_lecture_ids];
+            const previousXp = currentUser.xp || 0;
+            const previousMins = currentUser.watch_mins || 0;
+
             currentUser.completed_lecture_ids.push(lec.id);
             lec.completed = true;
-            currentUser.xp = (currentUser.xp || 0) + 150;
-            currentUser.watch_mins = (currentUser.watch_mins || 0) + (lec.duration_mins || 0);
+            currentUser.xp = previousXp + 150;
+            currentUser.watch_mins = previousMins + (lec.duration_mins || 0);
 
             const index = students.findIndex(s => s.id === currentUser.id);
             if (index !== -1) {
@@ -5322,7 +5343,33 @@
             showToast("Congratulations! Session completed. +150 EXP awarded!", "success");
             renderDashboard();
             renderVideos();
-            D1.saveStudent(currentUser); // 🗄️ mirror updated EXP/watch_mins/progress into D1
+
+            // 🗄️ Mirror into D1 through the narrow progress-only endpoint —
+            // NEVER D1.saveStudent(currentUser) / the general /students
+            // upsert. currentUser never carries a password field (the login
+            // endpoint strips it before sending the user back), and that
+            // upsert does `student.password || '123456'` server-side, so the
+            // old call silently reset the real password to '123456' on
+            // every single video completion. Awaited and checked here so a
+            // failed cloud save is caught and rolled back immediately,
+            // instead of the next hydrateFromD1() quietly overwriting local
+            // progress with the stale D1 row.
+            const res = await D1.saveProgress(currentUser);
+            if (!res || !res.success) {
+                currentUser.completed_lecture_ids = previousIds;
+                currentUser.xp = previousXp;
+                currentUser.watch_mins = previousMins;
+                lec.completed = previousIds.includes(lec.id);
+                if (index !== -1) {
+                    students[index].xp = previousXp;
+                    students[index].watch_mins = previousMins;
+                    students[index].completed_lecture_ids = previousIds;
+                }
+                syncLocalDB();
+                renderDashboard();
+                renderVideos();
+                showToast("⚠️ Couldn't save your progress to the cloud — finish the video again once you're back online.", "error");
+            }
         }
 
         // Marks which sessions the signed-in student has already finished, so the
