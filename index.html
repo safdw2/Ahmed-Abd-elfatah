@@ -2333,7 +2333,261 @@
             }
         }
 
-</style>
+        /* ===================================================================== */
+        /* 🖥️✨ DESKTOP PREMIUM POLISH PASS — purely additive visual refinement  */
+        /* for wider screens. Scoped to (min-width: 768px) so nothing here ever */
+        /* touches the phone layout, which stays exactly as it was.             */
+        /* ===================================================================== */
+        @media (min-width: 768px) {
+
+            /* Richer, more dimensional page backdrop behind the glass panels */
+            .dark-theme body {
+                background:
+                    radial-gradient(ellipse 900px 500px at 12% -5%, rgba(99, 102, 241, 0.10), transparent 60%),
+                    radial-gradient(ellipse 800px 600px at 100% 10%, rgba(6, 182, 212, 0.07), transparent 55%),
+                    radial-gradient(ellipse 700px 500px at 50% 110%, rgba(139, 92, 246, 0.08), transparent 55%),
+                    var(--bg-main) !important;
+            }
+            .light-theme body {
+                background:
+                    radial-gradient(ellipse 900px 500px at 12% -5%, rgba(99, 102, 241, 0.06), transparent 60%),
+                    radial-gradient(ellipse 800px 600px at 100% 10%, rgba(6, 182, 212, 0.05), transparent 55%),
+                    #f8fafc !important;
+            }
+
+            /* Sidebar: crisper edge, subtle top highlight, gentle depth */
+            .glass-sidebar {
+                border-radius: 22px !important;
+                position: relative;
+                overflow: hidden;
+            }
+            .glass-sidebar::after {
+                content: '';
+                position: absolute;
+                inset: 0 0 auto 0;
+                height: 1px;
+                background: linear-gradient(90deg, transparent, rgba(129, 140, 248, 0.5), transparent);
+                pointer-events: none;
+            }
+
+            /* Active nav item gets a clean accent bar + gentle glow instead of just a tint */
+            .nav-btn.bg-indigo-600\/15 {
+                position: relative;
+                box-shadow: 0 8px 20px -8px rgba(99, 102, 241, 0.35) !important;
+            }
+            .nav-btn.bg-indigo-600\/15::before {
+                content: '';
+                position: absolute;
+                left: -1px;
+                top: 20%;
+                bottom: 20%;
+                width: 3px;
+                border-radius: 3px;
+                background: linear-gradient(180deg, #818cf8, #6366f1);
+            }
+            .nav-btn {
+                transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease !important;
+            }
+            .nav-btn:hover {
+                transform: translateX(3px);
+            }
+
+            /* Cards lift subtly on hover for a tactile, premium feel */
+            .glass-card {
+                transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.35s ease, box-shadow 0.35s ease !important;
+            }
+            .glass-card:hover {
+                transform: translateY(-3px);
+            }
+
+            /* Primary buttons get a soft directional sheen on hover */
+            button.bg-indigo-600 {
+                position: relative;
+                overflow: hidden;
+                transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+            }
+            button.bg-indigo-600:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 10px 24px -8px rgba(99, 102, 241, 0.55) !important;
+            }
+            button.bg-indigo-600:active {
+                transform: translateY(0);
+            }
+
+            /* Section headings: a touch more breathing room and refined tracking */
+            h1, h2, h3 {
+                letter-spacing: -0.01em;
+            }
+
+            /* Slim-looking but full-size-hit-box custom scrollbar for desktop
+               panels: the scrollbar track/hit area stays a comfortable width
+               to grab, but the visible thumb is rendered much thinner via a
+               transparent border + background-clip trick, with a soft glow. */
+            .overflow-y-auto::-webkit-scrollbar,
+            .overflow-y-scroll::-webkit-scrollbar {
+                width: 10px;
+                height: 10px;
+            }
+            .overflow-y-auto::-webkit-scrollbar-track,
+            .overflow-y-scroll::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .overflow-y-auto::-webkit-scrollbar-thumb,
+            .overflow-y-scroll::-webkit-scrollbar-thumb {
+                background-color: rgba(129, 140, 248, 0.6);
+                background-clip: padding-box;
+                border: 3.5px solid transparent;
+                border-radius: 999px;
+                box-shadow: 0 0 6px rgba(99, 102, 241, 0.55), 0 0 2px rgba(129, 140, 248, 0.9);
+                transition: background-color 0.2s ease, box-shadow 0.2s ease;
+            }
+            .overflow-y-auto::-webkit-scrollbar-thumb:hover,
+            .overflow-y-scroll::-webkit-scrollbar-thumb:hover {
+                background-color: rgba(129, 140, 248, 0.9);
+                box-shadow: 0 0 10px rgba(99, 102, 241, 0.85), 0 0 4px rgba(129, 140, 248, 1);
+            }
+            /* Firefox: closest equivalent (no glow/thumb-shrink support there) */
+            .overflow-y-auto, .overflow-y-scroll {
+                scrollbar-width: thin;
+                scrollbar-color: rgba(129, 140, 248, 0.6) transparent;
+            }
+
+            /* Login card: a bit more presence and a crisper edge on the wider screen */
+            #login-section > div {
+                box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.55), var(--neumorphic-flat) !important;
+            }
+            #login-section input[type="text"]:focus,
+            #login-section input[type="password"]:focus {
+                box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+            }
+
+            /* Materials & feed cards: slightly richer border on hover to match the lift */
+            #materials-grid .glass-card:hover,
+            #feed-stream .glass-card:hover {
+                border-color: rgba(99, 102, 241, 0.4) !important;
+            }
+
+            /* ----- New: extra motion, kept desktop-only on purpose ----- */
+
+            /* Active nav accent bar breathes gently instead of sitting static */
+            @keyframes navBarGlow {
+                0%, 100% { opacity: 0.65; box-shadow: 0 0 6px rgba(129, 140, 248, 0.4); }
+                50% { opacity: 1; box-shadow: 0 0 12px rgba(129, 140, 248, 0.8); }
+            }
+            .nav-btn.bg-indigo-600\/15::before {
+                animation: navBarGlow 2.4s ease-in-out infinite;
+            }
+
+            /* Profile avatar gets a slow, subtle float — alive, not distracting */
+            @keyframes avatarFloat {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-3px); }
+            }
+            #profile-avatar {
+                animation: avatarFloat 4s ease-in-out infinite;
+            }
+
+            /* Primary buttons: soft sweeping shine on hover */
+            @keyframes buttonSheen {
+                0% { transform: translateX(-120%) skewX(-15deg); }
+                100% { transform: translateX(220%) skewX(-15deg); }
+            }
+            button.bg-indigo-600::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 35%;
+                height: 100%;
+                background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+                opacity: 0;
+                pointer-events: none;
+            }
+            button.bg-indigo-600:hover::after {
+                opacity: 1;
+                animation: buttonSheen 0.9s ease forwards;
+            }
+
+            /* Icons nudge and brighten on nav hover for a livelier feel */
+            .nav-btn:hover [data-lucide] {
+                transform: scale(1.1);
+                transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+
+            /* Tab content eases in with a touch more spring than the base animation */
+            .view-panel {
+                animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1) !important;
+            }
+        }
+        /* ===================================================================== */
+        /* 📱✨ MOBILE PREMIUM POLISH PASS v2 — additive-only visual refinement  */
+        /* for phones, tuned to stay cheap (no blur/animation additions, since  */
+        /* the perf-focused rules above already strip those on touch devices). */
+        /* Nothing here changes layout, structure, or spacing — only look/feel.*/
+        /* ===================================================================== */
+        @media (max-width: 767px) {
+
+            /* Same layered depth as desktop, but static (no animated blobs) so
+               it costs nothing extra on a phone GPU/battery. */
+            .dark-theme body {
+                background:
+                    radial-gradient(ellipse 500px 350px at 15% -5%, rgba(99, 102, 241, 0.12), transparent 60%),
+                    radial-gradient(ellipse 450px 400px at 100% 15%, rgba(6, 182, 212, 0.08), transparent 55%),
+                    radial-gradient(ellipse 400px 350px at 50% 115%, rgba(139, 92, 246, 0.09), transparent 55%),
+                    var(--bg-main) !important;
+            }
+            .light-theme body {
+                background:
+                    radial-gradient(ellipse 500px 350px at 15% -5%, rgba(99, 102, 241, 0.07), transparent 60%),
+                    radial-gradient(ellipse 450px 400px at 100% 15%, rgba(6, 182, 212, 0.05), transparent 55%),
+                    #f8fafc !important;
+            }
+
+            /* Real tap feedback everywhere touch replaces hover */
+            .glass-card, .glass-panel {
+                transition: transform 0.15s ease, border-color 0.2s ease !important;
+            }
+            .glass-card:active, .glass-panel:active {
+                transform: scale(0.985);
+            }
+            button.bg-indigo-600, .ripple-btn {
+                transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+            }
+            button.bg-indigo-600:active {
+                transform: scale(0.96);
+            }
+
+            /* Active tab in the pill bar gets a small glowing underline instead
+               of just a flat tint, so it reads clearly while thumb-scrolling. */
+            .glass-sidebar nav .nav-btn.bg-indigo-600\/15 {
+                position: relative;
+                box-shadow: 0 4px 14px -4px rgba(99, 102, 241, 0.5) !important;
+            }
+            .glass-sidebar nav .nav-btn.bg-indigo-600\/15::after {
+                content: '';
+                position: absolute;
+                left: 16%;
+                right: 16%;
+                bottom: 2px;
+                height: 2px;
+                border-radius: 2px;
+                background: linear-gradient(90deg, #818cf8, #6366f1);
+            }
+
+            /* Crisper card edges and a touch more lift on the login card */
+            #login-section > div {
+                box-shadow: 0 20px 45px -18px rgba(0, 0, 0, 0.55), var(--neumorphic-flat) !important;
+            }
+            .glass-card, #materials-grid > div, #feed-stream > div {
+                border-radius: 18px !important;
+            }
+
+            /* Slightly punchier focus ring on inputs — easier to see mid-tap */
+            input:focus, textarea:focus, select:focus {
+                box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18) !important;
+            }
+        }
+    </style>
 
 </head>
 <body class="bg-[#05070c] text-white font-sans min-h-screen flex flex-col relative overflow-x-hidden">
@@ -2396,6 +2650,11 @@
                     <label class="block text-xs font-semibold text-gray-400 mb-1.5">Secret Password</label>
                     <input type="password" id="login-password" required placeholder="••••••••" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 placeholder-gray-600 transition backdrop-blur-sm">
                 </div>
+
+                <label class="flex items-center gap-2.5 cursor-pointer select-none py-1 group">
+                    <input type="checkbox" id="login-remember" class="w-4 h-4 rounded accent-indigo-600 cursor-pointer">
+                    <span class="text-xs font-semibold text-gray-400 group-hover:text-gray-300 transition">Keep me logged on this device</span>
+                </label>
 
                 <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-xs transition duration-200 shadow-lg shadow-indigo-600/25">
                     Access Website
@@ -2662,7 +2921,7 @@
                                         <i data-lucide="trophy" class="w-4 h-4"></i>
                                     </div>
                                     <div>
-                                        <h3 class="font-black text-white text-sm tracking-tight">Students Live Rankings · لوحة الطلاب</h3>
+                                        <h3 class="font-black text-white text-sm tracking-tight">Students Live Rankings</h3>
                                         <p class="text-[10px] text-gray-500 font-semibold tracking-wide">Top students ranked by total watched session minutes</p>
                                     </div>
                                 </div>
@@ -3214,12 +3473,13 @@
                         <option value="Grade 7 (Preparatory 1)">Grade 7 (Preparatory 1)</option>
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
-                        <option value="Grade 10 (Secandory 1)">Grade 10 (Secandory 1)</option>
+                        <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
                     </select>
                 </div>
                 <div class="space-y-1">
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">PDF Link / Location</label>
-                    <input type="text" id="upload-doc-url" required placeholder="https://drive.google.com/... or cloudflare path" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <input type="text" id="upload-doc-url" required placeholder="https://yoursite.com/files/sheet.pdf" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <p class="text-[9px] text-gray-500 leading-relaxed pt-0.5">Use a direct PDF link (ends in .pdf) hosted somewhere public — Cloudflare R2, GitHub, Archive.org, etc. For Google Drive, share the file "Anyone with the link", then swap the link's <span class="font-mono">/view</span> ending for <span class="font-mono">&amp;export=download</span> so it downloads instead of opening a preview.</p>
                 </div>
                 <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-xs transition">
                     Publish Study Sheet
@@ -3244,9 +3504,15 @@
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Session Description</label>
                     <textarea id="video-desc" required placeholder="Detail the concepts covered..." class="w-full h-16 bg-slate-950/60 border border-white/5 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-indigo-500 resize-none"></textarea>
                 </div>
-                <div class="space-y-1">
-                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Lesson Number</label>
-                    <input type="number" id="video-lesson" min="1" step="1" required value="1" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="space-y-1">
+                        <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Lesson Number</label>
+                        <input type="number" id="video-lesson" min="1" step="1" required value="1" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Part Number</label>
+                        <input type="number" id="video-part" min="1" step="1" value="1" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500" placeholder="Optional">
+                    </div>
                 </div>
                 <div class="space-y-1">
                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Direct Archive.org Stream URL (MP4)</label>
@@ -3258,7 +3524,7 @@
                         <option value="Grade 7 (Preparatory 1)">Grade 7 (Preparatory 1)</option>
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
-                        <option value="Grade 10 (Secandory 1)">Grade 10 (Secandory 1)</option>
+                        <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
                     </select>
                 </div>
                 <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-xs transition">
@@ -3294,7 +3560,7 @@
                         <option value="Grade 7 (Preparatory 1)">Grade 7 (Preparatory 1)</option>
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
-                        <option value="Grade 10 (Secandory 1)">Grade 10 (Secandory 1)</option>
+                        <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
                     </select>
                 </div>
                 <div class="space-y-1">
@@ -3453,6 +3719,55 @@
         let activeTab = 'dashboard';
         let selectedMaterialFilter = 'all';
 
+        // -----------------------------------------------------------------
+        // 🗓️ REAL DATE/TIME STAMPS — replaces old hardcoded "Today" / fixed
+        // date strings so every post, comment, reply and uploaded material
+        // always shows the date it actually happened, forever.
+        // -----------------------------------------------------------------
+        function nowStamp() {
+            return new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+        }
+        function nowDateLabel() {
+            return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        // -----------------------------------------------------------------
+        // 🔐 "KEEP ME LOGGED ON THIS DEVICE" — remembers a session locally
+        // so the student/teacher doesn't have to log in again on this
+        // browser. Cleared automatically on explicit logout.
+        // -----------------------------------------------------------------
+        const REMEMBER_KEY = 'rememberedSession';
+        function saveRememberedSession(user, remember) {
+            try {
+                if (remember) {
+                    localStorage.setItem(REMEMBER_KEY, JSON.stringify(user));
+                } else {
+                    localStorage.removeItem(REMEMBER_KEY);
+                }
+            } catch (e) { /* storage unavailable — fail silently */ }
+        }
+        function clearRememberedSession() {
+            try { localStorage.removeItem(REMEMBER_KEY); } catch (e) {}
+        }
+        function attemptAutoLogin() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(REMEMBER_KEY));
+                if (saved && (saved.id || saved.phone)) {
+                    currentUser = saved;
+                    if (!currentUser.role) currentUser.role = 'student';
+                    // The remembered snapshot is frozen at whatever it looked like
+                    // at the original login — if this device has a newer cached
+                    // copy of this student's row (grade, xp, role...) from a past
+                    // hydrate, prefer that instead of the stale snapshot so the
+                    // very first paint is already correct, not just after
+                    // hydrateFromD1's network round-trip fixes it a moment later.
+                    const cached = students.find(s => s.id === currentUser.id || s.phone === currentUser.id);
+                    if (cached) currentUser = { ...currentUser, ...cached };
+                    loadPortal();
+                }
+            } catch (e) { /* corrupted/no saved session — show login as normal */ }
+        }
+
         // 🔓 Forced client-app installation has been removed.
         // The portal is now reachable directly from any standard browser.
 
@@ -3504,10 +3819,38 @@
 
         // ALT + CTRL + SHIFT + Q — developer/administrator shortcut sign-in.
         // Intentionally preserved: it logs straight in with staff permissions.
-        function bypassForceInstall() {
+        async function bypassForceInstall() {
+            // 🔐 Route this through the real /api/auth/login too, so the
+            // signed session cookie requireAdmin() checks for actually gets
+            // set. Without it, this shortcut looked like an admin session
+            // locally but every admin-gated D1 write it made was silently
+            // rejected with 403 — same root cause as handleLogin() below.
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: 'admin', password: 'admin123', remember: false })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user) {
+                        currentUser = {
+                            ...data.user,
+                            can_post_feed: !!data.user.can_post_feed,
+                            completed_lecture_ids: (() => { try { return JSON.parse(data.user.completed_lecture_ids || '[]'); } catch (e) { return []; } })()
+                        };
+                        loadPortal();
+                        showToast('Administrator session loaded via shortcut.', 'success');
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.warn('Server admin login unavailable, using local-only session:', err.message);
+            }
+            // Offline fallback — no real session cookie, so admin writes won't persist to D1.
             currentUser = { id: 'admin', name: 'Administrator', role: 'teacher', gender: 'Boy', title: 'Director' };
             loadPortal();
-            showToast('Administrator session loaded via shortcut.', 'success');
+            showToast('Administrator session loaded via shortcut (offline — cloud saves disabled).', 'warning');
         }
 
 
@@ -3520,6 +3863,10 @@
         let students = JSON.parse(localStorage.getItem('students')) || [];
 
         let feedPosts = JSON.parse(localStorage.getItem('feedPosts')) || [];
+
+        // Try to restore a remembered session immediately, before any network
+        // round-trip, so a returning student lands straight on their dashboard.
+        attemptAutoLogin();
 
         // -----------------------------------------------------------------
         // REFRESH LOCAL COPIES & METRICS
@@ -3585,7 +3932,7 @@
         function feedPostPayload(post) {
             return {
                 author: post.author,
-                date: post.date || 'Today',
+                date: post.date || nowStamp(),
                 text: post.text,
                 attachment_name: post.attachmentName || post.attachment_name || null,
                 image: post.image || null,
@@ -3684,13 +4031,22 @@
 
             // Re-render whatever is currently on screen with the freshly hydrated data
             if (currentUser) {
-                // Re-sync this account's finished sessions onto the session list
-                // so the completion wheel and analytics are per-student.
+                // Re-sync this account's full profile (grade, name, title, gender,
+                // role, xp, watch_mins, completed_lecture_ids...) onto whatever a
+                // remembered session restored. A "keep me logged in" snapshot is
+                // frozen at the moment of the original login, so without this,
+                // any later server-side change (a grade fix, a re-provision, an
+                // admin grant) never reaches the browser until the student
+                // manually logs out and back in — the grade filter on Video
+                // Sessions/Materials would keep comparing against the old value
+                // forever.
                 const me = students.find(s => s.id === currentUser.id || s.phone === currentUser.id);
-                if (me && Array.isArray(me.completed_lecture_ids)) {
-                    currentUser.completed_lecture_ids = me.completed_lecture_ids;
-                    currentUser.xp = me.xp;
-                    currentUser.watch_mins = me.watch_mins;
+                if (me) {
+                    currentUser = { ...currentUser, ...me };
+                    // Keep the remembered snapshot (if any) in sync too, so a
+                    // network hiccup on some future refresh doesn't fall back to
+                    // the pre-correction copy.
+                    if (localStorage.getItem(REMEMBER_KEY)) saveRememberedSession(currentUser, true);
                 }
                 if (typeof applyCompletionFlags === 'function') applyCompletionFlags();
                 if (typeof renderDashboard === 'function') renderDashboard();
@@ -3872,29 +4228,87 @@
             }
         }
 
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault();
             const id = document.getElementById('login-id').value.trim();
             const pass = document.getElementById('login-password').value;
             const errorBlock = document.getElementById('login-error');
 
             errorBlock.classList.add('hidden');
+            const remember = document.getElementById('login-remember')?.checked || false;
 
+            // 🔐 Authenticate with the server FIRST so the signed session
+            // cookie actually gets set. requireAdmin()/authenticatedUser()
+            // on the backend read that cookie for every admin-gated D1
+            // write (add/delete video or material, provision a student,
+            // grant XP) AND for a student's own XP/watch-time save. Without
+            // this call that cookie never existed, so those writes were
+            // being silently rejected with 403 — the local list still
+            // *looked* updated because of the optimistic UI push, but
+            // nothing was actually saved, so it vanished again on the next
+            // refresh/hydrate. Falls back to the old local-only check only
+            // if the API genuinely can't be reached (offline preview, no D1).
+            let serverHandled = false;
+            try {
+                // ⏱️ TEMPORARY DIAGNOSTIC — remove this block once we've
+                // confirmed where the login delay actually is. Shows the
+                // real /api/auth/login round-trip time as a toast, since
+                // DevTools is blocked on this site.
+                const __loginTimerStart = performance.now();
+
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, password: pass, remember })
+                });
+
+                const __loginMs = Math.round(performance.now() - __loginTimerStart);
+                showToast(`⏱️ /api/auth/login took ${__loginMs}ms`, 'info');
+                // ⏱️ END TEMPORARY DIAGNOSTIC
+
+                if (res.status !== 503) {
+                    serverHandled = true;
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.user) {
+                            currentUser = {
+                                ...data.user,
+                                can_post_feed: !!data.user.can_post_feed,
+                                completed_lecture_ids: (() => { try { return JSON.parse(data.user.completed_lecture_ids || '[]'); } catch (e) { return []; } })()
+                            };
+                            if (!currentUser.role) currentUser.role = 'student';
+                            saveRememberedSession(currentUser, remember);
+                            loadPortal();
+                            return;
+                        }
+                    }
+                    errorBlock.textContent = activeRole === 'student'
+                        ? "Invalid Student credentials. Please contact MR. Ahmed's assistants to provision your account."
+                        : "Invalid teacher credentials.";
+                    errorBlock.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.warn('Server login unavailable, falling back to local check:', err.message);
+            }
+
+            if (serverHandled) return; // server answered definitively (success handled above, failure shown above)
+
+            // --- Offline/local fallback (no D1-backed /api routes reachable) ---
             if (activeRole === 'student') {
-                // Find student
                 const student = students.find(s => String(s.id) === id || String(s.phone) === id);
                 if (student && student.password === pass) {
                     currentUser = { ...student };
                     if (!currentUser.role) currentUser.role = 'student';
+                    saveRememberedSession(currentUser, remember);
                     loadPortal();
                 } else {
                     errorBlock.textContent = "Invalid Student credentials. Please contact MR. Ahmed's assistants to provision your account.";
                     errorBlock.classList.remove('hidden');
                 }
             } else {
-                // Teacher bypass check
                 if (id === 'admin' && pass === 'admin123') {
                     currentUser = { id: 'admin', name: 'Administrator', role: 'teacher', gender: 'Boy', title: 'Director' };
+                    saveRememberedSession(currentUser, remember);
                     loadPortal();
                 } else {
                     errorBlock.textContent = "Invalid teacher credentials.";
@@ -3959,9 +4373,12 @@
 
         function handleLogout() {
             currentUser = null;
+            clearRememberedSession();
             document.getElementById('portal-section').classList.add('hidden');
             document.getElementById('login-section').classList.remove('hidden');
             document.getElementById('login-password').value = '';
+            const rememberBox = document.getElementById('login-remember');
+            if (rememberBox) rememberBox.checked = false;
             
             // Stop video playing if any
             const securePlayer = document.getElementById('secure-player');
@@ -4014,7 +4431,13 @@
             // Remove active style from side buttons
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 if (btn.id !== 'nav-co-assistant') {
+                    // Preserve a permission-based "hidden" state (e.g. the Admin
+                    // Console button for non-admin accounts) — otherwise this
+                    // reset wipes it and the button reappears after the very
+                    // next tab switch, even for accounts with no admin grant.
+                    const wasHidden = btn.classList.contains('hidden');
                     btn.className = "nav-btn ripple-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-300 ease-out";
+                    if (wasHidden) btn.classList.add('hidden');
                 }
             });
             const coBtn = document.getElementById('nav-co-assistant');
@@ -4026,7 +4449,7 @@
             const headerTitles = {
                 'co-assistant': 'Co Assistant AI Navigator',
                 dashboard: 'Portal Dashboard',
-                materials: 'Syllabus Worksheets & PDF Documents',
+                materials: 'Worksheets & PDF Documents',
                 videos: 'Secure Video Sessions Center',
                 feed: 'Community Feed Announcements',
                 admin: 'System Control Node (D1 Database Direct)'
@@ -4071,7 +4494,7 @@
 
             // Welcome
             document.getElementById('welcome-message').textContent = `Marhaban, ${currentUser.name}!`;
-            document.getElementById('dashboard-grade-info').textContent = hasAdminGrant() ? 'Workspace Director' : `Grade Level: ${currentUser.grade || 'Grade 10 (Secandory 1)'}`;
+            document.getElementById('dashboard-grade-info').textContent = hasAdminGrant() ? 'Workspace Director' : `Grade Level: ${currentUser.grade || 'Grade 10 (Secondary 1)'}`;
 
             // 🔐 STAFF DASHBOARD LAYOUT
             // An Admin-Granted account sees only two things on the dashboard:
@@ -4131,9 +4554,13 @@
                 return;
             }
 
-            // Radial Course Progress Wheel Math (Calculate watched sessions ratio)
-            const watchedList = lectures.filter(l => l.completed).length;
-            const totalSessions = lectures.length || 1;
+            // Radial Course Progress Wheel Math (Calculate watched sessions ratio - for this grade only)
+            const gradeFilteredLectures = lectures.filter(l => 
+                l.grade && String(l.grade).trim() === String(currentUser.grade || '').trim()
+            );
+            
+            const watchedList = gradeFilteredLectures.filter(l => l.completed).length;
+            const totalSessions = gradeFilteredLectures.length || 1;
             const watchPercentage = Math.round((watchedList / totalSessions) * 100);
 
             document.getElementById('dashboard-progress-percent').textContent = `${watchPercentage}%`;
@@ -4142,9 +4569,9 @@
             const ringOffset = 219.9 - (219.9 * watchPercentage / 100);
             document.getElementById('dashboard-progress-ring').style.strokeDashoffset = ringOffset;
 
-            // Calculate hours watched vs remaining for supporting stats
-            const totalSessionsDuration = lectures.reduce((acc, l) => acc + (l.duration_mins || 0), 0);
-            const watchedMinutes = lectures.filter(l => l.completed).reduce((acc, l) => acc + (l.duration_mins || 0), 0);
+            // Calculate hours watched vs remaining for supporting stats (grade-filtered)
+            const totalSessionsDuration = gradeFilteredLectures.reduce((acc, l) => acc + (l.duration_mins || 0), 0);
+            const watchedMinutes = gradeFilteredLectures.filter(l => l.completed).reduce((acc, l) => acc + (l.duration_mins || 0), 0);
             const hoursWatched = (watchedMinutes / 60).toFixed(1);
             const hoursRemaining = (Math.max(0, totalSessionsDuration - watchedMinutes) / 60).toFixed(1);
 
@@ -4165,8 +4592,8 @@
 
             // Learning analytics numbers
             document.getElementById('dashboard-total-minutes').textContent = `${currentUser.watch_mins || 0} mins`;
-            document.getElementById('dashboard-lectures-finished').textContent = `${watchedList} / ${lectures.length}`;
-            document.getElementById('dashboard-lecture-count').textContent = `Currently active with ${lectures.length} live courses listed.`;
+            document.getElementById('dashboard-lectures-finished').textContent = `${watchedList} / ${totalSessions}`;
+            document.getElementById('dashboard-lecture-count').textContent = `Currently active with ${totalSessions} live courses listed for your grade.`;
 
             // Milestone Badges logic
             const minutesPlayed = currentUser.watch_mins || 0;
@@ -4251,7 +4678,11 @@
             grid.innerHTML = '';
 
             const activeMaterials = materials.filter(item => {
-                if (currentUser.role === 'student' && item.grade !== currentUser.grade) return false;
+                if (currentUser.role === 'student') {
+                    const studentGrade = String(currentUser.grade || '').trim().toLowerCase();
+                    const itemGrade = String(item.grade || '').trim().toLowerCase();
+                    if (studentGrade !== itemGrade) return false;
+                }
                 if (selectedMaterialFilter !== 'all' && item.type !== selectedMaterialFilter) return false;
                 return true;
             });
@@ -4334,8 +4765,28 @@
             });
         }
 
+        // Triggers a real browser download of the material's PDF. If the file
+        // is hosted on a server that allows it (same-origin, or a host that
+        // sends Access-Control-Allow-Origin / Content-Disposition), the
+        // browser saves it directly under a clean filename. If the host
+        // blocks that (most third-party link-sharing sites do), it falls
+        // back to opening the file in a new tab so the student can still
+        // view/save it with the browser's own "Download" / "Save as" control.
         function downloadStudySheet(title, url) {
-            showToast(`Downloading secure study packet: ${title}`, 'success');
+            if (!url || url === 'undefined' || url === 'null') {
+                showToast('This material has no file attached yet. Ask your teacher to add a link.', 'warning');
+                return;
+            }
+            const safeName = (title || 'study-material').replace(/[^a-z0-9\-_ ]/gi, '').trim().replace(/\s+/g, '_') || 'study-material';
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = safeName.toLowerCase().endsWith('.pdf') ? safeName : `${safeName}.pdf`;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            showToast(`Downloading: ${title}`, 'success');
         }
 
         // -----------------------------------------------------------------
@@ -4345,10 +4796,28 @@
             const sessionsList = document.getElementById('video-sessions-list');
             sessionsList.innerHTML = '';
 
-            const filteredLectures = lectures.filter(l => {
-                if (currentUser.role === 'student' && l.grade !== currentUser.grade) return false;
-                return true;
+            // Debug: log current user and all lectures
+            console.log('📹 Video Render Debug:', {
+                currentUser: currentUser,
+                currentUserGrade: currentUser?.grade,
+                currentUserRole: currentUser?.role,
+                allLectures: lectures,
+                lectureCount: lectures.length
             });
+
+            // Filter by grade - handle both student and teacher/admin roles
+            const filteredLectures = lectures.filter(l => {
+                if (currentUser.role === 'student') {
+                    const studentGrade = String(currentUser.grade || '').trim().toLowerCase();
+                    const lectureGrade = String(l.grade || '').trim().toLowerCase();
+                    const match = studentGrade === lectureGrade;
+                    console.log(`Checking lecture: "${l.title}" | Lecture Grade: "${lectureGrade}" vs Student Grade: "${studentGrade}" | Match: ${match}`);
+                    return match && l.grade;
+                }
+                return true; // Teachers/admins see all
+            });
+
+            console.log('📹 Filtered lectures count:', filteredLectures.length);
 
             document.getElementById('videos-count-badge').textContent = `${filteredLectures.length} Sessions`;
 
@@ -4361,7 +4830,12 @@
                 return;
             }
 
-            filteredLectures.sort((a, b) => Number(a.lesson || 0) - Number(b.lesson || 0)).forEach(lec => {
+            filteredLectures.sort((a, b) => {
+                const lessonA = Number(a.lesson || 0);
+                const lessonB = Number(b.lesson || 0);
+                if (lessonA !== lessonB) return lessonA - lessonB;
+                return Number(a.part || 1) - Number(b.part || 1);
+            }).forEach(lec => {
                 const row = document.createElement('div');
                 row.className = "w-full text-left p-3 rounded-xl bg-slate-950/40 border border-white/5 hover:border-indigo-500/20 flex items-center justify-between group transition cursor-pointer hover:bg-slate-900/35";
                 row.onclick = () => loadSecureLecture(lec);
@@ -4379,7 +4853,7 @@
                         </div>
                         <div class="overflow-hidden">
                             <h4 class="text-xs font-extrabold text-white truncate w-[160px] md:w-[300px]">${lec.title}</h4>
-                            <p class="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mt-0.5">Lesson ${lec.lesson || 1} · ${lec.grade}</p>
+                            <p class="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mt-0.5">Lesson ${lec.lesson || 1}${lec.part && lec.part > 1 ? ` Part ${lec.part}` : ''} · ${lec.grade}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -5213,7 +5687,7 @@
                 id: Date.now(),
                 author: currentUser.name,
                 ...authorDetails,
-                date: 'Today',
+                date: nowStamp(),
                 text: text,
                 attachmentType: pendingFeedAttachment || null,
                 attachmentName: pendingFeedAttachment === 'pdf' ? 'Handout_Attachment.pdf' : null,
@@ -5283,7 +5757,7 @@
                     id: Date.now() + Math.random(),
                     author: currentUser.name,
                     ...getFeedAuthorDetails(),
-                    date: 'Just now',
+                    date: nowStamp(),
                     text: text,
                     likes: 0,
                     likedBy: [],
@@ -5338,7 +5812,7 @@
                         id: Date.now() + Math.random(),
                         author: currentUser.name,
                         ...getFeedAuthorDetails(),
-                        date: 'Just now',
+                        date: nowStamp(),
                         text: text,
                         likes: 0,
                         likedBy: []
@@ -5506,7 +5980,7 @@
                     row.innerHTML = `
                         <div>
                             <h4 class="font-extrabold text-white">${lec.title}</h4>
-                            <p class="text-[9px] text-gray-500">D1 Stream Path: ${lec.archive_url.substring(0,35)}... · Target: ${lec.grade}</p>
+                            <p class="text-[9px] text-gray-500">Lesson ${lec.lesson || 1}${lec.part && lec.part > 1 ? ` Part ${lec.part}` : ''} · Target: ${lec.grade} · D1 Stream Path: ${lec.archive_url.substring(0,30)}...</p>
                         </div>
                         <button onclick="deleteLectureRegistry(${lec.id})" class="p-1 text-red-400 hover:text-white hover:bg-red-950/40 rounded-lg transition"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
                     `;
@@ -5645,32 +6119,50 @@
         // -----------------------------------------------------------------
         function openUploadMaterialModal() { document.getElementById('material-upload-modal').classList.remove('hidden'); }
         function closeUploadMaterialModal() { document.getElementById('material-upload-modal').classList.add('hidden'); }
-        function handleMaterialUploadSubmit(e) {
+        async function handleMaterialUploadSubmit(e) {
             e.preventDefault();
             const title = document.getElementById('upload-doc-title').value;
             const type = document.getElementById('upload-doc-type').value;
             const grade = document.getElementById('upload-doc-grade').value;
             const url = document.getElementById('upload-doc-url').value;
 
-            const newMaterial = { id: Date.now(), title, type, grade, file_url: url, uploaded_at: '2026-09-08' };
+            const newMaterial = { id: Date.now(), title, type, grade, file_url: url, uploaded_at: nowDateLabel() };
+
+            // 🗄️ Same fix as the lesson-session upload: wait for D1 to confirm
+            // before adding it locally or claiming success, so a failed cloud
+            // save can't silently vanish on the next refresh.
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const res = await D1.saveMaterial(newMaterial);
+
+            if (submitBtn) submitBtn.disabled = false;
+
+            if (!res || !res.success) {
+                showToast('⚠️ This document was NOT saved to the cloud database. Check your connection and try again.', 'error');
+                return;
+            }
+
+            if (res.id) newMaterial.id = res.id;
             materials.unshift(newMaterial);
             syncLocalDB();
             closeUploadMaterialModal();
             showToast('Document published to Cloud database!', 'success');
             renderMaterials();
-
-            // 🗄️ Persist into D1 and swap in the real row id once we get it back
-            D1.saveMaterial(newMaterial).then(res => {
-                if (res && res.success && res.id) {
-                    newMaterial.id = res.id;
-                    syncLocalDB();
-                }
-            });
         }
 
-        function openAddVideoModal() { document.getElementById('video-modal').classList.remove('hidden'); }
+        function openAddVideoModal() { 
+            document.getElementById('video-modal').classList.remove('hidden');
+            // Clear form fields
+            document.getElementById('video-title').value = '';
+            document.getElementById('video-desc').value = '';
+            document.getElementById('video-url').value = '';
+            document.getElementById('video-lesson').value = '1';
+            document.getElementById('video-part').value = '1';
+            document.getElementById('video-grade').value = 'Grade 10 (Secondary 1)';
+        }
         function closeAddVideoModal() { document.getElementById('video-modal').classList.add('hidden'); }
-        function handleVideoUploadSubmit(e) {
+        async function handleVideoUploadSubmit(e) {
             e.preventDefault();
             const title = document.getElementById('video-title').value;
             const description = document.getElementById('video-desc').value;
@@ -5678,27 +6170,41 @@
             const duration = 45; // Defaulted internally as requested
             const grade = document.getElementById('video-grade').value;
             const lesson = Math.max(1, Number(document.getElementById('video-lesson').value) || 1);
+            const part = Math.max(1, Number(document.getElementById('video-part').value) || 1);
 
-            const newSession = { id: Date.now(), title, description, lesson, archive_url: url, duration_mins: duration, grade, watched_mins: 0, completed: false };
+            const newSession = { id: Date.now(), title, description, lesson, part, archive_url: url, duration_mins: duration, grade, watched_mins: 0, completed: false };
+
+            // 🗄️ Wait for D1 to actually confirm the save before touching local
+            // state or telling the admin it worked. Pushing to `lectures` first
+            // and firing D1.saveLecture() in the background (the old code) meant
+            // a failed cloud write still *looked* saved — it would vanish the
+            // moment hydrateFromD1() next pulled the real (session-less) list
+            // from D1 on refresh. This is exactly what "sessions keep
+            // disappearing" was.
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
+            const res = await D1.saveLecture(newSession);
+
+            if (submitBtn) submitBtn.disabled = false;
+
+            if (!res || !res.success) {
+                showToast('⚠️ This session was NOT saved to the cloud database. Check your connection and try again.', 'error');
+                return; // don't add it locally — nothing to disappear later
+            }
+
+            if (res.id) newSession.id = res.id;
             lectures.push(newSession);
             syncLocalDB();
             closeAddVideoModal();
             showToast(extractYouTubeId(url) ? 'YouTube lecture linked and indexed!' : 'Secure Video Archive.org URL Indexed!', 'success');
             renderVideos();
             if (activeTab === 'admin') renderAdmin();
-
-            // 🗄️ Persist into D1 and swap in the real row id once we get it back
-            D1.saveLecture(newSession).then(res => {
-                if (res && res.success && res.id) {
-                    newSession.id = res.id;
-                    syncLocalDB();
-                }
-            });
         }
 
         function openProvisionAccountModal() { document.getElementById('student-modal').classList.remove('hidden'); }
         function closeProvisionAccountModal() { document.getElementById('student-modal').classList.add('hidden'); }
-        function handleProvisionSubmit(e) {
+        async function handleProvisionSubmit(e) {
         e.preventDefault();
         const nameInput = document.getElementById('student-name');
         const phoneInput = document.getElementById('student-phone');
@@ -5710,7 +6216,7 @@
         const name = nameInput ? nameInput.value.trim() : '';
         const id = phoneInput ? phoneInput.value.trim() : '';
         const pass = passInput ? passInput.value.trim() : '123456';
-        const grade = gradeInput ? gradeInput.value : 'Grade 10 (Secandory 1)';
+        const grade = gradeInput ? gradeInput.value : 'Grade 10 (Secondary 1)';
         const gender = genderInput ? genderInput.value : 'Boy';
         const title = titleInput ? titleInput.value.trim() : '';
 
@@ -5739,15 +6245,27 @@
             can_post_feed: 0
         };
 
+        // 🗄️ Persist to Cloudflare D1 FIRST and wait for confirmation. Saving
+        // locally and showing "success" before D1 answers meant a failed
+        // cloud write looked identical to a real one in the UI — the student
+        // would appear provisioned, but /api/auth/login (which only checks
+        // D1) would reject them every time with correct credentials, and
+        // re-submitting the form would be blocked by the duplicate check
+        // above since the local copy already "existed".
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+
+        const res = await D1.saveStudent(newStudent);
+
+        if (submitBtn) submitBtn.disabled = false;
+
+        if (!res || !res.success) {
+            showToast(`⚠️ '${name}' was NOT saved to the cloud database — they will not be able to log in. Check your connection and try again.`, 'error');
+            return; // don't touch local state or close the modal; let the admin retry with the same values
+        }
+
         students.push(newStudent);
         syncLocalDB();
-
-        // 🗄️ Persist the new student straight into Cloudflare D1 (ahmed-abdelfatah-db)
-        D1.saveStudent(newStudent).then(res => {
-            if (res && res.success) {
-                console.log('Student account provisioned in Cloud Database:', res);
-            }
-        });
 
         closeProvisionAccountModal();
 
@@ -6539,38 +7057,51 @@
         // =====================================================================
         
         // --- A. INVERTED BLEND-MODE CURSOR ---
+        // Note: #custom-cursor is CSS-forced to display:none !important
+        // everywhere it's defined (it's not actually used), and the element
+        // itself was never added to the page markup. Every mousemove/mouseover
+        // was crashing trying to read .style/.classList off null — that's
+        // the error flood. Guarding on customCursor existing keeps this
+        // dead-but-harmless unless the element gets added back later.
         const customCursor = document.getElementById('custom-cursor');
         let mX = 0, mY = 0, cX = 0, cY = 0;
         let cursorVisible = false;
 
-        window.addEventListener('mousemove', (e) => {
-            mX = e.clientX;
-            mY = e.clientY;
-            
-            if (!cursorVisible) {
-                customCursor.style.opacity = '1';
-                cursorVisible = true;
-            }
-        });
+        if (customCursor) {
+            window.addEventListener('mousemove', (e) => {
+                mX = e.clientX;
+                mY = e.clientY;
 
-        window.addEventListener('mouseleave', () => {
-            customCursor.style.opacity = '0';
-            cursorVisible = false;
-        });
+                if (!cursorVisible) {
+                    customCursor.style.opacity = '1';
+                    cursorVisible = true;
+                }
+            });
+
+            window.addEventListener('mouseleave', () => {
+                customCursor.style.opacity = '0';
+                cursorVisible = false;
+            });
+        }
 
         // Smooth cursor lerping using GPU translate3d (avoids triggering layout cycles/reflow)
+        // Only runs with a real mouse — skipped on touch devices, where the
+        // custom cursor is hidden anyway, so there's no point paying for it.
+        const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
         function animateCursor() {
+            if (!customCursor) return;
             cX += (mX - cX) * 0.18; // Smoother tracking coefficient
             cY += (mY - cY) * 0.18;
             customCursor.style.transform = `translate3d(calc(${cX}px - 50%), calc(${cY}px - 50%), 0)`;
-            requestAnimationFrame(animateCursor);
+            if (hasFinePointer) requestAnimationFrame(animateCursor);
         }
-        requestAnimationFrame(animateCursor);
+        if (customCursor && hasFinePointer) requestAnimationFrame(animateCursor);
 
         // Hover expansions for buttons & interactive panels
         document.addEventListener('mouseover', (e) => {
+            if (!customCursor) return;
             // Enabled in both dark and light modes!
-            
+
             const target = e.target;
             const interactive = target.closest('button, a, input, select, textarea, [onclick], .cursor-pointer, input[type="file"]');
             if (interactive) {
@@ -6740,16 +7271,23 @@
         }
 
         window.addEventListener('mousemove', (e) => {
-            injectFluidEddy(e.clientX, e.clientY);
+            if (fluidSimEnabled) injectFluidEddy(e.clientX, e.clientY);
         });
 
         window.addEventListener('touchmove', (e) => {
+            if (!fluidSimEnabled) return;
             const t = e.touches[0];
             injectFluidEddy(t.clientX, t.clientY);
         });
 
         // Draw and update loop
         function fluidRenderLoop() {
+            // Skip entirely when the canvas isn't visible (phones/tablets, or
+            // the tab is backgrounded) — running this every frame for nothing
+            // rendered is exactly what was making the portal feel laggy on
+            // mobile, since the loop used to run unconditionally forever.
+            if (!fluidSimEnabled || document.hidden) return;
+
             const isDark = !document.documentElement.classList.contains('light-theme');
 
             // High performance trailing fade
@@ -6925,7 +7463,7 @@
                 if (f) {
                     f.rating = feedbackSelectedRating;
                     f.text = text;
-                    f.date = 'Updated Today';
+                    f.date = `Updated ${nowDateLabel()}`;
                     D1.updateFeedback(f);
                     showToast('Feedback updated successfully!', 'success');
                 }
@@ -6949,7 +7487,7 @@
                     idVal: currentUser.id || 'student-guest',
                     rating: feedbackSelectedRating,
                     text: text,
-                    date: 'Today'
+                    date: nowDateLabel()
                 };
                 feedbacks.unshift(newFeedback);
                 showToast('Thank you for your feedback and suggestion!', 'success');
@@ -7090,11 +7628,23 @@
         }
     }
 
-// Start flow background loop
-      fluidRenderLoop();
+// Start flow background loop — desktop-only. The canvas was already
+// hidden by CSS under 1024px, but the simulation kept computing every
+// single frame regardless, burning CPU/battery for nothing visible.
+// That hidden cost is the main thing that was making things feel laggy
+// on phones, so it now only runs where it's actually seen — and pauses
+// itself whenever the browser tab isn't in focus.
+      let fluidSimEnabled = window.innerWidth >= 1024;
+      window.addEventListener('resize', () => {
+          const shouldRun = window.innerWidth >= 1024;
+          const wasOff = !fluidSimEnabled;
+          fluidSimEnabled = shouldRun;
+          if (shouldRun && wasOff) fluidRenderLoop();
+      });
+      document.addEventListener('visibilitychange', () => {
+          if (!document.hidden && fluidSimEnabled) fluidRenderLoop();
+      });
+      if (fluidSimEnabled) fluidRenderLoop();
     </script> <!-- 1. Close the inline JavaScript block here -->
-
-    <!-- 2. Now include db.js -->
-    <script src="db.js"></script> 
   </body>
 </html>
