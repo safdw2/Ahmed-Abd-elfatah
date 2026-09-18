@@ -2587,6 +2587,113 @@
                 box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18) !important;
             }
         }
+
+        /* ==================================================================
+           🎬 EXTRA MOTION LAYER — entrance pop-ins, stagger reveals,
+           celebration confetti & small micro-interactions.
+           Cards stay flat/static on hover (tilt was intentionally disabled
+           above) — everything here is about arrival + feedback, not tilt.
+           ================================================================== */
+
+        @keyframes cardPopIn {
+            0%   { opacity: 0; transform: translateY(16px) scale(0.97); }
+            60%  { opacity: 1; }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        /* Applied by applyStaggerReveal() to the direct children of any
+           freshly re-rendered list/grid (materials, videos, feed, admin
+           tables, leaderboard, AI chat sessions). --stagger-i is set
+           per-item in JS so cards cascade in instead of popping at once. */
+        .stagger-pop {
+            animation: cardPopIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+            animation-delay: calc(min(var(--stagger-i, 0), 8) * 55ms);
+        }
+
+        /* Dashboard bento cells + any nested grid cascade in on first paint */
+        .stagger-container > * {
+            animation: cardPopIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .stagger-container > *:nth-child(1) { animation-delay: 0.02s; }
+        .stagger-container > *:nth-child(2) { animation-delay: 0.08s; }
+        .stagger-container > *:nth-child(3) { animation-delay: 0.14s; }
+        .stagger-container > *:nth-child(4) { animation-delay: 0.20s; }
+        .stagger-container > *:nth-child(5) { animation-delay: 0.26s; }
+        .stagger-container > *:nth-child(6) { animation-delay: 0.32s; }
+        .stagger-container > *:nth-child(n+7) { animation-delay: 0.38s; }
+
+        /* Desktop login card now gets a proper arrival too (previously mobile-only) */
+        #login-section > div {
+            animation: modalScaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+
+        /* Login error banner shakes every time it appears (no JS needed —
+           replays automatically whenever the "hidden" class is removed) */
+        @keyframes shakeError {
+            10%, 90% { transform: translateX(-1px); }
+            20%, 80% { transform: translateX(2px); }
+            30%, 50%, 70% { transform: translateX(-4px); }
+            40%, 60% { transform: translateX(4px); }
+        }
+        #login-error:not(.hidden) {
+            animation: shakeError 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+
+        /* Nav item gets a quick confident pop when it becomes the active tab */
+        @keyframes navPop {
+            0%   { transform: scale(0.94); }
+            55%  { transform: scale(1.035); }
+            100% { transform: scale(1); }
+        }
+        .nav-pop { animation: navPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        /* Playful wiggle for small icon-only buttons on hover */
+        @keyframes iconWiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-12deg); }
+            75% { transform: rotate(12deg); }
+        }
+        .icon-wiggle-hover:hover i,
+        .icon-wiggle-hover:hover svg { animation: iconWiggle 0.4s ease-in-out; }
+
+        /* Soft diagonal shine sweeping across the XP bar, layered on top of
+           its existing width transition — reads as "energy", not distraction */
+        @keyframes xpShine {
+            0%   { transform: translateX(-140%) skewX(-20deg); }
+            100% { transform: translateX(260%) skewX(-20deg); }
+        }
+        #dashboard-xp-progress-bar { position: relative; overflow: hidden; }
+        #dashboard-xp-progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; height: 100%; width: 35%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+            animation: xpShine 2.8s ease-in-out infinite;
+            animation-delay: 1.2s;
+        }
+
+        /* Confetti burst fired on lecture completion / +XP milestones */
+        @keyframes confettiFall {
+            0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(70vh) rotate(540deg); opacity: 0; }
+        }
+        .confetti-piece {
+            position: fixed;
+            top: -10px;
+            border-radius: 2px;
+            pointer-events: none;
+            z-index: 9999;
+            animation: confettiFall 1.4s cubic-bezier(0.35, 0.0, 0.65, 1) forwards;
+        }
+
+        /* Gentle idle float for badges/rank pills so they never feel static */
+        @keyframes gentleFloatY {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        .gentle-float { animation: gentleFloatY 3.4s ease-in-out infinite; }
+
+        /* Slightly punchier press feedback on every ripple/interactive button */
+        .ripple-btn:active { transform: scale(0.95); }
     </style>
 
 </head>
@@ -3562,6 +3669,10 @@
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
                         <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
+                        <!-- Selecting this grade auto-grants admin + feed privileges in
+                             handleProvisionSubmit() and hides the account from the live
+                             rankings board in renderDashboardLeaderboard(). -->
+                        <option value="Admin">Admin</option>
                     </select>
                 </div>
                 <div class="space-y-1">
@@ -4655,7 +4766,8 @@
 
             // Sort students by watched minutes limit descending
             const sortedStudents = students
-                .filter(student => String(student.id || '').toLowerCase() !== 'admin' && String(student.name || '').toLowerCase() !== 'administrator')
+                .filter(student => String(student.id || '').toLowerCase() !== 'admin' && String(student.name || '').toLowerCase() !== 'administrator'
+                    && String(student.grade || '').trim().toLowerCase() !== 'admin')
                 .sort((a,b) => b.watch_mins - a.watch_mins);
             
             if (sortedStudents.length === 0) {
@@ -6323,6 +6435,12 @@
             return;
         }
 
+        // Choosing the "Admin" grade is a shortcut for provisioning a staff
+        // account: it auto-grants the admin role (same as toggleAdminPrivilege)
+        // and feed-posting rights (same as toggleFeedPrivilege), instead of
+        // making the person register the student first and grant both by hand.
+        const isAdminGrade = grade === 'Admin';
+
         const newStudent = {
             id: id,
             phone: id,
@@ -6334,8 +6452,8 @@
             xp: 0,
             watch_mins: 0,
             completed_lecture_ids: [],
-            role: 'student',
-            can_post_feed: 0
+            role: isAdminGrade ? 'admin' : 'student',
+            can_post_feed: isAdminGrade ? 1 : 0
         };
 
         // 🗄️ Persist to Cloudflare D1 FIRST and wait for confirmation. Saving
