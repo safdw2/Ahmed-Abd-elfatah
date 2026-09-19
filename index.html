@@ -2875,6 +2875,10 @@
             <header class="h-16 border-b border-white/5 px-6 flex items-center justify-between shrink-0 bg-slate-950/20 backdrop-blur-md glass-header">
                 <h2 id="active-tab-title" class="text-sm font-bold text-white tracking-wide">Dashboard</h2>
                 <div class="flex items-center gap-4">
+                    <button id="voice-wake-btn" onclick="toggleVoiceWake()" class="relative p-2 rounded-xl bg-slate-950/40 hover:bg-white/5 border border-white/5 text-gray-400 hover:text-white transition interactive-btn flex items-center justify-center shadow-md" title="Turn on hands-free voice commands (say Co-Assistant)">
+                        <i id="voice-wake-icon" data-lucide="mic-off" class="w-4 h-4"></i>
+                        <span id="voice-wake-dot" class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-gray-600"></span>
+                    </button>
                     <button onclick="toggleTheme()" class="p-2 rounded-xl bg-slate-950/40 hover:bg-white/5 border border-white/5 text-gray-400 hover:text-white transition interactive-btn flex items-center justify-center shadow-md" title="Toggle Light/Dark Theme">
                         <i id="theme-icon" data-lucide="moon" class="w-4 h-4"></i>
                     </button>
@@ -3669,10 +3673,6 @@
                         <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
                         <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
                         <option value="Grade 10 (Secondary 1)">Grade 10 (Secondary 1)</option>
-                        <!-- Selecting this grade auto-grants admin + feed privileges in
-                             handleProvisionSubmit() and hides the account from the live
-                             rankings board in renderDashboardLeaderboard(). -->
-                        <option value="Admin">Admin</option>
                     </select>
                 </div>
                 <div class="space-y-1">
@@ -4357,6 +4357,7 @@
 
         window.addEventListener('DOMContentLoaded', hydrateFromD1);
         window.addEventListener('DOMContentLoaded', initCursorParticles);
+        window.addEventListener('DOMContentLoaded', initVoiceWakeWord);
 
         // -----------------------------------------------------------------
         // LOGIN MANAGER & SESSION SYSTEMS
@@ -4766,8 +4767,7 @@
 
             // Sort students by watched minutes limit descending
             const sortedStudents = students
-                .filter(student => String(student.id || '').toLowerCase() !== 'admin' && String(student.name || '').toLowerCase() !== 'administrator'
-                    && String(student.grade || '').trim().toLowerCase() !== 'admin')
+                .filter(student => String(student.id || '').toLowerCase() !== 'admin' && String(student.name || '').toLowerCase() !== 'administrator')
                 .sort((a,b) => b.watch_mins - a.watch_mins);
             
             if (sortedStudents.length === 0) {
@@ -6435,12 +6435,6 @@
             return;
         }
 
-        // Choosing the "Admin" grade is a shortcut for provisioning a staff
-        // account: it auto-grants the admin role (same as toggleAdminPrivilege)
-        // and feed-posting rights (same as toggleFeedPrivilege), instead of
-        // making the person register the student first and grant both by hand.
-        const isAdminGrade = grade === 'Admin';
-
         const newStudent = {
             id: id,
             phone: id,
@@ -6452,8 +6446,8 @@
             xp: 0,
             watch_mins: 0,
             completed_lecture_ids: [],
-            role: isAdminGrade ? 'admin' : 'student',
-            can_post_feed: isAdminGrade ? 1 : 0
+            role: 'student',
+            can_post_feed: 0
         };
 
         // 🗄️ Persist to Cloudflare D1 FIRST and wait for confirmation. Saving
@@ -6570,6 +6564,192 @@
             }
         ];
         let activeAIChatId = aiChats[0].id;
+
+        // =====================================================================
+        // 🎙️ VOICE WAKE WORD ENGINE — say "Co-Assistant" from anywhere in the
+        // portal (dashboard, videos, materials, feed) to give a hands-free
+        // command. Built on the browser's native SpeechRecognition API, so it
+        // needs zero backend changes and reuses submitAIChatMessage() /
+        // runPortalCommand() exactly like typing would — that's what already
+        // knows how to open the latest session, jump tabs, etc.
+        //
+        // Browser support: Chrome & Edge (desktop + Android) only. Safari and
+        // Firefox do not implement SpeechRecognition, so the mic button stays
+        // disabled there and we tell the user why instead of failing silently.
+        // Requires HTTPS (Cloudflare Pages already serves over HTTPS) and a
+        // one-time mic permission grant from the browser.
+        // =====================================================================
+        let voiceWakeEnabled = JSON.parse(localStorage.getItem('voice_wake_enabled') || 'false');
+        let voiceRecognition = null;
+        let voiceListeningForCommand = false;
+        let voiceCommandTimeout = null;
+        const VOICE_WAKE_WORD_RE = /\bco[\s-]?assistant\b/i;
+
+        function isSpeechRecognitionSupported() {
+            return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+        }
+
+        function initVoiceWakeWord() {
+            updateVoiceMicUI();
+            if (voiceWakeEnabled) startVoiceWakeListener();
+        }
+
+        function updateVoiceMicUI() {
+            const btn = document.getElementById('voice-wake-btn');
+            const icon = document.getElementById('voice-wake-icon');
+            if (!btn) return;
+
+            if (!isSpeechRecognitionSupported()) {
+                btn.classList.add('opacity-40', 'cursor-not-allowed');
+                btn.title = 'Voice commands need Chrome or Edge on this device.';
+                setVoiceIndicator('off');
+                return;
+            }
+
+            btn.title = voiceWakeEnabled
+                ? 'Voice wake word is ON — say "Co-Assistant" then your command.'
+                : 'Turn on hands-free voice commands (say Co-Assistant)';
+
+            if (voiceWakeEnabled) {
+                btn.classList.add('border-indigo-500', 'text-indigo-300', 'bg-indigo-500/10');
+            } else {
+                btn.classList.remove('border-indigo-500', 'text-indigo-300', 'bg-indigo-500/10');
+                setVoiceIndicator('off');
+            }
+
+            if (icon) icon.setAttribute('data-lucide', voiceWakeEnabled ? 'mic' : 'mic-off');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function setVoiceIndicator(state) {
+            const dot = document.getElementById('voice-wake-dot');
+            if (!dot) return;
+            dot.classList.remove('bg-emerald-500', 'bg-amber-400', 'bg-gray-600', 'animate-pulse');
+            if (state === 'listening-command') {
+                dot.classList.add('bg-amber-400', 'animate-pulse');
+            } else if (state === 'idle') {
+                dot.classList.add('bg-emerald-500');
+            } else {
+                dot.classList.add('bg-gray-600');
+            }
+        }
+
+        function toggleVoiceWake() {
+            if (!isSpeechRecognitionSupported()) {
+                showToast('Voice commands need Chrome or Edge on this device.', 'error');
+                return;
+            }
+
+            voiceWakeEnabled = !voiceWakeEnabled;
+            localStorage.setItem('voice_wake_enabled', JSON.stringify(voiceWakeEnabled));
+            updateVoiceMicUI();
+
+            if (voiceWakeEnabled) {
+                showToast('Voice wake word is on — say "Co-Assistant" then your command.', 'success');
+                startVoiceWakeListener();
+            } else {
+                showToast('Voice wake word is off.', 'success');
+                stopVoiceWakeListener();
+            }
+        }
+
+        function startVoiceWakeListener() {
+            if (!isSpeechRecognitionSupported() || !voiceWakeEnabled) return;
+            if (voiceRecognition) return; // already listening
+
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            voiceRecognition = new SR();
+            voiceRecognition.continuous = true;
+            voiceRecognition.interimResults = false;
+            voiceRecognition.lang = 'en-US';
+
+            voiceRecognition.onresult = (event) => {
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    if (!result.isFinal) continue;
+
+                    const transcript = result[0].transcript.trim();
+                    const lower = transcript.toLowerCase();
+                    const match = lower.match(VOICE_WAKE_WORD_RE);
+
+                    if (!voiceListeningForCommand) {
+                        if (!match) continue;
+                        const after = transcript.slice(match.index + match[0].length).trim();
+                        if (after.length > 1) {
+                            handleVoiceCommand(after);
+                        } else {
+                            // Wake word said on its own — listen for the
+                            // command in the next thing the person says.
+                            voiceListeningForCommand = true;
+                            setVoiceIndicator('listening-command');
+                            showToast('🎤 Listening... say your command.', 'success');
+                            clearTimeout(voiceCommandTimeout);
+                            voiceCommandTimeout = setTimeout(() => {
+                                voiceListeningForCommand = false;
+                                setVoiceIndicator('idle');
+                            }, 6000);
+                        }
+                    } else {
+                        clearTimeout(voiceCommandTimeout);
+                        voiceListeningForCommand = false;
+                        setVoiceIndicator('idle');
+                        handleVoiceCommand(transcript);
+                    }
+                }
+            };
+
+            voiceRecognition.onerror = (event) => {
+                console.warn('Voice recognition error:', event.error);
+                if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                    voiceWakeEnabled = false;
+                    localStorage.setItem('voice_wake_enabled', 'false');
+                    updateVoiceMicUI();
+                    showToast('Microphone access was blocked. Enable it in your browser site settings to use voice commands.', 'error');
+                }
+            };
+
+            voiceRecognition.onend = () => {
+                voiceRecognition = null;
+                // Browsers silently end recognition after a pause even in
+                // continuous mode — restart automatically while the person
+                // still has the wake word turned on.
+                if (voiceWakeEnabled) {
+                    setTimeout(() => startVoiceWakeListener(), 300);
+                }
+            };
+
+            try {
+                voiceRecognition.start();
+                setVoiceIndicator('idle');
+            } catch (err) {
+                console.warn('Could not start voice recognition:', err);
+                voiceRecognition = null;
+            }
+        }
+
+        function stopVoiceWakeListener() {
+            voiceListeningForCommand = false;
+            clearTimeout(voiceCommandTimeout);
+            setVoiceIndicator('off');
+            if (voiceRecognition) {
+                const r = voiceRecognition;
+                voiceRecognition = null; // set first so onend won't auto-restart
+                r.onend = null;
+                try { r.stop(); } catch (err) {}
+            }
+        }
+
+        function handleVoiceCommand(rawText) {
+            const command = rawText.replace(VOICE_WAKE_WORD_RE, '').trim();
+            if (!command) return;
+
+            showToast(`🎤 Heard: "${command}"`, 'success');
+
+            const input = document.getElementById('ai-chat-prompt');
+            if (!input) return;
+            input.value = command;
+            submitAIChatMessage();
+        }
 
         function renderAISessions() {
             const list = document.getElementById('ai-sessions-list');
