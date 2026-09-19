@@ -7806,12 +7806,16 @@
     </script> <!-- 1. Close the inline JavaScript block here -->
 
 <!-- =====================================================================
-     🎙️ VOICE CO-ASSISTANT
-     - Wakes ONLY on the full phrase "Co-Assistant" (never "co" or "assistant" alone)
-     - 5-second countdown before EVERY command (say "cancel" to stop it)
-     - Speaks what it is doing ("Opening dashboard")
-     - Anything that is not a portal command is sent to the AI chat and the
-       answer is read out loud
+     🎙️ VOICE CO-ASSISTANT  (v2)
+     - Fully automatic: starts listening as soon as you are inside the portal
+       (no tap needed). Only reacts to the wake phrase "Co Assistant".
+     - Say "Co Assistant" + a command in one go, or say "Co Assistant", wait for
+       the chime, then say the command.
+     - A full-screen overlay opens in the CENTER of the screen with the AI logo
+       above a live transcript of what you are saying.
+     - 5-second countdown before EVERY command (say "cancel" to stop it).
+     - Questions / longer requests open the Co Assistant AI page and the answer is
+       written there as text (short answers are also read out loud).
      Everything lives in this one block. Delete it to remove voice control.
      ===================================================================== -->
 <style id="va-styles">
@@ -7828,44 +7832,78 @@
         100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
     }
 
-    /* Floating status / countdown card */
-    #va-panel {
-        position: fixed; left: 50%; transform: translateX(-50%);
-        bottom: max(20px, env(safe-area-inset-bottom));
-        width: min(460px, calc(100vw - 24px)); z-index: 100000;
-        color: #e2e8f0; background: rgba(15,23,42,.94);
-        -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-        border: 1px solid rgba(99,102,241,.4); border-radius: 18px;
-        box-shadow: 0 14px 44px rgba(0,0,0,.5); padding: 10px 14px;
-        font-size: 13px; line-height: 1.4;
+    /* ---------- Full-screen centered overlay ---------- */
+    #va-overlay {
+        position: fixed; inset: 0; z-index: 100000;
+        display: flex; align-items: center; justify-content: center;
+        padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+        color: #e2e8f0;
+        background: radial-gradient(circle at 50% 38%, rgba(67,56,202,.42), rgba(2,6,23,.92) 70%);
+        -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2);
+        opacity: 0; visibility: hidden; pointer-events: none;
+        transition: opacity .25s ease, visibility 0s linear .25s;
     }
-    @media (max-width: 767px) { #va-panel { bottom: calc(env(safe-area-inset-bottom) + 76px); } }
-    .light-theme #va-panel { background: rgba(255,255,255,.96); color: #0f172a; border-color: #c7d2fe; box-shadow: 0 14px 44px rgba(15,23,42,.18); }
-    #va-panel .va-row { display: flex; align-items: center; gap: 8px; }
-    #va-panel .va-dot { width: 8px; height: 8px; border-radius: 50%; background: #818cf8; flex: none; animation: vaBlink 1.4s infinite; }
-    #va-panel[data-mode="awake"] .va-dot, #va-panel[data-mode="countdown"] .va-dot { background: #4ade80; }
-    #va-panel[data-mode="busy"] .va-dot { background: #22d3ee; }
-    @keyframes vaBlink { 50% { opacity: .35; } }
-    #va-status { flex: 1; font-weight: 700; font-size: 12px; }
-    #va-panel button { cursor: pointer; border-radius: 10px; border: 1px solid rgba(148,163,184,.35); background: rgba(148,163,184,.12); color: inherit; font-weight: 700; font-size: 11px; padding: 6px 10px; min-height: 32px; }
-    #va-panel button:hover { background: rgba(99,102,241,.25); }
-    #va-panel #va-cancel { border-color: rgba(248,113,113,.5); color: #f87171; }
-    #va-panel #va-close { padding: 2px 8px; min-height: 26px; }
-    #va-heard { margin-top: 6px; font-size: 12px; opacity: .95; word-break: break-word; }
-    #va-heard:empty { display: none; }
-    #va-heard.va-interim { opacity: .55; font-style: italic; }
-    #va-count { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(148,163,184,.22); }
-    #va-count .va-ring { position: relative; width: 46px; height: 46px; flex: none; }
+    #va-overlay.va-show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .25s ease; }
+    .light-theme #va-overlay {
+        color: #0f172a;
+        background: radial-gradient(circle at 50% 38%, rgba(165,180,252,.55), rgba(248,250,252,.95) 72%);
+    }
+    #va-card {
+        width: min(560px, 100%); max-height: 100%; overflow-y: auto;
+        display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px;
+        transform: scale(.94); transition: transform .25s ease;
+    }
+    #va-overlay.va-show #va-card { transform: scale(1); }
+
+    /* AI logo with a pulsing halo */
+    #va-logo-wrap { position: relative; width: 104px; height: 104px; flex: none; }
+    #va-logo-wrap::before, #va-logo-wrap::after {
+        content: ''; position: absolute; inset: -10px; border-radius: 34px;
+        border: 2px solid rgba(129,140,248,.55); animation: vaHalo 2.4s ease-out infinite;
+    }
+    #va-logo-wrap::after { animation-delay: 1.2s; }
+    #va-overlay[data-mode="awake"] #va-logo-wrap::before, #va-overlay[data-mode="awake"] #va-logo-wrap::after { border-color: rgba(74,222,128,.65); animation-duration: 1.4s; }
+    #va-overlay[data-mode="reply"] #va-logo-wrap::before, #va-overlay[data-mode="reply"] #va-logo-wrap::after { border-color: rgba(34,211,238,.6); }
+    @keyframes vaHalo { 0% { transform: scale(.92); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+    #va-logo {
+        position: relative; width: 100%; height: 100%; object-fit: cover; border-radius: 28px;
+        background: rgba(15,23,42,.6); border: 1px solid rgba(129,140,248,.45);
+        box-shadow: 0 10px 40px rgba(79,70,229,.45);
+    }
+
+    #va-status { font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; opacity: .8; }
+    #va-heard {
+        min-height: 2.6em; width: 100%; padding: 0 6px;
+        font-size: clamp(20px, 5vw, 30px); font-weight: 700; line-height: 1.3; word-break: break-word;
+    }
+    #va-heard:empty::before { content: '…'; opacity: .45; }
+    #va-heard.va-interim { opacity: .7; }
+    #va-heard.va-interim::after { content: '▍'; margin-left: 2px; animation: vaBlink 1s infinite; }
+    @keyframes vaBlink { 50% { opacity: 0; } }
+
+    /* Countdown */
+    #va-count { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+    #va-count .va-ring { position: relative; width: 124px; height: 124px; }
     #va-count .va-ring svg { width: 100%; height: 100%; }
-    #va-count .va-ring-bg { fill: none; stroke: rgba(148,163,184,.25); stroke-width: 3; }
-    #va-ring-fg { fill: none; stroke: #818cf8; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 119.4; stroke-dashoffset: 0; transform: rotate(-90deg); transform-origin: 50% 50%; }
-    #va-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
-    #va-count .va-txt { flex: 1; min-width: 0; }
-    #va-action { font-weight: 800; font-size: 13px; }
-    #va-detail { font-size: 11px; opacity: .75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #va-count small { display: block; opacity: .6; font-size: 10px; margin-top: 2px; }
-    #va-count .va-btns { display: flex; flex-direction: column; gap: 6px; }
-    #va-speak { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 11px; opacity: .85; }
+    #va-count .va-ring-bg { fill: none; stroke: rgba(148,163,184,.28); stroke-width: 5; }
+    #va-ring-fg { fill: none; stroke: #818cf8; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 276.46; stroke-dashoffset: 0; transform: rotate(-90deg); transform-origin: 50% 50%; }
+    #va-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 46px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
+    #va-action { font-weight: 800; font-size: 18px; }
+    #va-detail { font-size: 13px; opacity: .75; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #va-count small { opacity: .6; font-size: 11px; }
+    #va-btns { display: flex; gap: 10px; margin-top: 4px; }
+
+    /* Text reply (help / progress) */
+    #va-reply { width: 100%; max-height: 34vh; overflow-y: auto; font-size: 15px; line-height: 1.55; padding: 12px 16px; border-radius: 16px; background: rgba(15,23,42,.55); border: 1px solid rgba(129,140,248,.3); text-align: left; }
+    .light-theme #va-reply { background: rgba(255,255,255,.75); border-color: #c7d2fe; }
+
+    #va-foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 4px; }
+    #va-overlay button { cursor: pointer; border-radius: 12px; border: 1px solid rgba(148,163,184,.4); background: rgba(148,163,184,.14); color: inherit; font-weight: 700; font-size: 12px; padding: 8px 14px; min-height: 36px; }
+    #va-overlay button:hover { background: rgba(99,102,241,.3); }
+    #va-overlay #va-cancel { border-color: rgba(248,113,113,.55); color: #f87171; }
+    #va-overlay #va-now { border-color: rgba(74,222,128,.55); color: #4ade80; }
+    .light-theme #va-overlay #va-now { color: #15803d; }
+    #va-overlay #va-off { opacity: .65; font-weight: 600; }
 </style>
 
 <script id="va-script">
@@ -7878,19 +7916,28 @@
     // SETTINGS — tweak these
     // ------------------------------------------------------------------
     const CFG = {
-        COUNTDOWN_SECONDS: 5,          // delay before EVERY command runs
+        COUNTDOWN_SECONDS: 5,          // countdown before EVERY command runs
         LANG: 'en-US',                 // what the microphone listens for
-        TTS_LANG: 'en-US',             // voice used to talk back (Arabic answers auto-switch to ar-SA)
+        TTS_LANG: 'en-US',             // voice used to talk back (Arabic text auto-switches to ar-SA)
         SPEAK_RATE: 1.0,
-        COMMAND_WINDOW_MS: 9000,       // after saying only "Co-Assistant", how long it waits for the command
-        ANSWER_TIMEOUT_MS: 45000,      // give up waiting for the AI after this long
-        MAX_SPOKEN_CHARS: 900,         // long AI answers are trimmed when read aloud (full text stays in chat)
-        ECHO_TAIL_MS: 800,             // ignore the mic right after it finishes talking
+        AUTO_START: true,              // start listening by itself when you are inside the portal
+        COMMAND_WINDOW_MS: 10000,      // after saying only "Co Assistant", how long it waits for the command
+        ANSWER_TIMEOUT_MS: 60000,      // give up waiting for the AI after this long
+        SPEAK_ANSWER_MAX_CHARS: 220,   // AI answers up to this length are also read aloud; longer ones stay as text only
+        MAX_SPOKEN_CHARS: 600,         // safety cap for anything else that is read aloud
+        ECHO_TAIL_MS: 900,             // ignore the mic right after it finishes talking
+        SPEAK_CONFIRM: true,           // say "Opening dashboard" when the countdown starts
+        CHIME: true,                   // soft chime when it wakes up
         TICK_SOUND: true               // soft tick on every countdown second
     };
 
-    // The wake phrase. Needs BOTH words: "co assistant", "co-assistant" or "coassistant".
-    const WAKE_RE = /\bco[\s-]?assistant\b/;
+    // Wake phrase: "co assistant" plus the ways speech engines usually mis-hear it
+    // (co-assistant, coassistant, code assistant, go assistant, co assist, co assistance ...).
+    const WAKE_SRC = '(?:co|coe|ko|koh|kow|go|code|call|coo|cu|kuh|cuz|quo)[\\s-]*(?:assistants?|assistance|assistent|assist(?:ing|ed)?)';
+    const WAKE_RE    = new RegExp('\\b' + WAKE_SRC + '\\b');
+    const WAKE_START = new RegExp('^' + WAKE_SRC + '\\b[\\s,.:-]*');
+    const CANCEL_RE  = new RegExp('^(?:' + WAKE_SRC + '[\\s,]+)?(cancel|stop|never ?mind|abort|no|wait|don\'?t|forget it)$');
+    const STOP_RE    = new RegExp('^(?:' + WAKE_SRC + '[\\s,]+)?(stop|be quiet|quiet|silence|shut up|enough|cancel)(?: talking)?$');
 
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const synth = window.speechSynthesis || null;
@@ -7899,13 +7946,14 @@
     const toast = (m, t) => { try { if (typeof showToast === 'function') showToast(m, t || 'info'); else console.log('[voice]', m); } catch (e) {} };
 
     const S = {
-        enabled: false, wantOn: false, mode: 'idle',   // idle | awake | countdown | busy
-        rec: null, listening: false, restartTimer: null, restarts: [],
+        enabled: false, userOff: false, blocked: false, mode: 'idle',   // idle | awake | countdown | busy
+        rec: null, listening: false, restartTimer: null, restarts: [], netWarned: false,
         awakeUntil: 0, awakeTimer: null,
-        pending: null, cdTimer: null, busy: false,
+        pending: null, cdTimer: null, busy: false, replyText: '',
         speaking: false, ttsSeq: 0, curResolve: null, ignoreUntil: 0, spoken: [],
-        lastFinal: '', lastFinalAt: 0, resumeArmed: false
+        lastFinal: '', lastFinalAt: 0
     };
+    try { S.userOff = localStorage.getItem('va_off') === '1'; } catch (e) {}
 
     // ------------------------------------------------------------------
     // TEXT HELPERS
@@ -7925,12 +7973,11 @@
     const ORDW = { first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10 };
     const toNum = (w) => /^\d+$/.test(w) ? parseInt(w, 10) : (NUMW[w] || null);
 
-    // Clean text so the speech engine doesn't read symbols / emoji / markdown out loud
-    function cleanForSpeech(t, mask) {
+    // Clean text so the speech engine doesn't read symbols / emoji / markdown out loud.
+    // The wake phrase is always masked so the mic can never mistake our own voice for it.
+    function cleanForSpeech(t) {
         t = String(t || '');
-        // The AI often says its own name; masking it means the mic can never mistake the
-        // assistant's own voice for the wake phrase.
-        if (mask) t = t.replace(/co[\s-]?assistant/gi, 'the assistant');
+        t = t.replace(new RegExp(WAKE_SRC, 'gi'), 'the assistant');
         t = t.replace(/https?:\/\/\S+/g, ' link ')
              .replace(/\^/g, ' to the power of ')
              .replace(/[→⇒]/g, ' gives ').replace(/⇌/g, ' in equilibrium with ')
@@ -7985,16 +8032,15 @@
         return S.spoken.some((s) => now - s.at < 12000 && s.t.includes(text));
     }
 
-    function speak(text, opts) {
-        opts = opts || {};
+    function speak(text) {
         return new Promise((resolve) => {
             if (!synth || !text) return resolve();
-            let t = cleanForSpeech(text, opts.mask);
+            let t = cleanForSpeech(text);
             if (!t) return resolve();
             if (t.length > CFG.MAX_SPOKEN_CHARS) {
                 const cut = t.slice(0, CFG.MAX_SPOKEN_CHARS);
                 const i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
-                t = (i > 200 ? cut.slice(0, i + 1) : cut) + ' You can read the rest in the chat.';
+                t = (i > 200 ? cut.slice(0, i + 1) : cut) + ' You can read the rest on the screen.';
             }
             const prev = S.curResolve; S.curResolve = resolve; if (prev) prev();
             const seq = ++S.ttsSeq;
@@ -8035,20 +8081,27 @@
     }
 
     // ------------------------------------------------------------------
-    // COUNTDOWN TICK SOUND
+    // SOUNDS (countdown tick + wake chime)
     // ------------------------------------------------------------------
     let actx = null;
-    function tick(last) {
-        if (!CFG.TICK_SOUND) return;
+    function audioCtx() {
         try {
             actx = actx || new (window.AudioContext || window.webkitAudioContext)();
             if (actx.state === 'suspended') actx.resume();
-            const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
-            o.frequency.value = last ? 880 : 520;
-            g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-            o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + 0.13);
+        } catch (e) {}
+        return actx;
+    }
+    function beep(freq, when, dur, vol) {
+        const ctx = audioCtx(); if (!ctx) return;
+        try {
+            const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + when;
+            o.frequency.value = freq;
+            g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+            o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + dur + 0.02);
         } catch (e) {}
     }
+    const tick = (last) => { if (CFG.TICK_SOUND) beep(last ? 880 : 520, 0, 0.12, 0.05); };
+    const chime = () => { if (CFG.CHIME) { beep(660, 0, 0.14, 0.06); beep(990, 0.13, 0.18, 0.06); } };
 
     // ------------------------------------------------------------------
     // PORTAL HELPERS (all use the site's real functions / data)
@@ -8071,7 +8124,7 @@
         return currentUser.name + ', you have watched ' + watched + ' of ' + list.length + ' sessions and earned ' + (currentUser.xp || 0) + ' experience points. You are level ' + lvl.level + ', ' + lvl.title + '.';
     }
 
-    // Send a question to the site's own AI chat, wait for the answer, return its text
+    // Open the Co Assistant AI page, type the question there, wait for the written answer.
     async function askAssistant(q) {
         const input = $('ai-chat-prompt');
         if (!input || typeof submitAIChatMessage !== 'function') throw new Error('AI chat is not available');
@@ -8079,18 +8132,28 @@
         const gap = 2700 - (Date.now() - (window.lastAISubmitTime || 0));
         if (gap > 0) await sleep(gap);
         switchTab('co-assistant');
-        await sleep(150);
+        await sleep(200);
         const chatId = activeAIChatId;
         input.value = q;
-        const answer = await Promise.race([
-            submitAIChatMessage().then(() => true),
-            sleep(CFG.ANSWER_TIMEOUT_MS).then(() => false)
-        ]);
-        if (!answer) return { text: null, timeout: true };
-        if (input.value === q) { input.value = ''; return { text: null, blocked: true }; }
-        const chat = aiChats.find((c) => c.id === chatId);
-        const last = chat && chat.messages[chat.messages.length - 1];
-        return { text: last && last.role === 'assistant' ? last.text : null };
+
+        // The site can auto-jump to another tab when an answer mentions "dashboard", "videos"...
+        // Hold that back while a voice answer is being written so you stay on the AI page.
+        const origRedirect = window.autoDetectTabRedirect;
+        const patched = typeof origRedirect === 'function';
+        if (patched) window.autoDetectTabRedirect = function () {};
+        try {
+            const finished = await Promise.race([
+                submitAIChatMessage().then(() => true),
+                sleep(CFG.ANSWER_TIMEOUT_MS).then(() => false)
+            ]);
+            if (!finished) return { text: null, timeout: true };
+            if (input.value === q) { input.value = ''; return { text: null, blocked: true }; }
+            const chat = aiChats.find((c) => c.id === chatId);
+            const last = chat && chat.messages[chat.messages.length - 1];
+            return { text: last && last.role === 'assistant' ? last.text : null };
+        } finally {
+            if (patched) window.autoDetectTabRedirect = origRedirect;
+        }
     }
 
     // ------------------------------------------------------------------
@@ -8110,17 +8173,21 @@
     const LEC_ORD = new RegExp('\\b(' + Object.keys(ORDW).join('|') + ')\\s+(?:lecture|lesson|video|session)\\b');
     const LEC_LATEST = /\b(last|latest|newest|recent|most recent)\b.*\b(lecture|lesson|video|session)\b|\b(lecture|lesson|video|session)\b.*\b(last|latest|newest)\b/;
 
+    // Anything that is a question / a longer request: open the AI page and answer as text.
     function askIntent(q, isQ) {
         const text = cap(q) + (isQ ? '?' : '');
         return {
-            label: 'Asking the assistant', detail: '“' + short(text, 70) + '”',
+            label: 'Asking Co Assistant', detail: '“' + short(text, 80) + '”',
             say: 'Okay, let me ask the assistant.',
             run: async () => {
                 const r = await askAssistant(text);
                 if (r.timeout) return 'Sorry, the assistant is taking too long. Please try again.';
                 if (r.blocked || !r.text) return 'Sorry, I could not get an answer right now.';
                 if (/^\s*\u26A0/.test(r.text) && /error/i.test(r.text)) return 'Sorry, I could not reach the assistant. Please try again in a moment.';
-                return { say: r.text, mask: true };
+                // The full answer is already written as text on the AI page.
+                // Short answers are also read out loud; long ones stay as text only.
+                if (r.text.length <= CFG.SPEAK_ANSWER_MAX_CHARS) return { say: r.text };
+                return { say: 'Your answer is ready on the screen.' };
             }
         };
     }
@@ -8138,13 +8205,13 @@
 
         // --- instant controls (no countdown, they must react immediately) ---
         if (/^(stop|stop talking|be quiet|quiet|silence|shut up|enough)$/.test(c)) return { immediate: () => stopSpeaking() };
-        if (/^(cancel|never ?mind|abort|forget it|don'?t)$/.test(c)) return { immediate: () => { if (S.pending) cancelPending(); else speak('There is nothing to cancel.'); } };
+        if (/^(cancel|never ?mind|abort|forget it|don'?t)$/.test(c)) return { immediate: () => { if (S.pending) cancelPending(); } };
 
         // --- help ---
         if (/^(help|commands|what can you do|what are your commands|show commands|list commands|what commands.*)$/.test(c)) {
             return {
                 label: 'Reading the command list', say: 'Okay, here is what I can do.',
-                run: () => 'Say Co Assistant, then a command. You can say: open dashboard, open videos, open materials, open the feed, open the assistant, play the latest lecture, play lecture and a number, show my progress, dark mode, light mode, or log out. Or just ask me any question. Every command has a five second countdown, and you can say cancel to stop it.'
+                run: () => 'Say the wake phrase, then a command. You can say: open dashboard, open videos, open materials, open the feed, open the assistant, play the latest lecture, play lecture and a number, show my progress, dark mode, light mode, or log out. Or just ask me any question and I will answer it on the assistant page. Every command has a five second countdown, and you can say cancel to stop it.'
             };
         }
 
@@ -8202,7 +8269,7 @@
             }
         }
 
-        // --- questions go straight to the AI ---
+        // --- questions go straight to the AI page ---
         if (isQ) return askIntent(original, true);
 
         // --- page navigation ---
@@ -8217,29 +8284,33 @@
             }
         }
 
-        // --- everything else = a question for the AI ---
+        // --- everything else (longer requests) = a question for the AI page ---
         if (original.length >= 4) return askIntent(original, false);
         return null;
     }
 
     // ------------------------------------------------------------------
-    // DISPATCH  →  countdown  →  run
+    // DISPATCH  →  5s countdown  →  run
     // ------------------------------------------------------------------
     function dispatch(cmd) {
-        if (S.busy) return;
+        const key = norm(cmd);
+        if (S.pending && S.pending.key === key) return;            // same command heard twice
         const intent = parseIntent(cmd);
-        S.mode = 'idle'; clearTimeout(S.awakeTimer);
-        if (!intent) { speak("Sorry, I didn't catch that."); render(); return; }
-        if (intent.immediate) { intent.immediate(); render(); return; }
+        clearTimeout(S.awakeTimer);
+        if (intent && intent.immediate) { if (S.mode === 'awake') S.mode = 'idle'; intent.immediate(); render(); return; }
+        if (S.busy) return;
+        S.mode = 'idle';
+        if (!intent) { toast("Sorry, I didn't catch that.", 'warning'); speak("Sorry, I didn't catch that."); render(); return; }
         if (intent.refuse) { toast(intent.refuse, 'warning'); speak(intent.refuse); render(); return; }
+        intent.key = key;
         startCountdown(intent);
     }
 
-    const CIRC = 119.4;
+    const CIRC = 276.46;
     function startCountdown(intent) {
         cancelPending(true);
         S.pending = intent; S.mode = 'countdown';
-        const total = intent.cd != null ? intent.cd : CFG.COUNTDOWN_SECONDS;
+        const total = CFG.COUNTDOWN_SECONDS;
         let left = total;
         if (left <= 0) return fire(intent);
         $('va-action').textContent = intent.label;
@@ -8249,7 +8320,8 @@
         fg.style.transition = 'none'; fg.style.strokeDashoffset = '0'; void fg.getBoundingClientRect();
         fg.style.transition = 'stroke-dashoffset ' + total + 's linear'; fg.style.strokeDashoffset = String(CIRC);
         render();
-        speak(intent.say);
+        tick(false);
+        if (CFG.SPEAK_CONFIRM) speak(intent.say);
         S.cdTimer = setInterval(() => {
             left--;
             if (left <= 0) fire(intent);
@@ -8267,28 +8339,43 @@
 
     async function fire(intent) {
         clearInterval(S.cdTimer); S.cdTimer = null;
-        S.pending = null; S.mode = 'busy'; S.busy = true; render(); tick(true);
+        S.pending = null; S.mode = 'busy'; S.busy = true; render(); tick(true);   // overlay closes so you can see the result
         try {
             const out = await intent.run();
-            if (out && typeof out === 'object' && out.say) await speak(out.say, { mask: out.mask });
-            else if (typeof out === 'string' && out) await speak(out);
+            let say = '', show = false;
+            if (typeof out === 'string') { say = out; show = true; }         // plain text replies are also shown in the overlay
+            else if (out && typeof out === 'object' && out.say) { say = out.say; }
+            if (say) {
+                if (show) { S.replyText = say; render(); }
+                await speak(say);
+                if (show && S.replyText) await sleep(1200);
+            }
         } catch (err) {
             console.error('[voice]', err);
             toast('Voice command failed: ' + (err && err.message ? err.message : err), 'error');
             await speak('Sorry, something went wrong.');
         } finally {
-            S.busy = false; if (S.mode === 'busy') S.mode = 'idle'; render();
+            S.replyText = ''; S.busy = false; if (S.mode === 'busy') S.mode = 'idle'; render();
         }
+    }
+
+    function dismiss() {
+        clearTimeout(S.awakeTimer);
+        cancelPending(true); stopSpeaking();
+        S.replyText = ''; S.mode = S.busy ? 'busy' : 'idle';
+        render();
     }
 
     // ------------------------------------------------------------------
     // LISTENING
     // ------------------------------------------------------------------
     function enterAwake() {
-        S.mode = 'awake'; S.awakeUntil = Date.now() + CFG.COMMAND_WINDOW_MS + 1500;
+        const wasAwake = S.mode === 'awake';
+        S.mode = 'awake'; S.awakeUntil = Date.now() + CFG.COMMAND_WINDOW_MS;
         clearTimeout(S.awakeTimer);
-        S.awakeTimer = setTimeout(() => { if (S.mode === 'awake') { S.mode = 'idle'; render(); } }, CFG.COMMAND_WINDOW_MS + 1500);
-        render(); speak('Yes?');
+        S.awakeTimer = setTimeout(() => { if (S.mode === 'awake') { S.mode = 'idle'; render(); } }, CFG.COMMAND_WINDOW_MS);
+        if (!wasAwake) chime();
+        render();
     }
 
     function handleFinal(raw) {
@@ -8297,28 +8384,28 @@
         const now = Date.now();
         if (text === S.lastFinal && now - S.lastFinalAt < 2500) return;   // Android Chrome sometimes repeats results
         S.lastFinal = text; S.lastFinalAt = now;
-        showHeard(raw, true);
 
         // "cancel" works during the countdown without the wake phrase
-        if (S.pending && /^(?:co[\s-]?assistant )?(cancel|stop|never ?mind|abort|no|wait|don'?t|forget it)$/.test(text)) { cancelPending(); return; }
+        if (S.pending && CANCEL_RE.test(text)) { cancelPending(); return; }
         // while it is talking, only listen for "stop"
-        if (S.speaking) { if (/^(?:co[\s-]?assistant )?(stop|be quiet|quiet|silence|shut up|enough|cancel)(?: talking)?$/.test(text)) stopSpeaking(); return; }
+        if (S.speaking) { if (STOP_RE.test(text)) stopSpeaking(); return; }
         if (now < S.ignoreUntil || isEcho(text)) return;
 
         const m = text.match(WAKE_RE);
         if (m) {
             const before = text.slice(0, m.index).replace(/\b(hey|hi|hello|ok|okay)\b/g, ' ').replace(/\s+/g, ' ').trim();
             let cmd = text.slice(m.index + m[0].length).replace(/^[\s,.:-]+/, '');
-            while (/^co[\s-]?assistant\b/.test(cmd)) cmd = cmd.replace(/^co[\s-]?assistant[\s,.:-]*/, '');
-            if (cmd) dispatch(cmd);
-            else if (before) dispatch(before);          // "open dashboard, Co-Assistant"
-            else enterAwake();
+            while (WAKE_START.test(cmd)) cmd = cmd.replace(WAKE_START, '');
+            const command = cmd || before;
+            if (command) { showHeard(command, true); dispatch(command); }     // "open dashboard, Co Assistant" also works
+            else { showHeard('', true); enterAwake(); }
             return;
         }
-        if (S.mode === 'awake' && now < S.awakeUntil && text !== 'yes') dispatch(text);   // 'yes' = its own "Yes?" echoing back
+        if (S.mode === 'awake' && now < S.awakeUntil) { showHeard(raw, true); dispatch(text); }
         // no wake phrase + not awake = ignored on purpose
     }
 
+    // Prefer the recognizer alternative that actually contains the wake phrase
     function pickAlt(res) {
         const top = res[0].transcript;
         if (WAKE_RE.test(norm(top))) return top;
@@ -8333,23 +8420,29 @@
             if (res.isFinal) handleFinal(pickAlt(res));
             else interim += res[0].transcript;
         }
-        if (interim && !S.speaking) showHeard(interim, false);
+        if (!interim || S.speaking || S.mode === 'countdown' || S.busy) return;
+        const n = norm(interim);
+        // The overlay opens the instant the wake phrase is heard, then "types" what you say live
+        if (S.mode === 'idle' && Date.now() >= S.ignoreUntil && WAKE_RE.test(n) && !isEcho(n)) enterAwake();
+        if (S.mode === 'awake') showHeard(interim, false);
     }
 
     function startRec() {
         if (!SR || !S.enabled || S.rec) return;
         const rec = new SR();
-        rec.lang = CFG.LANG; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 3;
-        rec.onstart = () => { S.listening = true; render(); };
+        rec.lang = CFG.LANG; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 5;
+        rec.onstart = () => { S.listening = true; S.netWarned = false; render(); };
         rec.onresult = onResult;
         rec.onerror = (e) => {
             if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-                toast('Microphone is blocked. Allow it in the browser address bar, then tap the mic again.', 'error');
-                S.enabled = false; S.wantOn = false; try { localStorage.setItem('va_enabled', '0'); } catch (x) {}
+                toast('Microphone is blocked. Allow it in the browser address bar, then tap the mic button.', 'error');
+                S.enabled = false; S.blocked = true;
                 teardown();
             } else if (e.error === 'audio-capture') {
                 toast('No microphone was found.', 'error');
-                S.enabled = false; teardown();
+                S.enabled = false; S.blocked = true; teardown();
+            } else if (e.error === 'network') {
+                if (!S.netWarned) { S.netWarned = true; toast('Voice recognition needs an internet connection.', 'warning'); }
             }
         };
         rec.onend = () => { S.rec = null; S.listening = false; render(); if (S.enabled) scheduleRestart(); };
@@ -8370,62 +8463,75 @@
         if (S.rec) { S.rec.onend = null; S.rec.onerror = null; try { S.rec.abort(); } catch (e) {} S.rec = null; }
         S.listening = false;
         cancelPending(true); stopSpeaking();
-        S.mode = 'idle'; S.busy = false; render();
+        S.replyText = ''; S.mode = 'idle'; S.busy = false; render();
     }
 
     function enable(quiet) {
-        if (!SR) { toast('Voice control needs Chrome, Edge or Samsung Internet on this device.', 'error'); return; }
+        if (!SR) { if (!quiet) toast('Voice control needs Chrome, Edge or Samsung Internet on this device.', 'error'); return; }
         if (!inPortal()) return;
-        S.enabled = true; S.wantOn = true;
-        try { localStorage.setItem('va_enabled', '1'); } catch (e) {}
-        // unlock audio + speech on this tap (mobile browsers require a user gesture)
-        try { if (synth) { synth.cancel(); const w = new SpeechSynthesisUtterance(' '); w.volume = 0; synth.speak(w); } } catch (e) {}
-        try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.resume) actx.resume(); } catch (e) {}
+        S.enabled = true; S.userOff = false; S.blocked = false;
+        try { localStorage.setItem('va_off', '0'); } catch (e) {}
+        unlockAudio();
         S.mode = 'idle'; render(); startRec();
         if (!quiet) speak('Voice control is on.');
     }
 
     function disable() {
-        S.enabled = false; S.wantOn = false;
-        try { localStorage.setItem('va_enabled', '0'); } catch (e) {}
+        S.enabled = false; S.userOff = true;
+        try { localStorage.setItem('va_off', '1'); } catch (e) {}
         teardown();
         speak('Voice control is off.');
+    }
+
+    // Browsers only allow sound after a user gesture — unlock it on the first tap/click/key anywhere
+    let unlocked = false;
+    function unlockAudio() {
+        if (unlocked) return;
+        try { if (synth) { synth.cancel(); const w = new SpeechSynthesisUtterance(' '); w.volume = 0; synth.speak(w); } } catch (e) {}
+        audioCtx();
+        unlocked = true;
     }
 
     // ------------------------------------------------------------------
     // UI
     // ------------------------------------------------------------------
     const MIC_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>';
-    let heardTimer;
+    const LOGO_FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></svg>');
 
     function showHeard(t, final) {
         const el = $('va-heard'); if (!el) return;
-        el.textContent = t ? '🎙 “' + String(t).trim() + '”' : '';
-        el.classList.toggle('va-interim', !final);
-        clearTimeout(heardTimer);
-        if (final) heardTimer = setTimeout(() => { el.textContent = ''; }, 5000);
+        el.textContent = t ? '“' + String(t).trim() + '”' : '';
+        el.classList.toggle('va-interim', !final && !!t);
     }
 
     function render() {
-        const panel = $('va-panel'); if (!panel) return;
+        const ov = $('va-overlay'); if (!ov) return;
         const btn = $('va-mic-btn');
         if (btn) {
             btn.classList.toggle('va-on', S.enabled);
             btn.classList.toggle('va-awake', S.enabled && (S.mode !== 'idle' || S.speaking));
             btn.setAttribute('aria-pressed', S.enabled ? 'true' : 'false');
-            btn.title = S.enabled ? 'Voice control is ON — tap to turn off' : 'Voice control — tap, then say “Co-Assistant”';
+            btn.title = S.enabled ? 'Voice control is ON — say “Co Assistant” + a command. Tap to turn off' : 'Voice control is OFF — tap to turn on';
         }
-        panel.classList.toggle('va-hidden', !S.enabled || !inPortal());
-        panel.dataset.mode = S.mode;
+        const showReply = !!S.replyText;
+        const show = S.enabled && inPortal() && (S.mode === 'awake' || S.mode === 'countdown' || showReply);
+        ov.classList.toggle('va-show', show);
+        ov.setAttribute('aria-hidden', show ? 'false' : 'true');
+        ov.dataset.mode = showReply ? 'reply' : S.mode;
+
         let msg;
-        if (S.mode === 'countdown') msg = 'Command received';
-        else if (S.mode === 'busy') msg = S.speaking ? 'Speaking…' : 'Working on it…';
-        else if (S.speaking) msg = 'Speaking…';
-        else if (S.mode === 'awake') msg = 'Yes? I’m listening for your command…';
-        else msg = S.listening ? 'Listening — say “Co-Assistant” + your command' : 'Starting microphone…';
+        if (showReply) msg = S.speaking ? 'Speaking…' : 'Co Assistant';
+        else if (S.mode === 'countdown') msg = 'Command received';
+        else if (S.mode === 'awake') msg = 'Listening — say your command';
+        else msg = 'Co Assistant';
         $('va-status').textContent = msg;
-        $('va-count').classList.toggle('va-hidden', S.mode !== 'countdown');
-        $('va-speak').classList.toggle('va-hidden', !S.speaking);
+
+        $('va-heard').classList.toggle('va-hidden', showReply);
+        $('va-count').classList.toggle('va-hidden', S.mode !== 'countdown' || showReply);
+        $('va-reply').classList.toggle('va-hidden', !showReply);
+        $('va-reply').textContent = S.replyText;
+        $('va-stop').classList.toggle('va-hidden', !S.speaking);
+        if (!show) showHeard('', true);
     }
 
     function buildUI() {
@@ -8442,43 +8548,52 @@
         btn.addEventListener('click', () => { S.enabled ? disable() : enable(); });
         if (!SR) btn.title = 'Voice control is not supported in this browser (use Chrome, Edge or Samsung Internet)';
 
-        const panel = document.createElement('div');
-        panel.id = 'va-panel'; panel.className = 'va-hidden'; panel.setAttribute('role', 'status'); panel.setAttribute('aria-live', 'polite');
-        panel.innerHTML =
-            '<div class="va-row"><span class="va-dot"></span><span id="va-status"></span><button id="va-close" type="button" aria-label="Turn voice control off" title="Turn voice control off">✕</button></div>' +
-            '<div id="va-heard"></div>' +
-            '<div id="va-count" class="va-hidden">' +
-                '<div class="va-ring"><svg viewBox="0 0 44 44"><circle class="va-ring-bg" cx="22" cy="22" r="19"/><circle id="va-ring-fg" cx="22" cy="22" r="19"/></svg><b id="va-num">5</b></div>' +
-                '<div class="va-txt"><div id="va-action"></div><div id="va-detail"></div><small>Say “cancel” to stop</small></div>' +
-                '<div class="va-btns"><button id="va-now" type="button">Do it now</button><button id="va-cancel" type="button">Cancel</button></div>' +
-            '</div>' +
-            '<div id="va-speak" class="va-hidden"><span>Talking…</span><button id="va-stop" type="button">Stop talking</button></div>';
-        document.body.appendChild(panel);
-        $('va-close').addEventListener('click', disable);
+        const ov = document.createElement('div');
+        ov.id = 'va-overlay'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-live', 'polite'); ov.setAttribute('aria-label', 'Co Assistant voice control'); ov.dataset.mode = 'idle';
+        ov.innerHTML =
+            '<div id="va-card">' +
+                '<div id="va-logo-wrap"><img id="va-logo" src="ai.png" alt="Co Assistant"></div>' +
+                '<div id="va-status"></div>' +
+                '<div id="va-heard"></div>' +
+                '<div id="va-count" class="va-hidden">' +
+                    '<div class="va-ring"><svg viewBox="0 0 100 100"><circle class="va-ring-bg" cx="50" cy="50" r="44"/><circle id="va-ring-fg" cx="50" cy="50" r="44"/></svg><b id="va-num">5</b></div>' +
+                    '<div id="va-action"></div><div id="va-detail"></div>' +
+                    '<div id="va-btns"><button id="va-now" type="button">Do it now</button><button id="va-cancel" type="button">Cancel</button></div>' +
+                    '<small>Or just say “cancel”</small>' +
+                '</div>' +
+                '<div id="va-reply" class="va-hidden"></div>' +
+                '<div id="va-foot"><button id="va-stop" type="button" class="va-hidden">Stop talking</button><button id="va-close" type="button">Close</button><button id="va-off" type="button">Turn voice control off</button></div>' +
+            '</div>';
+        document.body.appendChild(ov);
+        const logo = $('va-logo');
+        logo.onerror = () => { logo.onerror = null; logo.src = LOGO_FALLBACK; };
+        $('va-close').addEventListener('click', dismiss);
+        $('va-off').addEventListener('click', disable);
         $('va-cancel').addEventListener('click', () => cancelPending());
         $('va-now').addEventListener('click', () => { if (S.pending) fire(S.pending); });
-        $('va-stop').addEventListener('click', stopSpeaking);
+        $('va-stop').addEventListener('click', () => { stopSpeaking(); S.replyText = ''; render(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape' || !ov.classList.contains('va-show')) return;
+            if (S.pending) cancelPending(); else dismiss();
+        });
     }
 
-    // Stop the mic when logged out; offer to resume (one tap anywhere) after the next login
+    // Start automatically once you are inside the portal; stop when you log out
     function syncSession() {
         const inside = inPortal();
         if (!inside && S.enabled) { S.enabled = false; teardown(); }
-        if (inside && !S.enabled && S.wantOn && SR && !S.resumeArmed) {
-            S.resumeArmed = true;
-            const resume = () => { S.resumeArmed = false; document.removeEventListener('pointerdown', resume, true); document.removeEventListener('keydown', resume, true); if (!S.enabled && S.wantOn && inPortal()) enable(true); };
-            document.addEventListener('pointerdown', resume, true);
-            document.addEventListener('keydown', resume, true);
-        }
+        if (inside && !S.enabled && CFG.AUTO_START && SR && !S.userOff && !S.blocked) enable(true);
         render();
     }
 
     function init() {
         buildUI();
-        try { S.wantOn = localStorage.getItem('va_enabled') === '1'; } catch (e) {}
+        ['pointerdown', 'keydown', 'touchstart'].forEach((ev) => document.addEventListener(ev, unlockAudio, { once: true, capture: true }));
         if (synth) { try { synth.getVoices(); synth.onvoiceschanged = () => synth.getVoices(); } catch (e) {} }
+        // Browsers pause the mic in background tabs — wake it back up when you return
+        document.addEventListener('visibilitychange', () => { if (!document.hidden && S.enabled && !S.rec) startRec(); });
         setInterval(syncSession, 1000);
-        render();
+        syncSession();
     }
 
     // Handy for testing without a microphone, in the browser console:
