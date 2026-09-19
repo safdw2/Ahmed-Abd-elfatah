@@ -48,21 +48,27 @@
     }
     #va-overlay.va-show #va-card { transform: scale(1); }
 
-    /* AI logo — a complete green ring all the way around it (no gaps), with a
-       spinning shimmer on top for motion, and a soft pulsing glow behind it.
-       No background plate behind the logo anymore. */
-    #va-logo-wrap { position: relative; width: 104px; height: 104px; flex: none; border-radius: 50%; animation: vaGlow 2.4s ease-in-out infinite; }
-    /* Always-visible, complete ring — this never disappears or gaps */
+    /* AI logo — a complete green ring all the way around it (no gaps), shaped
+       to match the logo's own rounded-square outline, with a spinning shimmer
+       on top for motion and a soft pulsing glow behind it. No background
+       plate behind the logo anymore. */
+    #va-logo-wrap { position: relative; width: 104px; height: 104px; flex: none; border-radius: 28%; animation: vaGlow 2.4s ease-in-out infinite; }
+    /* Always-visible, complete ring — this never disappears or gaps, and it follows the same rounded-square shape as the logo */
     #va-logo-wrap::after {
-        content: ''; position: absolute; inset: -9px; border-radius: 50%;
+        content: ''; position: absolute; inset: -9px; border-radius: 28%;
         border: 2.5px solid rgba(74,222,128,.65);
     }
-    /* Spinning shimmer on top of the ring — starts and ends on the same color so the loop has no seam/gap */
+    /* Spinning shimmer ring on top — built with mask-composite so it hugs the
+       rounded-square shape exactly (a circular mask here would leave gaps at
+       the flat edges, which is the bug this replaces) */
     #va-logo-wrap::before {
-        content: ''; position: absolute; inset: -9px; border-radius: 50%;
+        content: ''; position: absolute; inset: -9px; border-radius: 28%;
+        box-sizing: border-box; padding: 4px;
         background: conic-gradient(from 0deg, #4ade80, #22d3ee, #a78bfa, #4ade80);
-        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
-                mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+                mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+                mask-composite: exclude;
         animation: vaSpin 2.4s linear infinite;
         opacity: .85;
     }
@@ -73,7 +79,7 @@
     @keyframes vaGlow { 0%, 100% { box-shadow: 0 0 16px 1px rgba(74,222,128,.3); } 50% { box-shadow: 0 0 28px 5px rgba(74,222,128,.55); } }
     @keyframes vaSpin { to { transform: rotate(360deg); } }
     #va-logo {
-        position: relative; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+        position: relative; width: 100%; height: 100%; object-fit: cover; border-radius: 28%;
         background: transparent; border: none; box-shadow: none;
     }
 
