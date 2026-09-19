@@ -69,6 +69,18 @@
             100% { transform: scale(1); }
         }
 
+        /* 🎙️ Voice wake-word overlay */
+        #voice-command-overlay { opacity: 0; transition: opacity 0.25s ease; }
+        #voice-command-overlay.voice-overlay-visible { opacity: 1; }
+        @keyframes voiceBarWave {
+            0%, 100% { height: 8px; }
+            50% { height: 32px; }
+        }
+        .voice-bar {
+            height: 8px;
+            animation: voiceBarWave 0.9s ease-in-out infinite;
+        }
+
         @keyframes pulseGlow {
             0%, 100% { opacity: 0.15; }
             50% { opacity: 0.35; }
@@ -3760,7 +3772,36 @@
     </div>
 </div>
 
-<div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+<div id="toast-container" class="fixed bottom-24 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+<!-- 🎙️ Bottom-right mic mute/unmute — always visible, on every page/tab -->
+<button id="voice-fab-btn" onclick="toggleVoiceWake()" class="fixed bottom-6 right-6 z-[900] w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 shadow-2xl shadow-indigo-600/40 border border-white/10 flex items-center justify-center transition-all duration-300 interactive-btn" title="Mute/unmute Co-Assistant voice commands">
+    <i id="voice-fab-icon" data-lucide="mic" class="w-5 h-5 text-white"></i>
+    <span id="voice-fab-dot" class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-gray-600 border-2 border-slate-950"></span>
+</button>
+
+<!-- 🎧 Full-screen "Co-Assistant is listening" overlay -->
+<div id="voice-command-overlay" class="fixed inset-0 z-[950] hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-2xl"></div>
+    <div class="relative z-10 flex flex-col items-center gap-6 px-6 text-center">
+        <div class="relative flex items-center justify-center w-32 h-32">
+            <span class="absolute inset-0 rounded-full bg-indigo-500/20 animate-ping"></span>
+            <span class="absolute inset-3 rounded-full bg-indigo-500/25 animate-pulse"></span>
+            <img id="voice-overlay-logo" src="ai.png" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220%200%2024%2024%22 fill=%22none%22 stroke=%22%236366f1%22 stroke-width=%222%22><path d=%22M12 8V4H8%22/><rect width=%2216%22 height=%2212%22 x=%224%22 y=%228%22 rx=%222%22/><path d=%22M2 14h2%22/><path d=%22M20 14h2%22/><path d=%22M15 13v2%22/><path d=%22M9 13v2%22/></svg>';" class="relative w-20 h-20 rounded-3xl border border-indigo-400/40 shadow-2xl shadow-indigo-600/50 object-cover" alt="Co-Assistant">
+        </div>
+        <div id="voice-overlay-bars" class="flex items-end gap-1.5 h-8">
+            <span class="w-1.5 bg-indigo-400 rounded-full voice-bar" style="animation-delay:0s"></span>
+            <span class="w-1.5 bg-indigo-400 rounded-full voice-bar" style="animation-delay:0.12s"></span>
+            <span class="w-1.5 bg-indigo-400 rounded-full voice-bar" style="animation-delay:0.24s"></span>
+            <span class="w-1.5 bg-indigo-400 rounded-full voice-bar" style="animation-delay:0.36s"></span>
+            <span class="w-1.5 bg-indigo-400 rounded-full voice-bar" style="animation-delay:0.48s"></span>
+        </div>
+        <div>
+            <p id="voice-overlay-text" class="text-white font-black text-base tracking-wide">Listening...</p>
+            <p id="voice-overlay-subtext" class="text-gray-400 text-[11px] font-semibold mt-1">Say your command, e.g. "play the latest session"</p>
+        </div>
+    </div>
+</div>
 
     <!-- ========================================== -->
     <!-- 5. ENGINE JAVASCRIPT LOGIC                 -->
@@ -6566,23 +6607,36 @@
         let activeAIChatId = aiChats[0].id;
 
         // =====================================================================
-        // 🎙️ VOICE WAKE WORD ENGINE — say "Co-Assistant" from anywhere in the
-        // portal (dashboard, videos, materials, feed) to give a hands-free
-        // command. Built on the browser's native SpeechRecognition API, so it
-        // needs zero backend changes and reuses submitAIChatMessage() /
-        // runPortalCommand() exactly like typing would — that's what already
-        // knows how to open the latest session, jump tabs, etc.
+        // 🎙️ VOICE WAKE WORD ENGINE — say "Co-Assistant" from ANY page in the
+        // portal (dashboard, videos, materials, feed — the listener lives in
+        // the persistent header/body, not inside a single tab's view panel)
+        // to give a hands-free command. Built on the browser's native
+        // SpeechRecognition API, so it needs zero backend changes and reuses
+        // submitAIChatMessage() / runPortalCommand() exactly like typing
+        // would — that's what already knows how to open the latest session,
+        // jump tabs, etc.
+        //
+        // Idle behaviour: once granted, this runs continuously in the
+        // background (auto-restarts itself if the browser silently ends the
+        // recognition session after a pause), so it's always half-listening
+        // for the wake word — you don't have to click anything each time.
         //
         // Browser support: Chrome & Edge (desktop + Android) only. Safari and
-        // Firefox do not implement SpeechRecognition, so the mic button stays
-        // disabled there and we tell the user why instead of failing silently.
-        // Requires HTTPS (Cloudflare Pages already serves over HTTPS) and a
-        // one-time mic permission grant from the browser.
+        // Firefox do not implement SpeechRecognition, so both mic controls
+        // stay disabled there and we tell the user why instead of failing
+        // silently. Requires HTTPS (Cloudflare Pages already serves over
+        // HTTPS) and an explicit mic permission grant — see
+        // ensureMicPermission() below, which is what actually pops the
+        // browser's "Allow microphone access?" prompt.
         // =====================================================================
-        let voiceWakeEnabled = JSON.parse(localStorage.getItem('voice_wake_enabled') || 'false');
+        let voiceWakeEnabled = localStorage.getItem('voice_wake_enabled') === null
+            ? true // on by default so it "just works" the first time the portal loads
+            : JSON.parse(localStorage.getItem('voice_wake_enabled'));
         let voiceRecognition = null;
         let voiceListeningForCommand = false;
         let voiceCommandTimeout = null;
+        let voiceOverlayActive = false;
+        let voiceOverlayHideTimer = null;
         const VOICE_WAKE_WORD_RE = /\bco[\s-]?assistant\b/i;
 
         function isSpeechRecognitionSupported() {
@@ -6594,46 +6648,82 @@
             if (voiceWakeEnabled) startVoiceWakeListener();
         }
 
+        // Explicitly requests mic access via getUserMedia first, so the
+        // browser shows its standard "Allow microphone access?" prompt with
+        // a clear reason, instead of silently failing later. We don't need
+        // to keep the raw audio stream — SpeechRecognition captures its own
+        // — so the tracks are stopped immediately once permission is known.
+        async function ensureMicPermission() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(t => t.stop());
+                return true;
+            } catch (err) {
+                console.warn('Microphone permission denied:', err);
+                return false;
+            }
+        }
+
+        // Keeps the header mic icon AND the bottom-right floating mic button
+        // in sync — they control and reflect the exact same listening state.
         function updateVoiceMicUI() {
-            const btn = document.getElementById('voice-wake-btn');
-            const icon = document.getElementById('voice-wake-icon');
-            if (!btn) return;
+            const headerBtn = document.getElementById('voice-wake-btn');
+            const headerIcon = document.getElementById('voice-wake-icon');
+            const fabBtn = document.getElementById('voice-fab-btn');
+            const fabIcon = document.getElementById('voice-fab-icon');
+            if (!headerBtn && !fabBtn) return;
 
-            if (!isSpeechRecognitionSupported()) {
-                btn.classList.add('opacity-40', 'cursor-not-allowed');
-                btn.title = 'Voice commands need Chrome or Edge on this device.';
-                setVoiceIndicator('off');
-                return;
+            const supported = isSpeechRecognitionSupported();
+            const title = !supported
+                ? 'Voice commands need Chrome or Edge on this device.'
+                : voiceWakeEnabled
+                    ? 'Voice wake word is ON — say "Co-Assistant" then your command. Click to mute.'
+                    : 'Voice wake word is muted. Click to turn on hands-free commands.';
+
+            [headerBtn, fabBtn].forEach(btn => {
+                if (!btn) return;
+                btn.title = title;
+                btn.classList.toggle('opacity-40', !supported);
+                btn.classList.toggle('cursor-not-allowed', !supported);
+            });
+
+            if (headerBtn) {
+                headerBtn.classList.toggle('border-indigo-500', supported && voiceWakeEnabled);
+                headerBtn.classList.toggle('text-indigo-300', supported && voiceWakeEnabled);
+                headerBtn.classList.toggle('bg-indigo-500/10', supported && voiceWakeEnabled);
+            }
+            if (fabBtn) {
+                fabBtn.classList.toggle('bg-indigo-600', supported && voiceWakeEnabled);
+                fabBtn.classList.toggle('hover:bg-indigo-500', supported && voiceWakeEnabled);
+                fabBtn.classList.toggle('bg-slate-700', !(supported && voiceWakeEnabled));
+                fabBtn.classList.toggle('hover:bg-slate-600', !(supported && voiceWakeEnabled));
             }
 
-            btn.title = voiceWakeEnabled
-                ? 'Voice wake word is ON — say "Co-Assistant" then your command.'
-                : 'Turn on hands-free voice commands (say Co-Assistant)';
-
-            if (voiceWakeEnabled) {
-                btn.classList.add('border-indigo-500', 'text-indigo-300', 'bg-indigo-500/10');
-            } else {
-                btn.classList.remove('border-indigo-500', 'text-indigo-300', 'bg-indigo-500/10');
-                setVoiceIndicator('off');
-            }
-
-            if (icon) icon.setAttribute('data-lucide', voiceWakeEnabled ? 'mic' : 'mic-off');
+            if (headerIcon) headerIcon.setAttribute('data-lucide', voiceWakeEnabled ? 'mic' : 'mic-off');
+            if (fabIcon) fabIcon.setAttribute('data-lucide', voiceWakeEnabled ? 'mic' : 'mic-off');
             if (window.lucide) lucide.createIcons();
+
+            if (!supported || !voiceWakeEnabled) setVoiceIndicator('off');
         }
 
         function setVoiceIndicator(state) {
-            const dot = document.getElementById('voice-wake-dot');
-            if (!dot) return;
-            dot.classList.remove('bg-emerald-500', 'bg-amber-400', 'bg-gray-600', 'animate-pulse');
-            if (state === 'listening-command') {
-                dot.classList.add('bg-amber-400', 'animate-pulse');
-            } else if (state === 'idle') {
-                dot.classList.add('bg-emerald-500');
-            } else {
-                dot.classList.add('bg-gray-600');
-            }
+            const dots = [document.getElementById('voice-wake-dot'), document.getElementById('voice-fab-dot')];
+            dots.forEach(dot => {
+                if (!dot) return;
+                dot.classList.remove('bg-emerald-500', 'bg-amber-400', 'bg-gray-600', 'animate-pulse');
+                if (state === 'listening-command') {
+                    dot.classList.add('bg-amber-400', 'animate-pulse');
+                } else if (state === 'idle') {
+                    dot.classList.add('bg-emerald-500');
+                } else {
+                    dot.classList.add('bg-gray-600');
+                }
+            });
         }
 
+        // The single mute/unmute action — called by both the header icon
+        // and the bottom-right floating button.
         function toggleVoiceWake() {
             if (!isSpeechRecognitionSupported()) {
                 showToast('Voice commands need Chrome or Edge on this device.', 'error');
@@ -6645,56 +6735,91 @@
             updateVoiceMicUI();
 
             if (voiceWakeEnabled) {
-                showToast('Voice wake word is on — say "Co-Assistant" then your command.', 'success');
+                showToast('Microphone unmuted — say "Co-Assistant" then your command.', 'success');
                 startVoiceWakeListener();
             } else {
-                showToast('Voice wake word is off.', 'success');
+                showToast('Microphone muted.', 'success');
                 stopVoiceWakeListener();
+                hideVoiceOverlay();
             }
         }
 
-        function startVoiceWakeListener() {
+        async function startVoiceWakeListener() {
             if (!isSpeechRecognitionSupported() || !voiceWakeEnabled) return;
             if (voiceRecognition) return; // already listening
+
+            const granted = await ensureMicPermission();
+            if (!granted) {
+                voiceWakeEnabled = false;
+                localStorage.setItem('voice_wake_enabled', 'false');
+                updateVoiceMicUI();
+                showToast('Microphone access is needed for voice commands. Please allow it in your browser and try again.', 'error');
+                return;
+            }
+            // A toggle-off (or tab close) may have happened while the
+            // permission prompt was open — don't start listening if so.
+            if (!voiceWakeEnabled || voiceRecognition) return;
 
             const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
             voiceRecognition = new SR();
             voiceRecognition.continuous = true;
-            voiceRecognition.interimResults = false;
+            voiceRecognition.interimResults = true; // lets us pop the overlay the instant the wake word is heard
             voiceRecognition.lang = 'en-US';
 
             voiceRecognition.onresult = (event) => {
+                let interimText = '';
+                let finalText = '';
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     const result = event.results[i];
-                    if (!result.isFinal) continue;
+                    if (result.isFinal) finalText += result[0].transcript + ' ';
+                    else interimText += result[0].transcript;
+                }
 
-                    const transcript = result[0].transcript.trim();
-                    const lower = transcript.toLowerCase();
-                    const match = lower.match(VOICE_WAKE_WORD_RE);
+                // Show the full-screen listening animation the moment the
+                // wake word shows up, even before the sentence is finished.
+                if (!voiceListeningForCommand && !voiceOverlayActive) {
+                    const heardSoFar = (finalText + ' ' + interimText).toLowerCase();
+                    if (VOICE_WAKE_WORD_RE.test(heardSoFar)) {
+                        voiceOverlayActive = true;
+                        showVoiceOverlay('listening');
+                    }
+                }
 
-                    if (!voiceListeningForCommand) {
-                        if (!match) continue;
-                        const after = transcript.slice(match.index + match[0].length).trim();
+                if (!finalText) return;
+                finalText = finalText.trim();
+                const lower = finalText.toLowerCase();
+                const match = lower.match(VOICE_WAKE_WORD_RE);
+
+                if (!voiceListeningForCommand) {
+                    if (match) {
+                        const after = finalText.slice(match.index + match[0].length).trim();
                         if (after.length > 1) {
-                            handleVoiceCommand(after);
+                            finishVoiceCommand(after);
                         } else {
-                            // Wake word said on its own — listen for the
-                            // command in the next thing the person says.
+                            // Wake word said on its own — keep the overlay up
+                            // and listen for the command in the next thing
+                            // the person says.
                             voiceListeningForCommand = true;
+                            setVoiceOverlayState('waiting');
                             setVoiceIndicator('listening-command');
-                            showToast('🎤 Listening... say your command.', 'success');
                             clearTimeout(voiceCommandTimeout);
                             voiceCommandTimeout = setTimeout(() => {
                                 voiceListeningForCommand = false;
                                 setVoiceIndicator('idle');
-                            }, 6000);
+                                hideVoiceOverlay();
+                                showToast('Didn\u2019t catch a command — try saying "Co-Assistant" again.', 'error');
+                            }, 7000);
                         }
-                    } else {
-                        clearTimeout(voiceCommandTimeout);
-                        voiceListeningForCommand = false;
-                        setVoiceIndicator('idle');
-                        handleVoiceCommand(transcript);
+                    } else if (voiceOverlayActive) {
+                        // Overlay was shown from an interim guess that never
+                        // panned out into an actual wake word — dismiss it.
+                        hideVoiceOverlay();
                     }
+                } else {
+                    clearTimeout(voiceCommandTimeout);
+                    voiceListeningForCommand = false;
+                    setVoiceIndicator('idle');
+                    finishVoiceCommand(finalText);
                 }
             };
 
@@ -6704,6 +6829,7 @@
                     voiceWakeEnabled = false;
                     localStorage.setItem('voice_wake_enabled', 'false');
                     updateVoiceMicUI();
+                    hideVoiceOverlay();
                     showToast('Microphone access was blocked. Enable it in your browser site settings to use voice commands.', 'error');
                 }
             };
@@ -6712,7 +6838,8 @@
                 voiceRecognition = null;
                 // Browsers silently end recognition after a pause even in
                 // continuous mode — restart automatically while the person
-                // still has the wake word turned on.
+                // still has the microphone unmuted, so it stays "idle
+                // listening" indefinitely in the background.
                 if (voiceWakeEnabled) {
                     setTimeout(() => startVoiceWakeListener(), 300);
                 }
@@ -6729,6 +6856,7 @@
 
         function stopVoiceWakeListener() {
             voiceListeningForCommand = false;
+            voiceOverlayActive = false;
             clearTimeout(voiceCommandTimeout);
             setVoiceIndicator('off');
             if (voiceRecognition) {
@@ -6737,6 +6865,59 @@
                 r.onend = null;
                 try { r.stop(); } catch (err) {}
             }
+        }
+
+        // -----------------------------------------------------------------
+        // Full-screen "AI is listening" overlay — blurs the whole portal and
+        // shows the pulsing Co-Assistant logo while a command is captured.
+        // -----------------------------------------------------------------
+        function showVoiceOverlay(state) {
+            const overlay = document.getElementById('voice-command-overlay');
+            if (!overlay) return;
+            clearTimeout(voiceOverlayHideTimer);
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            requestAnimationFrame(() => overlay.classList.add('voice-overlay-visible'));
+            setVoiceOverlayState(state);
+        }
+
+        function setVoiceOverlayState(state) {
+            const text = document.getElementById('voice-overlay-text');
+            const sub = document.getElementById('voice-overlay-subtext');
+            if (!text || !sub) return;
+            if (state === 'listening') {
+                text.textContent = 'Listening...';
+                sub.textContent = 'Say your command, e.g. "play the latest session"';
+            } else if (state === 'waiting') {
+                text.textContent = "Go ahead, I'm listening";
+                sub.textContent = 'Say your command now...';
+            } else if (state === 'done') {
+                text.textContent = 'Got it!';
+                sub.textContent = 'Working on it...';
+            }
+        }
+
+        function hideVoiceOverlay(delay = 0) {
+            voiceOverlayActive = false;
+            const overlay = document.getElementById('voice-command-overlay');
+            if (!overlay) return;
+            clearTimeout(voiceOverlayHideTimer);
+            voiceOverlayHideTimer = setTimeout(() => {
+                overlay.classList.remove('voice-overlay-visible');
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    overlay.classList.remove('flex');
+                }, 250);
+            }, delay);
+        }
+
+        // Called with the finalized command transcript (wake word already
+        // detected). Flashes a "Got it!" state on the overlay, fades it out,
+        // then hands the text to handleVoiceCommand() to actually act on it.
+        function finishVoiceCommand(rawText) {
+            setVoiceOverlayState('done');
+            hideVoiceOverlay(650);
+            setTimeout(() => handleVoiceCommand(rawText), 650);
         }
 
         function handleVoiceCommand(rawText) {
