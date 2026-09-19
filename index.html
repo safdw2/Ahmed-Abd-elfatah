@@ -2694,6 +2694,46 @@
 
         /* Slightly punchier press feedback on every ripple/interactive button */
         .ripple-btn:active { transform: scale(0.95); }
+
+        /* ═════════════════════════════════════════════════════════════════════ */
+        /* 📱 MOBILE PERFORMANCE MODE — kills the always-on decorative GPU cost   */
+        /* on phones/touch devices: infinite background animations, the fixed    */
+        /* full-screen rotating aurora layer, film-grain, and heavy blur/        */
+        /* saturation on glass surfaces. Nothing that plays once (modals,        */
+        /* toasts, ripples, confetti) is touched — only things that loop         */
+        /* forever and run even when nobody is looking at them.                 */
+        /* ═════════════════════════════════════════════════════════════════════ */
+        @media (max-width: 900px), (pointer: coarse) and (hover: none) {
+            /* Kill every looping/one-shot CSS animation on phones in one shot —
+               this is the actual jank source (constant repaint), not any single
+               effect. Transitions (taps, hovers) stay, so buttons still feel
+               responsive; things just stop moving on their own. */
+            *, *::before, *::after { animation: none !important; }
+
+            /* Full-screen rotating conic-gradient behind everything — the single
+               biggest offender on its own: a 180vmax fixed layer that repainted
+               every frame even before it's rotating. Remove it outright. */
+            body::before { display: none !important; }
+
+            /* Film-grain jitter layer */
+            [class*="lg-grain"], .lg-grain { opacity: 0 !important; }
+
+            /* backdrop-filter (frosted glass) is the single most expensive CSS
+               property on mobile GPUs — this app has it on ~75 different
+               elements (nav, cards, modals, badges...). Drop it everywhere on
+               phones; everything already has a translucent background color
+               underneath, so it goes from "frosted glass" to "tinted glass"
+               instead of costing a live backdrop repaint on every scroll/tap. */
+            *, *::before, *::after {
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+            }
+        }
+
+        /* Respect the OS-level "reduce motion" setting on any device, any size */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+        }
     </style>
 
 </head>
@@ -8051,8 +8091,9 @@
     // ------------------------------------------------------------------
     const CFG = {
         COUNTDOWN_SECONDS: 5,          // countdown before EVERY command runs
-        LANG: 'en-US',                 // what the microphone listens for
-        TTS_LANG: 'en-US',             // voice used to talk back (Arabic text auto-switches to ar-SA)
+        LANG: 'en-US',                 // what the microphone listens for in English mode
+        LANG_AR: 'ar-EG',              // what the microphone listens for after switching to Arabic (say "Co Assistant Arabic" / "كو اسيستانت عربي")
+        TTS_LANG: 'en-US',             // voice used to talk back (Arabic text auto-switches to an Arabic voice)
         SPEAK_RATE: 1.0,
         AUTO_START: true,              // start listening by itself when you are inside the portal
         COMMAND_WINDOW_MS: 10000,      // after saying only "Co Assistant", how long it waits for the command
@@ -8070,6 +8111,21 @@
     const WAKE_SRC = '(?:co|coe|ko|koh|kow|go|code|call|coo|cu|kuh|cuz|quo)[\\s-]*(?:assistants?|assistance|assistent|assist(?:ing|ed)?)';
     const WAKE_RE    = new RegExp('\\b' + WAKE_SRC + '\\b');
     const WAKE_START = new RegExp('^' + WAKE_SRC + '\\b[\\s,.:-]*');
+
+    // Arabic wake phrase: "كو اسيستانت" (the Arabic pronunciation of "Co Assistant") plus the
+    // common spelling variants the recognizer produces, and a plain "مساعد" ("assistant") fallback
+    // for anyone who'd rather not transliterate the English name at all.
+    // Written against the NORMALIZED form (norm() below folds hamza seats, alef maksura and ta
+    // marbuta to one base letter first, so we only need to spell each word one way here).
+    // NOTE: \b doesn't work on Arabic letters in JS regex (they aren't "word" characters), so this
+    // pattern is matched as a plain substring instead of being wrapped in \b like the English one.
+    const WAKE_AR_SRC = '(?:(?:كو|كوه|قو|كول)[\\s-]*(?:اسيستانت|اسيستنت|اسستانت|استانت|اسيستان)|(?:يا\\s+)?(?:المساعد|مساعد))';
+    const WAKE_AR_RE    = new RegExp(WAKE_AR_SRC);
+    const WAKE_AR_START = new RegExp('^' + WAKE_AR_SRC + '[\\s,.:-]*');
+    // "arabic" / "عربي" and "english" / "انجليزي" said right after the wake phrase switch the
+    // assistant's listening + speaking language (handled as instant commands in parseIntent).
+    const LANG_SWITCH_AR_RE = /^(?:in\s+)?(?:arabic|araby|arabi)$|^(?:بال?)?عربي(?:ه)?$/;
+    const LANG_SWITCH_EN_RE = /^(?:in\s+)?english$|^(?:بال?)?انجليزي(?:ه)?$/;
     // Voice controls for the countdown: "cancel" stops the command, "edit" drops it and listens for a new one.
     // Both accept the wake phrase in front, a few filler words, and the usual mis-hearings.
     const CTL_LEAD = '(?:' + WAKE_SRC + '[\\s,]+)?(?:(?:ok|okay|hey|please|just|i said)\\s+)*';
@@ -8095,9 +8151,11 @@
         pending: null, cdTimer: null, busy: false, replyText: '',
         speaking: false, ttsSeq: 0, curResolve: null, ignoreUntil: 0, spoken: [],
         lastFinal: '', lastFinalAt: 0,
-        editing: false, prevCmd: '', ctlAt: 0
+        editing: false, prevCmd: '', ctlAt: 0,
+        lang: 'en'   // 'en' | 'ar' — which language the microphone is currently listening for
     };
     try { S.userOff = localStorage.getItem('va_off') === '1'; } catch (e) {}
+    try { if (localStorage.getItem('va_lang') === 'ar') S.lang = 'ar'; } catch (e) {}
 
     // ------------------------------------------------------------------
     // TEXT HELPERS
@@ -8108,6 +8166,13 @@
             .replace(/[\u2018\u2019]/g, "'")
             .replace(/[\u201c\u201d"`]/g, ' ')
             .replace(/[.,!?;:()]/g, ' ')
+            // Arabic spelling variants that speech recognition mixes up constantly
+            // (hamza seat, alef maksura, ta marbuta) — fold them so wake/command
+            // matching doesn't miss a phrase just because of a different hamza.
+            .replace(/[\u0622\u0623\u0625\u0671]/g, '\u0627')   // آ إ أ ٱ -> ا
+            .replace(/\u0649/g, '\u064a')                        // ى -> ي
+            .replace(/\u0629/g, '\u0647')                        // ة -> ه
+            .replace(/[\u064b-\u0652]/g, '')                     // strip tashkeel/diacritics
             .replace(/\s+/g, ' ').trim();
     }
     const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
@@ -8206,7 +8271,7 @@
             const prev = S.curResolve; S.curResolve = resolve; if (prev) prev();
             const seq = ++S.ttsSeq;
             try { synth.cancel(); synth.resume(); } catch (e) {}
-            const lang = /[\u0600-\u06FF]/.test(t) ? 'ar-SA' : CFG.TTS_LANG;
+            const lang = /[\u0600-\u06FF]/.test(t) ? CFG.LANG_AR : CFG.TTS_LANG;
             const voice = pickVoice(lang);
             const chunks = chunkText(t);
             let i = 0;
@@ -8239,6 +8304,22 @@
         S.speaking = false; S.ignoreUntil = Date.now() + CFG.ECHO_TAIL_MS;
         const r = S.curResolve; S.curResolve = null; if (r) r();
         render();
+    }
+
+    // ------------------------------------------------------------------
+    // LANGUAGE SWITCH — "Co Assistant Arabic" / "كو اسيستانت عربي" flips the
+    // mic between en-US and ar-EG (Web Speech only listens in one language
+    // per session, so switching means tearing down and restarting it).
+    // ------------------------------------------------------------------
+    function switchLang(target) {
+        if (S.lang === target) { speak(target === 'ar' ? 'أنا بالفعل بالعربية.' : "I'm already in English."); return; }
+        S.lang = target;
+        try { localStorage.setItem('va_lang', target); } catch (e) {}
+        if (S.rec) { S.rec.onend = null; S.rec.onerror = null; try { S.rec.abort(); } catch (e2) {} S.rec = null; S.listening = false; }
+        clearTimeout(S.restartTimer);
+        if (S.enabled) startRec();
+        toast(target === 'ar' ? 'تم التحويل إلى العربية' : 'Switched to English', 'success');
+        speak(target === 'ar' ? 'تم التحويل إلى العربية. اتفضل.' : "Switched to English. Go ahead.");
     }
 
     // ------------------------------------------------------------------
@@ -8368,11 +8449,15 @@
         if (/^(stop|stop talking|be quiet|quiet|silence|shut up|enough)$/.test(c)) return { immediate: () => stopSpeaking() };
         if (/^(cancel|never ?mind|abort|forget it|don'?t)$/.test(c)) return { immediate: () => { if (S.pending) cancelPending(); } };
 
+        // --- language switch: "Co Assistant Arabic" / "كو اسيستانت عربي" (and back with "English" / "انجليزي") ---
+        if (LANG_SWITCH_AR_RE.test(c)) return { immediate: () => switchLang('ar') };
+        if (LANG_SWITCH_EN_RE.test(c)) return { immediate: () => switchLang('en') };
+
         // --- help ---
         if (/^(help|commands|what can you do|what are your commands|show commands|list commands|what commands.*)$/.test(c)) {
             return {
                 label: 'Reading the command list', say: 'Okay, here is what I can do.',
-                run: () => 'Say the wake phrase, then a command. You can say: open dashboard, open videos, open materials, open the feed, open the assistant, play the latest lecture, play lecture and a number, show my progress, dark mode, light mode, or log out. Or just ask me any question and I will answer it on the assistant page. Every command has a five second countdown, and you can say cancel to stop it, or edit to change it.'
+                run: () => 'Say the wake phrase, then a command. You can say: open dashboard, open videos, open materials, open the feed, open the assistant, play the latest lecture, play lecture and a number, show my progress, dark mode, light mode, or log out. Say Co Assistant Arabic to switch me to Arabic, or English to switch back. Or just ask me any question and I will answer it on the assistant page. Every command has a five second countdown, and you can say cancel to stop it, or edit to change it.'
             };
         }
 
@@ -8583,11 +8668,15 @@
         if (S.speaking) { if (STOP_RE.test(text)) stopSpeaking(); return; }
         if (now < S.ignoreUntil || isEcho(text)) return;
 
+        // Try the English wake phrase, then the Arabic one — whichever actually appears.
         const m = text.match(WAKE_RE);
-        if (m) {
-            const before = text.slice(0, m.index).replace(/\b(hey|hi|hello|ok|okay)\b/g, ' ').replace(/\s+/g, ' ').trim();
-            let cmd = text.slice(m.index + m[0].length).replace(/^[\s,.:-]+/, '');
-            while (WAKE_START.test(cmd)) cmd = cmd.replace(WAKE_START, '');
+        const mAr = !m ? text.match(WAKE_AR_RE) : null;
+        const hit = m || mAr;
+        if (hit) {
+            const start = m ? WAKE_START : WAKE_AR_START;
+            const before = text.slice(0, hit.index).replace(/\b(hey|hi|hello|ok|okay)\b/g, ' ').replace(/\s+/g, ' ').trim();
+            let cmd = text.slice(hit.index + hit[0].length).replace(/^[\s,.:-]+/, '');
+            while (start.test(cmd)) cmd = cmd.replace(start, '');
             const command = cmd || before;
             if (command) { showHeard(command, true); dispatch(command); }     // "open dashboard, Co Assistant" also works
             else { showHeard('', true); enterAwake(); }
@@ -8597,11 +8686,14 @@
         // no wake phrase + not awake = ignored on purpose
     }
 
+    // Does this (already-normalized) text contain either the English or Arabic wake phrase?
+    const hasWake = (n) => WAKE_RE.test(n) || WAKE_AR_RE.test(n);
+
     // Prefer the recognizer alternative that actually contains the wake phrase
     function pickAlt(res) {
         const top = res[0].transcript;
-        if (WAKE_RE.test(norm(top))) return top;
-        for (let i = 1; i < res.length; i++) if (WAKE_RE.test(norm(res[i].transcript))) return res[i].transcript;
+        if (hasWake(norm(top))) return top;
+        for (let i = 1; i < res.length; i++) if (hasWake(norm(res[i].transcript))) return res[i].transcript;
         return top;
     }
 
@@ -8617,14 +8709,14 @@
         if (!interim || S.speaking || S.mode === 'countdown' || S.busy) return;
         const n = norm(interim);
         // The overlay opens the instant the wake phrase is heard, then "types" what you say live
-        if (S.mode === 'idle' && Date.now() >= S.ignoreUntil && WAKE_RE.test(n) && !isEcho(n)) enterAwake();
+        if (S.mode === 'idle' && Date.now() >= S.ignoreUntil && hasWake(n) && !isEcho(n)) enterAwake();
         if (S.mode === 'awake') showHeard(interim, false);
     }
 
     function startRec() {
         if (!SR || !S.enabled || S.rec) return;
         const rec = new SR();
-        rec.lang = CFG.LANG; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 5;
+        rec.lang = S.lang === 'ar' ? CFG.LANG_AR : CFG.LANG; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 5;
         rec.onstart = () => { S.listening = true; S.netWarned = false; render(); };
         rec.onresult = onResult;
         rec.onerror = (e) => {
@@ -8705,7 +8797,7 @@
             btn.classList.toggle('va-on', S.enabled);
             btn.classList.toggle('va-awake', S.enabled && (S.mode !== 'idle' || S.speaking));
             btn.setAttribute('aria-pressed', S.enabled ? 'true' : 'false');
-            btn.title = S.enabled ? 'Voice control is ON — say “Co Assistant” + a command. Tap to turn off' : 'Voice control is OFF — tap to turn on';
+            btn.title = S.enabled ? 'Voice control is ON — say “Co Assistant” + a command (say “Co Assistant Arabic” for Arabic). Tap to turn off' : 'Voice control is OFF — tap to turn on';
         }
         const showReply = !!S.replyText;
         const show = S.enabled && inPortal() && (S.mode === 'awake' || S.mode === 'countdown' || showReply);
