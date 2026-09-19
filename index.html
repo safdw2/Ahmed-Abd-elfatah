@@ -7855,20 +7855,39 @@
     }
     #va-overlay.va-show #va-card { transform: scale(1); }
 
-    /* AI logo with a pulsing halo */
-    #va-logo-wrap { position: relative; width: 104px; height: 104px; flex: none; }
-    #va-logo-wrap::before, #va-logo-wrap::after {
-        content: ''; position: absolute; inset: -10px; border-radius: 34px;
-        border: 2px solid rgba(129,140,248,.55); animation: vaHalo 2.4s ease-out infinite;
+    /* AI logo — a complete green ring all the way around it (no gaps), shaped
+       to match the logo's own rounded-square outline, with a spinning shimmer
+       on top for motion and a soft pulsing glow behind it. No background
+       plate behind the logo anymore. */
+    #va-logo-wrap { position: relative; width: 104px; height: 104px; flex: none; border-radius: 28%; animation: vaGlow 2.4s ease-in-out infinite; }
+    /* Always-visible, complete ring — this never disappears or gaps, and it follows the same rounded-square shape as the logo */
+    #va-logo-wrap::after {
+        content: ''; position: absolute; inset: -9px; border-radius: 28%;
+        border: 2.5px solid rgba(74,222,128,.65);
     }
-    #va-logo-wrap::after { animation-delay: 1.2s; }
-    #va-overlay[data-mode="awake"] #va-logo-wrap::before, #va-overlay[data-mode="awake"] #va-logo-wrap::after { border-color: rgba(74,222,128,.65); animation-duration: 1.4s; }
-    #va-overlay[data-mode="reply"] #va-logo-wrap::before, #va-overlay[data-mode="reply"] #va-logo-wrap::after { border-color: rgba(34,211,238,.6); }
-    @keyframes vaHalo { 0% { transform: scale(.92); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+    /* Spinning shimmer ring on top — built with mask-composite so it hugs the
+       rounded-square shape exactly (a circular mask here would leave gaps at
+       the flat edges, which is the bug this replaces) */
+    #va-logo-wrap::before {
+        content: ''; position: absolute; inset: -9px; border-radius: 28%;
+        box-sizing: border-box; padding: 4px;
+        background: conic-gradient(from 0deg, #4ade80, #22d3ee, #a78bfa, #4ade80);
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+                mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+                mask-composite: exclude;
+        animation: vaSpin 2.4s linear infinite;
+        opacity: .85;
+    }
+    #va-overlay[data-mode="awake"] #va-logo-wrap::before { animation-duration: 1s; }
+    #va-overlay[data-mode="awake"] #va-logo-wrap::after { border-color: rgba(74,222,128,.9); }
+    #va-overlay[data-mode="reply"] #va-logo-wrap::before { animation-duration: 3.2s; }
+    #va-overlay[data-mode="reply"] #va-logo-wrap::after { border-color: rgba(34,211,238,.7); }
+    @keyframes vaGlow { 0%, 100% { box-shadow: 0 0 16px 1px rgba(74,222,128,.3); } 50% { box-shadow: 0 0 28px 5px rgba(74,222,128,.55); } }
+    @keyframes vaSpin { to { transform: rotate(360deg); } }
     #va-logo {
-        position: relative; width: 100%; height: 100%; object-fit: cover; border-radius: 28px;
-        background: rgba(15,23,42,.6); border: 1px solid rgba(129,140,248,.45);
-        box-shadow: 0 10px 40px rgba(79,70,229,.45);
+        position: relative; width: 100%; height: 100%; object-fit: cover; border-radius: 28%;
+        background: transparent; border: none; box-shadow: none;
     }
 
     #va-status { font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; opacity: .8; }
@@ -7891,7 +7910,20 @@
     #va-action { font-weight: 800; font-size: 18px; }
     #va-detail { font-size: 13px; opacity: .75; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #va-count small { opacity: .6; font-size: 11px; }
-    #va-btns { display: flex; gap: 10px; margin-top: 4px; }
+    .va-btns { display: flex; gap: 10px; margin-top: 4px; }
+    #va-overlay #va-edit-btn { border-color: rgba(129,140,248,.55); color: #a5b4fc; }
+    .light-theme #va-overlay #va-edit-btn { color: #4338ca; }
+
+    /* Edit panel — lets you correct the transcribed command before it runs */
+    #va-edit { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
+    #va-edit-input {
+        width: 100%; font-size: 17px; font-weight: 600; text-align: center; padding: 12px 14px;
+        border-radius: 14px; border: 1px solid rgba(129,140,248,.5); background: rgba(15,23,42,.5); color: inherit;
+    }
+    .light-theme #va-edit-input { background: rgba(255,255,255,.85); border-color: #c7d2fe; }
+    #va-edit-input:focus { outline: none; border-color: #818cf8; }
+    #va-overlay #va-edit-go { border-color: rgba(74,222,128,.55); color: #4ade80; }
+    .light-theme #va-overlay #va-edit-go { color: #15803d; }
 
     /* Text reply (help / progress) */
     #va-reply { width: 100%; max-height: 34vh; overflow-y: auto; font-size: 15px; line-height: 1.55; padding: 12px 16px; border-radius: 16px; background: rgba(15,23,42,.55); border: 1px solid rgba(129,140,248,.3); text-align: left; }
@@ -7900,7 +7932,7 @@
     #va-foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 4px; }
     #va-overlay button { cursor: pointer; border-radius: 12px; border: 1px solid rgba(148,163,184,.4); background: rgba(148,163,184,.14); color: inherit; font-weight: 700; font-size: 12px; padding: 8px 14px; min-height: 36px; }
     #va-overlay button:hover { background: rgba(99,102,241,.3); }
-    #va-overlay #va-cancel { border-color: rgba(248,113,113,.55); color: #f87171; }
+    #va-overlay #va-cancel, #va-overlay #va-edit-cancel { border-color: rgba(248,113,113,.55); color: #f87171; }
     #va-overlay #va-now { border-color: rgba(74,222,128,.55); color: #4ade80; }
     .light-theme #va-overlay #va-now { color: #15803d; }
     #va-overlay #va-off { opacity: .65; font-weight: 600; }
@@ -7933,7 +7965,7 @@
 
     // Wake phrase: "co assistant" plus the ways speech engines usually mis-hear it
     // (co-assistant, coassistant, code assistant, go assistant, co assist, co assistance ...).
-    const WAKE_SRC = '(?:co|coe|ko|koh|kow|go|code|call|coo|cu|kuh|cuz|quo)[\\s-]*(?:assistants?|assistance|assistent|assist(?:ing|ed)?)';
+    const WAKE_SRC = '(?:co|coe|ko|koh|kow|go|code|call|coo|cu|kuh|cuz|quo|zoo|su|sue|joe|toe|ku|khu|qu|koo|goo)[\\s-]*(?:assistants?|assistance|assistent|assistan|asistant|asistans|asistent|assist(?:ing|ed)?)';
     const WAKE_RE    = new RegExp('\\b' + WAKE_SRC + '\\b');
     const WAKE_START = new RegExp('^' + WAKE_SRC + '\\b[\\s,.:-]*');
     const CANCEL_RE  = new RegExp('^(?:' + WAKE_SRC + '[\\s,]+)?(cancel|stop|never ?mind|abort|no|wait|don\'?t|forget it)$');
@@ -8303,25 +8335,33 @@
         if (!intent) { toast("Sorry, I didn't catch that.", 'warning'); speak("Sorry, I didn't catch that."); render(); return; }
         if (intent.refuse) { toast(intent.refuse, 'warning'); speak(intent.refuse); render(); return; }
         intent.key = key;
+        intent.rawText = cmd;
         startCountdown(intent);
     }
 
     const CIRC = 276.46;
-    function startCountdown(intent) {
+    async function startCountdown(intent) {
         cancelPending(true);
         S.pending = intent; S.mode = 'countdown';
         const total = CFG.COUNTDOWN_SECONDS;
         let left = total;
-        if (left <= 0) return fire(intent);
         $('va-action').textContent = intent.label;
         $('va-detail').textContent = intent.detail || '';
         $('va-num').textContent = left;
         const fg = $('va-ring-fg');
         fg.style.transition = 'none'; fg.style.strokeDashoffset = '0'; void fg.getBoundingClientRect();
-        fg.style.transition = 'stroke-dashoffset ' + total + 's linear'; fg.style.strokeDashoffset = String(CIRC);
         render();
+
+        // Say "Opening dashboard." (etc.) FIRST and let it finish completely —
+        // the countdown ring only starts ticking once the confirmation is done,
+        // instead of racing alongside it.
+        if (CFG.SPEAK_CONFIRM) await speak(intent.say);
+        // The command may have been cancelled, or sent to Edit, while the confirmation was speaking.
+        if (S.pending !== intent || S.mode !== 'countdown') return;
+
+        if (left <= 0) return fire(intent);
+        fg.style.transition = 'stroke-dashoffset ' + total + 's linear'; fg.style.strokeDashoffset = String(CIRC);
         tick(false);
-        if (CFG.SPEAK_CONFIRM) speak(intent.say);
         S.cdTimer = setInterval(() => {
             left--;
             if (left <= 0) fire(intent);
@@ -8332,9 +8372,30 @@
     function cancelPending(silent) {
         clearInterval(S.cdTimer); S.cdTimer = null;
         const had = !!S.pending; S.pending = null;
-        if (S.mode === 'countdown') S.mode = 'idle';
+        if (S.mode === 'countdown' || S.mode === 'editing') S.mode = 'idle';
         if (had && !silent) { stopSpeaking(); toast('Command cancelled.', 'info'); speak('Cancelled.'); }
         render();
+    }
+
+    // ------------------------------------------------------------------
+    // EDIT — correct the transcribed command before it runs
+    // ------------------------------------------------------------------
+    function openEdit() {
+        if (!S.pending) return;
+        clearInterval(S.cdTimer); S.cdTimer = null;
+        stopSpeaking();               // interrupt the confirmation line if it is still talking
+        S.mode = 'editing';
+        render();
+        const inp = $('va-edit-input');
+        if (inp) { inp.value = S.pending.rawText || ''; setTimeout(() => { inp.focus(); inp.select(); }, 30); }
+    }
+
+    function submitEdit() {
+        const inp = $('va-edit-input');
+        const text = (inp && inp.value || '').trim();
+        S.pending = null; S.mode = 'idle';
+        if (!text) { render(); return; }
+        dispatch(text);
     }
 
     async function fire(intent) {
@@ -8387,6 +8448,10 @@
 
         // "cancel" works during the countdown without the wake phrase
         if (S.pending && CANCEL_RE.test(text)) { cancelPending(); return; }
+        // "edit" during the countdown opens the text box to correct the command
+        if (S.pending && S.mode === 'countdown' && /^edit(?: (?:it|this|that))?$/.test(text)) { openEdit(); return; }
+        // while editing, only the keyboard is listened to — ignore the mic
+        if (S.mode === 'editing') return;
         // while it is talking, only listen for "stop"
         if (S.speaking) { if (STOP_RE.test(text)) stopSpeaking(); return; }
         if (now < S.ignoreUntil || isEcho(text)) return;
@@ -8405,12 +8470,25 @@
         // no wake phrase + not awake = ignored on purpose
     }
 
-    // Prefer the recognizer alternative that actually contains the wake phrase
+    // Speech recognition returns several guesses per phrase (maxAlternatives).
+    // For accented speech the #1 guess is often wrong, so score every guess
+    // and take the one that most looks like our wake phrase or a real command,
+    // instead of just trusting whichever the engine ranked first.
+    const CMD_HINT_RE = /\b(open|go|goto|show|take|navigate|switch|bring|launch|start|display|move|visit|head|load|view|see|check|play|watch|run|begin|dashboard|videos?|lectures?|lessons?|sessions?|materials?|worksheets?|feed|assistant|admin|console|dark|light|mode|theme|log ?out|cancel|stop|stats|progress|level|xp)\b/;
+    function scoreAlt(t) {
+        let s = 0;
+        if (WAKE_RE.test(t)) s += 10;
+        if (CMD_HINT_RE.test(t)) s += 4;
+        s += Math.min(t.split(' ').length, 6) * 0.2;
+        return s;
+    }
     function pickAlt(res) {
-        const top = res[0].transcript;
-        if (WAKE_RE.test(norm(top))) return top;
-        for (let i = 1; i < res.length; i++) if (WAKE_RE.test(norm(res[i].transcript))) return res[i].transcript;
-        return top;
+        let best = res[0].transcript, bestScore = scoreAlt(norm(best));
+        for (let i = 1; i < res.length; i++) {
+            const t = res[i].transcript, sc = scoreAlt(norm(t));
+            if (sc > bestScore) { bestScore = sc; best = t; }
+        }
+        return best;
     }
 
     function onResult(ev) {
@@ -8430,7 +8508,7 @@
     function startRec() {
         if (!SR || !S.enabled || S.rec) return;
         const rec = new SR();
-        rec.lang = CFG.LANG; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 5;
+        rec.lang = CFG.LANG; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 10;
         rec.onstart = () => { S.listening = true; S.netWarned = false; render(); };
         rec.onresult = onResult;
         rec.onerror = (e) => {
@@ -8514,20 +8592,22 @@
             btn.title = S.enabled ? 'Voice control is ON — say “Co Assistant” + a command. Tap to turn off' : 'Voice control is OFF — tap to turn on';
         }
         const showReply = !!S.replyText;
-        const show = S.enabled && inPortal() && (S.mode === 'awake' || S.mode === 'countdown' || showReply);
+        const show = S.enabled && inPortal() && (S.mode === 'awake' || S.mode === 'countdown' || S.mode === 'editing' || showReply);
         ov.classList.toggle('va-show', show);
         ov.setAttribute('aria-hidden', show ? 'false' : 'true');
         ov.dataset.mode = showReply ? 'reply' : S.mode;
 
         let msg;
         if (showReply) msg = S.speaking ? 'Speaking…' : 'Co Assistant';
+        else if (S.mode === 'editing') msg = 'Edit your command';
         else if (S.mode === 'countdown') msg = 'Command received';
         else if (S.mode === 'awake') msg = 'Listening — say your command';
         else msg = 'Co Assistant';
         $('va-status').textContent = msg;
 
-        $('va-heard').classList.toggle('va-hidden', showReply);
+        $('va-heard').classList.toggle('va-hidden', showReply || S.mode === 'editing');
         $('va-count').classList.toggle('va-hidden', S.mode !== 'countdown' || showReply);
+        $('va-edit').classList.toggle('va-hidden', S.mode !== 'editing' || showReply);
         $('va-reply').classList.toggle('va-hidden', !showReply);
         $('va-reply').textContent = S.replyText;
         $('va-stop').classList.toggle('va-hidden', !S.speaking);
@@ -8558,8 +8638,12 @@
                 '<div id="va-count" class="va-hidden">' +
                     '<div class="va-ring"><svg viewBox="0 0 100 100"><circle class="va-ring-bg" cx="50" cy="50" r="44"/><circle id="va-ring-fg" cx="50" cy="50" r="44"/></svg><b id="va-num">5</b></div>' +
                     '<div id="va-action"></div><div id="va-detail"></div>' +
-                    '<div id="va-btns"><button id="va-now" type="button">Do it now</button><button id="va-cancel" type="button">Cancel</button></div>' +
-                    '<small>Or just say “cancel”</small>' +
+                    '<div class="va-btns"><button id="va-now" type="button">Do it now</button><button id="va-edit-btn" type="button">Edit</button><button id="va-cancel" type="button">Cancel</button></div>' +
+                    '<small>Say “cancel” — or “edit” to change it</small>' +
+                '</div>' +
+                '<div id="va-edit" class="va-hidden">' +
+                    '<input id="va-edit-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type the command…">' +
+                    '<div class="va-btns"><button id="va-edit-go" type="button">Use this</button><button id="va-edit-cancel" type="button">Cancel</button></div>' +
                 '</div>' +
                 '<div id="va-reply" class="va-hidden"></div>' +
                 '<div id="va-foot"><button id="va-stop" type="button" class="va-hidden">Stop talking</button><button id="va-close" type="button">Close</button><button id="va-off" type="button">Turn voice control off</button></div>' +
@@ -8571,9 +8655,16 @@
         $('va-off').addEventListener('click', disable);
         $('va-cancel').addEventListener('click', () => cancelPending());
         $('va-now').addEventListener('click', () => { if (S.pending) fire(S.pending); });
+        $('va-edit-btn').addEventListener('click', openEdit);
+        $('va-edit-go').addEventListener('click', submitEdit);
+        $('va-edit-cancel').addEventListener('click', () => cancelPending());
+        $('va-edit-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); submitEdit(); }
+            else if (e.key === 'Escape') { e.preventDefault(); cancelPending(); }
+        });
         $('va-stop').addEventListener('click', () => { stopSpeaking(); S.replyText = ''; render(); });
         document.addEventListener('keydown', (e) => {
-            if (e.key !== 'Escape' || !ov.classList.contains('va-show')) return;
+            if (e.key !== 'Escape' || !ov.classList.contains('va-show') || document.activeElement === $('va-edit-input')) return;
             if (S.pending) cancelPending(); else dismiss();
         });
     }
