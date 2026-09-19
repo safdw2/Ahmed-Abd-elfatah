@@ -128,6 +128,15 @@ export async function onRequest(context) {
         }
     }
 
+    // ⚡ WARM-UP PING (/api/ping)
+    // The login page calls this once on load, while the student is still typing their
+    // details. It wakes this Function and opens the D1 connection, so the real login query
+    // that follows doesn't pay for a cold start. Returns nothing and never fails loudly.
+    if (pathname === '/api/ping') {
+        try { if (env.DB) await env.DB.prepare('SELECT 1').first(); } catch (err) { /* warm-up only */ }
+        return new Response(null, { status: 204, headers: { ...corsHeaders, 'Cache-Control': 'no-store' } });
+    }
+
     // 🔐 3. LOGIN ENDPOINT (/api/auth/login)
     // This route never existed before, which is why login always failed:
     // the frontend's fetch('/api/auth/login') fell through to the static
