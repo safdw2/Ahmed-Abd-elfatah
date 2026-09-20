@@ -102,6 +102,28 @@ CREATE TABLE IF NOT EXISTS portal_feedbacks (
 );
 
 -- --------------------------------------------------------------------
+-- TUTORING CENTER (ROOTS) TABLE — dashboard schedule board.
+-- A "recurring" row is never cloned week to week: the app computes the
+-- next matching weekday itself, so this row is the only copy until the
+-- recurring flag is turned off or the row is deleted.
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tutoring_table (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    title           TEXT NOT NULL,
+    session_date    TEXT NOT NULL,
+    session_time    TEXT NOT NULL,
+    location        TEXT DEFAULT '',
+    notes           TEXT DEFAULT '',
+    grade           TEXT DEFAULT 'All Grades',
+    recurring       INTEGER DEFAULT 0,
+    active          INTEGER DEFAULT 1,
+    created_at      TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_tutoring_date ON tutoring_table (session_date);
+CREATE INDEX IF NOT EXISTS idx_tutoring_grade ON tutoring_table (grade);
+
+-- --------------------------------------------------------------------
 -- Seed the teacher/admin account so 'admin' / 'admin123' style logins
 -- (handled in-app) always have a matching server-side record too.
 -- Safe to run multiple times thanks to the UNIQUE(phone) guard.
