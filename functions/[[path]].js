@@ -6,6 +6,14 @@
  * 🗄️ D1 Database Binding: env.DB
  * 🆔 Database ID: 690c177a-0e63-4bcd-ae11-5fb684dd463f
  * 📛 Database Name: ahmedabdelfatah-db
+ *
+ * ⚠️ ONE-TIME SETUP for the Tutoring Center (Roots) feature below:
+ * Run 0008_add_tutoring_table.sql once against your D1 database before
+ * using it, e.g.:
+ *   wrangler d1 execute ahmed-abdelfatah-db --file=./0008_add_tutoring_table.sql --remote
+ * (use whatever database name wrangler.toml has under [[d1_databases]] ->
+ * database_name — until that migration runs, the /api/db/tutoring routes
+ * below will just silently return "no sessions" everywhere.)
  */
 
 export async function onRequest(context) {
@@ -525,6 +533,74 @@ export async function onRequest(context) {
             if (d1 && fbId) {
                 await d1.prepare('DELETE FROM portal_feedbacks WHERE id = ?').bind(fbId).run();
                 return jsonResponse({ success: true, message: 'Feedback removed.' });
+            }
+            return jsonResponse({ success: true });
+        }
+
+        // --- TUTORING CENTER (ROOTS) ENDPOINTS ---
+        // Requires a one-time table creation in the D1 console (see README note at the
+        // bottom of this file) — everything below just talks to that table.
+        if (pathname === '/api/db/tutoring') {
+            if (request.method === 'GET') {
+                if (d1) {
+                    const { results } = await d1.prepare('SELECT * FROM tutoring_table ORDER BY session_date ASC, session_time ASC').all();
+                    return jsonResponse(results || []);
+                }
+                return jsonResponse([]);
+            }
+
+            if (request.method === 'POST') {
+                try {
+                    const s = await request.json();
+                    if (d1) {
+                        const result = await d1.prepare(`
+                            INSERT INTO tutoring_table (title, session_date, session_time, location, notes, grade, recurring, active)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        `).bind(
+                            s.title,
+                            s.session_date || s.date,
+                            s.session_time || s.time,
+                            s.location || '',
+                            s.notes || '',
+                            s.grade || 'All Grades',
+                            s.recurring ? 1 : 0,
+                            s.active === false ? 0 : 1
+                        ).run();
+                        return jsonResponse({ success: true, id: result.meta.last_row_id, message: 'Tutoring session added.' });
+                    }
+                    return jsonResponse({ success: true, mock: true });
+                } catch (err) {
+                    return jsonResponse({ error: err.message }, 400);
+                }
+            }
+        }
+
+        if (pathname.startsWith('/api/db/tutoring/') && request.method === 'PUT') {
+            try {
+                const tId = pathname.split('/').pop();
+                const s = await request.json();
+                if (d1 && tId) {
+                    await d1.prepare(`
+                        UPDATE tutoring_table SET title=?, session_date=?, session_time=?, location=?, notes=?, grade=?, recurring=?, active=?
+                        WHERE id=?
+                    `).bind(
+                        s.title, s.session_date || s.date, s.session_time || s.time,
+                        s.location || '', s.notes || '', s.grade || 'All Grades',
+                        s.recurring ? 1 : 0, s.active === false ? 0 : 1, tId
+                    ).run();
+                    return jsonResponse({ success: true, message: 'Tutoring session updated.' });
+                }
+                return jsonResponse({ success: true, mock: true });
+            } catch (err) {
+                return jsonResponse({ error: err.message }, 400);
+            }
+        }
+
+        if (pathname.startsWith('/api/db/tutoring/') && request.method === 'DELETE') {
+            const tId = pathname.split('/').pop();
+            if (d1 && tId) {
+                await d1.prepare('DELETE FROM tutoring_table WHERE id = ?').bind(tId).run();
+                return jsonResponse({ success: true, message: 'Tutoring session deleted.' });
             }
             return jsonResponse({ success: true });
         }
