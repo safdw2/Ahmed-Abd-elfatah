@@ -8673,28 +8673,74 @@
             radial-gradient(circle at 50% 42%, rgba(221,214,254,.78), rgba(250,245,255,.97) 76%);
     }
 
-    /* The card is a real, distinct panel — a soft violet glass surface with its own border,
-       depth shadow and glow. It still never clips the waves/glow around the logo (grown via negative margin below). */
+    /* ---------- "Liquid glass" card ----------
+       A real frosted-glass surface (blurred + translucent, NOT the old flat gradient) with a slowly
+       rotating soft-light rim and a couple of organic blobs drifting/morphing behind the content for
+       that liquid feel. The blur is scoped to just this ~560px card instead of the full screen, so it
+       stays cheap to draw on phones — full-screen backdrop-filter was what made things stutter before. */
     #va-card {
         width: min(560px, 100%); max-height: 100%; position: relative;
         display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px;
-        padding: 30px 26px 26px;
-        border-radius: 28px;
-        background: linear-gradient(180deg, rgba(46,16,101,.55), rgba(20,7,46,.86));
-        border: 1px solid rgba(var(--va-a), .32);
+        padding: 34px 26px 28px;
+        border-radius: 34px;
+        overflow: hidden; isolation: isolate;
+        background: linear-gradient(165deg, rgba(76,29,149,.34), rgba(20,7,46,.5) 60%, rgba(46,16,101,.4));
+        -webkit-backdrop-filter: blur(26px) saturate(180%);
+        backdrop-filter: blur(26px) saturate(180%);
+        border: 1px solid rgba(255,255,255,.16);
         box-shadow:
-            0 24px 60px -12px rgba(4,1,14,.7),
-            0 1px 0 rgba(255,255,255,.10) inset,
-            0 0 0 1px rgba(255,255,255,.03) inset,
-            0 0 90px -26px rgba(var(--va-a), .55);
-        transform: scale(.94); transition: transform .25s ease, border-color .5s ease, box-shadow .5s ease;
+            0 30px 70px -14px rgba(4,1,14,.65),
+            0 1px 0 rgba(255,255,255,.14) inset,
+            0 0 0 1px rgba(255,255,255,.04) inset,
+            0 0 100px -24px rgba(var(--va-a), .5);
+        transform: scale(.94); transition: transform .25s ease, border-color .5s ease, box-shadow .5s ease, background .6s ease;
     }
     .light-theme #va-card {
-        background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(250,245,255,.97));
-        border-color: rgba(139,92,246,.28);
-        box-shadow: 0 24px 60px -14px rgba(76,29,149,.25), 0 0 0 1px rgba(255,255,255,.6) inset, 0 0 90px -30px rgba(139,92,246,.4);
+        background: linear-gradient(165deg, rgba(255,255,255,.5), rgba(245,240,255,.36) 60%, rgba(237,233,254,.42));
+        border-color: rgba(255,255,255,.6);
+        box-shadow: 0 30px 70px -16px rgba(76,29,149,.22), 0 1px 0 rgba(255,255,255,.7) inset, 0 0 100px -28px rgba(139,92,246,.38);
     }
     #va-overlay.va-show #va-card { transform: scale(1); }
+
+    /* Slowly spinning soft-light rim — a thin conic gradient just outside the card edge, giving the
+       glass a subtle "catching the light" look without an expensive animated blur on the ring itself. */
+    #va-card::before {
+        content: ''; position: absolute; inset: -1px; z-index: -1; border-radius: inherit;
+        padding: 1px;
+        background: conic-gradient(from 0deg, rgba(var(--va-a), .95), rgba(var(--va-b), .35), transparent 35%, transparent 55%, rgba(var(--va-a), .8));
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor; mask-composite: exclude;
+        opacity: .65;
+        animation: vaRimSpin 7s linear infinite;
+    }
+    @keyframes vaRimSpin { to { transform: rotate(360deg); } }
+
+    /* Glossy top highlight — a soft light sheen near the top edge, like light hitting curved glass */
+    #va-card::after {
+        content: ''; position: absolute; top: -8%; left: 6%; right: 6%; height: 42%; z-index: 0;
+        background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0) 75%);
+        border-radius: 50%; pointer-events: none; opacity: .8; filter: blur(2px);
+    }
+    .light-theme #va-card::after { background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 75%); }
+
+    /* Two soft colour blobs drifting/morphing slowly behind the content — pure CSS (transform + border-radius),
+       so it's compositor-driven and costs almost nothing even though it runs the whole time the card is open. */
+    .va-blob {
+        position: absolute; z-index: 0; pointer-events: none; filter: blur(26px); opacity: .55;
+        background: radial-gradient(circle, rgba(var(--va-a), .55), transparent 72%);
+        border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%;
+        animation: vaBlobMorph 10s ease-in-out infinite;
+    }
+    .va-blob.va-blob-1 { width: 62%; aspect-ratio: 1; left: -12%; top: -10%; }
+    .va-blob.va-blob-2 { width: 50%; aspect-ratio: 1; right: -14%; bottom: -12%; background: radial-gradient(circle, rgba(var(--va-b), .5), transparent 72%); animation-duration: 12s; animation-delay: -4s; }
+    @keyframes vaBlobMorph {
+        0%, 100% { border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%; transform: translate3d(0,0,0) scale(1); }
+        50%      { border-radius: 58% 42% 35% 65% / 55% 55% 45% 45%; transform: translate3d(3%, -3%, 0) scale(1.12); }
+    }
+    @media (prefers-reduced-motion: reduce) { #va-card::before, .va-blob { animation: none !important; } }
+
+    /* Everything else in the card sits above the blobs/sheen */
+    #va-card > * { position: relative; z-index: 1; }
 
     /* ---------- Logo + simple circular waves (soft violet, brighter orchid while speaking) ---------- */
     #va-stage {
@@ -8790,7 +8836,8 @@
         display: inline-flex; align-items: center; gap: 9px; max-width: 100%;
         padding: 7px 16px; border-radius: 999px;
         font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: rgb(var(--va-ink));
-        background: rgba(var(--va-a), .18); border: 1px solid rgba(var(--va-a), .45);
+        background: rgba(var(--va-a), .2); border: 1px solid rgba(255,255,255,.28);
+        -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
         box-shadow: 0 4px 18px -6px rgba(var(--va-a), .55);
         transition: background-color .5s ease, border-color .5s ease, box-shadow .5s ease;
     }
@@ -8890,6 +8937,22 @@
     // only this explicit suffix (or the native Arabic-pronunciation wake phrase below) goes Arabic.
     const AR_SUFFIX_RE = /^(?:in\s+)?(?:arabic|عربي|بالعربي|بالعربية)\b[\s,.:-]*/;
 
+    // "يا Co Assistant" — the Arabic word "يا" (hey/oh) said right before the wake phrase always means
+    // Arabic, whichever script the mic happened to transcribe the rest in. An Arabic-locale mic gives us
+    // "يا" in Arabic script; an English-locale mic sometimes catches the very same short sound as "ya"/"yah"
+    // in Latin letters instead — both are accepted so the phrase still works no matter which language the
+    // mic happens to be listening in at that exact moment (this is what makes it reliable on phones, where
+    // the mic can only listen in one language at a time and swaps between them periodically).
+    const YA_PREFIX_AR_RE = /^يا[\s]+/;
+    const YA_PREFIX_EN_RE = /^ya[h']?\s+/i;
+    function stripYaPrefix(text) {
+        const ar = text.match(YA_PREFIX_AR_RE);
+        if (ar) return ar[0].length;
+        const en = text.match(YA_PREFIX_EN_RE);
+        if (en) return en[0].length;
+        return 0;
+    }
+
     // Arabic wake phrase: "كو اسيستانت". Speech-to-text renders this transliterated English term in wildly
     // different ways, so instead of one rigid pattern we fuzzy-match every Arabic word (or pair of words) near
     // the front of the sentence against a handful of likely spellings, and accept anything close enough.
@@ -8955,7 +9018,8 @@
         speaking: false, ttsSeq: 0, curResolve: null, ignoreUntil: 0, spoken: [],
         lastFinal: '', lastFinalAt: 0,
         seenFinals: new Map(), lastCmdKey: '',
-        editing: false, prevCmd: '', ctlAt: 0
+        editing: false, prevCmd: '', ctlAt: 0,
+        gestureGranted: false, autoStartNudged: false   // has a real tap/click ever reached us? (mobile mic permission needs one)
     };
     try { S.userOff = localStorage.getItem('va_off') === '1'; } catch (e) {}
 
@@ -9521,6 +9585,19 @@
     // ------------------------------------------------------------------
     // Which wake phrase (English or Arabic) is present, and where — whichever comes first
     function wakeMatch(text) {
+        // "يا Co Assistant" (or "يا" + the Arabic-transliterated wake phrase) always forces Arabic,
+        // wherever it sits at the very front of the sentence — checked first so it takes priority.
+        const yaLen = stripYaPrefix(text);
+        if (yaLen) {
+            const rest = text.slice(yaLen);
+            const enAfterYa = rest.match(WAKE_RE);
+            const arAfterYa = findArabicWake(rest);
+            const tail = (enAfterYa && arAfterYa) ? (arAfterYa.index < enAfterYa.index ? arAfterYa : enAfterYa) : (enAfterYa || arAfterYa);
+            if (tail && tail.index <= 3) {   // the wake phrase must come right after "يا", not later in the sentence
+                const fullMatch = text.slice(0, yaLen + tail.index + tail[0].length);
+                return { m: { index: 0, 0: fullMatch }, lang: 'ar' };
+            }
+        }
         const en = text.match(WAKE_RE), ar = findArabicWake(text);
         if (en && ar) return ar.index < en.index ? { m: ar, lang: 'ar' } : { m: en, lang: 'en' };
         if (en) return { m: en, lang: 'en' };
@@ -9620,7 +9697,7 @@
     // Prefer the recognizer alternative that actually contains the wake phrase
     function pickAlt(res) {
         const top = res[0].transcript;
-        const hasWake = (s) => { const n = norm(s); return WAKE_RE.test(n) || !!findArabicWake(n); };
+        const hasWake = (s) => !!wakeMatch(norm(s));
         if (hasWake(top)) return top;
         for (let i = 1; i < res.length; i++) if (hasWake(res[i].transcript)) return res[i].transcript;
         return top;
@@ -9676,7 +9753,22 @@
         };
         rec.onend = () => { S.rec = null; S.listening = false; render(); if (S.enabled) scheduleRestart(); };
         S.rec = rec;
-        try { rec.start(); } catch (e) { S.rec = null; scheduleRestart(1200); }
+        try {
+            rec.start();
+        } catch (e) {
+            S.rec = null;
+            // Some mobile browsers silently refuse to start the mic the very first time unless it
+            // happens inside a real tap/click (auto-starting on page load doesn't count on some
+            // Android builds) — that failure doesn't fire onerror at all, so without this the whole
+            // thing just retried forever in total silence and looked like it was simply broken.
+            // A real tap on the mic button always works (it carries the gesture Chrome needs), so
+            // nudge the person toward that exactly once instead of failing silently forever.
+            if (IS_TOUCH && !S.gestureGranted && !S.autoStartNudged) {
+                S.autoStartNudged = true;
+                toast('Tap the mic icon at the top to turn on voice control on this device.', 'info');
+            }
+            scheduleRestart(1200);
+        }
     }
 
     function scheduleRestart(delay) {
@@ -9790,13 +9882,14 @@
             if (themeBtn && themeBtn.parentNode) themeBtn.parentNode.insertBefore(btn, themeBtn);
             else { btn.classList.add('va-fab'); document.body.appendChild(btn); }
         }
-        btn.addEventListener('click', () => { S.enabled ? disable() : enable(); });
+        btn.addEventListener('click', () => { S.gestureGranted = true; S.enabled ? disable() : enable(); });
         if (!SR) btn.title = 'Voice control is not supported in this browser (use Chrome, Edge or Samsung Internet)';
 
         const ov = document.createElement('div');
         ov.id = 'va-overlay'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-live', 'polite'); ov.setAttribute('aria-label', 'Co Assistant voice control'); ov.dataset.mode = 'idle';
         ov.innerHTML =
             '<div id="va-card">' +
+                '<div class="va-blob va-blob-1"></div><div class="va-blob va-blob-2"></div>' +
                 '<div id="va-stage">' +
                     '<span class="va-wave-out"></span><span class="va-wave-out"></span><span class="va-wave-out"></span>' +
                     '<span class="va-wave-in"></span><span class="va-wave-in"></span>' +
