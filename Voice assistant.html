@@ -36,26 +36,45 @@
         display: flex; align-items: center; justify-content: center;
         padding: max(16px, env(safe-area-inset-top)) 20px max(16px, env(safe-area-inset-bottom));
         color: #e2e8f0;
-        background: radial-gradient(circle at 50% 38%, rgba(67,56,202,.42), rgba(2,6,23,.92) 70%);
-        -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2);
+        background:
+            radial-gradient(circle at 50% 26%, rgba(var(--va-a), .28), transparent 55%),
+            radial-gradient(circle at 50% 82%, rgba(var(--va-b), .16), transparent 60%),
+            radial-gradient(circle at 50% 38%, rgba(67,56,202,.4), rgba(2,6,23,.94) 72%);
+        -webkit-backdrop-filter: blur(22px) saturate(1.3); backdrop-filter: blur(22px) saturate(1.3);
         opacity: 0; visibility: hidden; pointer-events: none;
-        transition: opacity .25s ease, visibility 0s linear .25s;
+        transition: opacity .25s ease, visibility 0s linear .25s, background .6s ease;
     }
-    #va-overlay.va-show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .25s ease; }
+    #va-overlay.va-show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .25s ease, background .6s ease; }
     #va-overlay[data-mode="awake"]     { --va-a: 74,222,128;  --va-b: 34,211,238; --va-wave: .55; }
     #va-overlay[data-mode="countdown"] { --va-a: 129,140,248; --va-b: 236,72,153; --va-wave: .38; }
     #va-overlay[data-mode="reply"]     { --va-a: 34,211,238;  --va-b: 99,102,241; --va-wave: .45; }
     .light-theme #va-overlay {
         color: #0f172a;
-        background: radial-gradient(circle at 50% 38%, rgba(165,180,252,.55), rgba(248,250,252,.95) 72%);
+        background:
+            radial-gradient(circle at 50% 26%, rgba(var(--va-a), .22), transparent 55%),
+            radial-gradient(circle at 50% 38%, rgba(165,180,252,.55), rgba(248,250,252,.96) 72%);
     }
 
-    /* The card no longer clips anything: the glow and waves are free to spread out
-       all around the logo (the old scrolling card cut off the top of the halo). */
+    /* The card is now a real, distinct panel — a soft glass surface with its own border,
+       depth shadow and glow — instead of text floating directly on the full-screen blur.
+       It still never clips the waves/glow around the logo (grown via negative margin below). */
     #va-card {
-        width: min(560px, 100%); max-height: 100%;
-        display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;
-        transform: scale(.94); transition: transform .25s ease;
+        width: min(560px, 100%); max-height: 100%; position: relative;
+        display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px;
+        padding: 30px 26px 26px;
+        border-radius: 28px;
+        background: linear-gradient(180deg, rgba(15,23,42,.58), rgba(15,23,42,.78));
+        border: 1px solid rgba(var(--va-a), .24);
+        box-shadow:
+            0 24px 60px -12px rgba(0,0,0,.55),
+            0 0 0 1px rgba(255,255,255,.04) inset,
+            0 0 90px -24px rgba(var(--va-a), .45);
+        transform: scale(.94); transition: transform .25s ease, border-color .5s ease, box-shadow .5s ease;
+    }
+    .light-theme #va-card {
+        background: linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.95));
+        border-color: rgba(99,102,241,.22);
+        box-shadow: 0 24px 60px -14px rgba(15,23,42,.22), 0 0 0 1px rgba(255,255,255,.5) inset, 0 0 90px -28px rgba(99,102,241,.32);
     }
     #va-overlay.va-show #va-card { transform: scale(1); }
 
@@ -151,8 +170,9 @@
         display: inline-flex; align-items: center; gap: 9px; max-width: 100%;
         padding: 7px 16px; border-radius: 999px;
         font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: #fff;
-        background: rgba(var(--va-a), .13); border: 1px solid rgba(var(--va-a), .38);
-        transition: background-color .5s ease, border-color .5s ease;
+        background: rgba(var(--va-a), .16); border: 1px solid rgba(var(--va-a), .42);
+        box-shadow: 0 4px 18px -6px rgba(var(--va-a), .5);
+        transition: background-color .5s ease, border-color .5s ease, box-shadow .5s ease;
     }
     #va-status::before {
         content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%;
@@ -240,6 +260,11 @@
     const WAKE_SRC = '(?:co|coe|ko|koh|kow|go|code|call|coo|cu|kuh|cuz|quo)[\\s-]*(?:assistants?|assistance|assistent|assist(?:ing|ed)?)';
     const WAKE_RE    = new RegExp('\\b' + WAKE_SRC + '\\b');
     const WAKE_START = new RegExp('^' + WAKE_SRC + '\\b[\\s,.:-]*');
+
+    // "Co Assistant Arabic" / "Co Assistant عربي" — said right after the plain English wake phrase —
+    // explicitly switches THIS interaction to Arabic. Plain "Co Assistant" alone always stays English;
+    // only this explicit suffix (or the native Arabic-pronunciation wake phrase below) goes Arabic.
+    const AR_SUFFIX_RE = /^(?:in\s+)?(?:arabic|عربي|بالعربي|بالعربية)\b[\s,.:-]*/;
 
     // Arabic wake phrase: "كو اسيستانت". Speech-to-text renders this transliterated English term in wildly
     // different ways, so instead of one rigid pattern we fuzzy-match every Arabic word (or pair of words) near
@@ -882,6 +907,13 @@
         const wasAwake = S.mode === 'awake';
         S.mode = 'awake'; S.awakeUntil = Date.now() + CFG.COMMAND_WINDOW_MS;
         if (lang) S.wakeLang = lang;
+        // Make sure the mic is actually listening in the right language for what comes next — e.g.
+        // right after "Co Assistant Arabic" the command that follows is spoken in Arabic, so the
+        // recognizer needs to switch to ar-SA immediately rather than waiting for the next idle swap.
+        if (lang && S.recLang !== lang) {
+            S.recLang = lang;
+            if (S.rec) { try { S.rec.abort(); } catch (e) {} }
+        }
         clearTimeout(S.awakeTimer);
         S.awakeTimer = setTimeout(() => { if (S.mode === 'awake') { S.mode = 'idle'; S.editing = false; render(); } }, CFG.COMMAND_WINDOW_MS);
         if (!wasAwake) { chime(); clickPulse(); }
@@ -932,10 +964,15 @@
 
         const w = wakeMatch(text);
         if (w) {
-            const lang = w.lang;
+            let lang = w.lang;
             const before = text.slice(0, w.m.index).replace(/\b(hey|hi|hello|ok|okay)\b/g, ' ').replace(/\s+/g, ' ').trim();
             let cmd = text.slice(w.m.index + w.m[0].length).replace(/^[\s,.:-]+/, '');
-            if (lang === 'en') while (WAKE_START.test(cmd)) cmd = cmd.replace(WAKE_START, '');
+            if (lang === 'en') {
+                while (WAKE_START.test(cmd)) cmd = cmd.replace(WAKE_START, '');
+                // "Co Assistant Arabic" / "Co Assistant عربي" right after the wake phrase explicitly
+                // switches this interaction to Arabic — plain "Co Assistant" always stays English.
+                if (AR_SUFFIX_RE.test(cmd)) { cmd = cmd.replace(AR_SUFFIX_RE, ''); lang = 'ar'; }
+            }
             const command = cmd || before;
             clearBuffer(); S.wakeLang = lang; enterAwake(lang);
             if (command) bufferAppend(command);                  // "open dashboard, Co Assistant" also works
