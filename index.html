@@ -8674,72 +8674,47 @@
     }
 
     /* ---------- "Liquid glass" card ----------
-       A real frosted-glass surface (blurred + translucent, NOT the old flat gradient) with a slowly
-       rotating soft-light rim and a couple of organic blobs drifting/morphing behind the content for
-       that liquid feel. The blur is scoped to just this ~560px card instead of the full screen, so it
-       stays cheap to draw on phones — full-screen backdrop-filter was what made things stutter before. */
+       A frosted-glass panel: real backdrop blur so it actually looks like glass, plus soft colour
+       pools baked straight into the card's own background gradient for the "liquid" feel — no extra
+       blurred layers stacked on top of each other, which is what rendered as a solid blocked-out mess
+       on some phones/browsers before. This version is one flat, predictable paint. */
     #va-card {
         width: min(560px, 100%); max-height: 100%; position: relative;
         display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px;
-        padding: 34px 26px 28px;
-        border-radius: 34px;
-        overflow: hidden; isolation: isolate;
-        background: linear-gradient(165deg, rgba(76,29,149,.34), rgba(20,7,46,.5) 60%, rgba(46,16,101,.4));
-        -webkit-backdrop-filter: blur(26px) saturate(180%);
-        backdrop-filter: blur(26px) saturate(180%);
-        border: 1px solid rgba(255,255,255,.16);
+        padding: 32px 26px 28px;
+        border-radius: 30px;
+        background:
+            radial-gradient(circle at 18% 10%, rgba(var(--va-a), .38), transparent 46%),
+            radial-gradient(circle at 86% 90%, rgba(var(--va-b), .3), transparent 50%),
+            linear-gradient(165deg, rgba(76,29,149,.5), rgba(20,7,46,.74) 65%, rgba(46,16,101,.6));
+        -webkit-backdrop-filter: blur(20px) saturate(150%);
+        backdrop-filter: blur(20px) saturate(150%);
+        border: 1px solid rgba(255,255,255,.18);
         box-shadow:
             0 30px 70px -14px rgba(4,1,14,.65),
             0 1px 0 rgba(255,255,255,.14) inset,
-            0 0 0 1px rgba(255,255,255,.04) inset,
+            0 0 0 1px rgba(255,255,255,.05) inset,
             0 0 100px -24px rgba(var(--va-a), .5);
         transform: scale(.94); transition: transform .25s ease, border-color .5s ease, box-shadow .5s ease, background .6s ease;
     }
     .light-theme #va-card {
-        background: linear-gradient(165deg, rgba(255,255,255,.5), rgba(245,240,255,.36) 60%, rgba(237,233,254,.42));
-        border-color: rgba(255,255,255,.6);
-        box-shadow: 0 30px 70px -16px rgba(76,29,149,.22), 0 1px 0 rgba(255,255,255,.7) inset, 0 0 100px -28px rgba(139,92,246,.38);
+        background:
+            radial-gradient(circle at 18% 10%, rgba(var(--va-a), .2), transparent 46%),
+            radial-gradient(circle at 86% 90%, rgba(var(--va-b), .16), transparent 50%),
+            linear-gradient(165deg, rgba(255,255,255,.88), rgba(250,245,255,.95) 65%, rgba(237,233,254,.9));
+        border-color: rgba(255,255,255,.75);
+        box-shadow: 0 30px 70px -16px rgba(76,29,149,.22), 0 1px 0 rgba(255,255,255,.7) inset, 0 0 100px -28px rgba(139,92,246,.35);
     }
     #va-overlay.va-show #va-card { transform: scale(1); }
 
-    /* Slowly spinning soft-light rim — a thin conic gradient just outside the card edge, giving the
-       glass a subtle "catching the light" look without an expensive animated blur on the ring itself. */
-    #va-card::before {
-        content: ''; position: absolute; inset: -1px; z-index: -1; border-radius: inherit;
-        padding: 1px;
-        background: conic-gradient(from 0deg, rgba(var(--va-a), .95), rgba(var(--va-b), .35), transparent 35%, transparent 55%, rgba(var(--va-a), .8));
-        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        -webkit-mask-composite: xor; mask-composite: exclude;
-        opacity: .65;
-        animation: vaRimSpin 7s linear infinite;
-    }
-    @keyframes vaRimSpin { to { transform: rotate(360deg); } }
-
-    /* Glossy top highlight — a soft light sheen near the top edge, like light hitting curved glass */
+    /* Thin inner highlight instead of an animated masked ring — same "catching the light" idea,
+       implemented as a plain inset shadow so it always renders correctly everywhere. */
     #va-card::after {
-        content: ''; position: absolute; top: -8%; left: 6%; right: 6%; height: 42%; z-index: 0;
-        background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0) 75%);
-        border-radius: 50%; pointer-events: none; opacity: .8; filter: blur(2px);
+        content: ''; position: absolute; inset: 0; border-radius: inherit; z-index: 0; pointer-events: none;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), inset 0 46px 70px -46px rgba(255,255,255,.3);
     }
-    .light-theme #va-card::after { background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 75%); }
 
-    /* Two soft colour blobs drifting/morphing slowly behind the content — pure CSS (transform + border-radius),
-       so it's compositor-driven and costs almost nothing even though it runs the whole time the card is open. */
-    .va-blob {
-        position: absolute; z-index: 0; pointer-events: none; filter: blur(26px); opacity: .55;
-        background: radial-gradient(circle, rgba(var(--va-a), .55), transparent 72%);
-        border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%;
-        animation: vaBlobMorph 10s ease-in-out infinite;
-    }
-    .va-blob.va-blob-1 { width: 62%; aspect-ratio: 1; left: -12%; top: -10%; }
-    .va-blob.va-blob-2 { width: 50%; aspect-ratio: 1; right: -14%; bottom: -12%; background: radial-gradient(circle, rgba(var(--va-b), .5), transparent 72%); animation-duration: 12s; animation-delay: -4s; }
-    @keyframes vaBlobMorph {
-        0%, 100% { border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%; transform: translate3d(0,0,0) scale(1); }
-        50%      { border-radius: 58% 42% 35% 65% / 55% 55% 45% 45%; transform: translate3d(3%, -3%, 0) scale(1.12); }
-    }
-    @media (prefers-reduced-motion: reduce) { #va-card::before, .va-blob { animation: none !important; } }
-
-    /* Everything else in the card sits above the blobs/sheen */
+    /* Everything in the card sits above that highlight layer */
     #va-card > * { position: relative; z-index: 1; }
 
     /* ---------- Logo + simple circular waves (soft violet, brighter orchid while speaking) ---------- */
@@ -9889,7 +9864,6 @@
         ov.id = 'va-overlay'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-live', 'polite'); ov.setAttribute('aria-label', 'Co Assistant voice control'); ov.dataset.mode = 'idle';
         ov.innerHTML =
             '<div id="va-card">' +
-                '<div class="va-blob va-blob-1"></div><div class="va-blob va-blob-2"></div>' +
                 '<div id="va-stage">' +
                     '<span class="va-wave-out"></span><span class="va-wave-out"></span><span class="va-wave-out"></span>' +
                     '<span class="va-wave-in"></span><span class="va-wave-in"></span>' +
