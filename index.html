@@ -2822,6 +2822,11 @@
                     <span>Community Feed</span>
                 </button>
 
+                <button onclick="switchTab('support')" id="nav-support" class="nav-btn ripple-btn w-auto md:w-full flex items-center gap-3 px-3.5 py-2 md:px-4 md:py-3 rounded-xl text-xs md:text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-300 ease-out whitespace-nowrap shrink-0">
+                    <i data-lucide="life-buoy" class="w-4 h-4"></i>
+                    <span>Support</span>
+                </button>
+
                 <!-- Restricted to teacher role -->
                 <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn ripple-btn w-auto md:w-full flex items-center gap-3 px-3.5 py-2 md:px-4 md:py-3 rounded-xl text-xs md:text-sm font-semibold text-red-400 hover:text-red-300 hover:bg-red-950/20 transition hidden whitespace-nowrap shrink-0">
                     <i data-lucide="terminal" class="w-4 h-4"></i>
@@ -3495,6 +3500,77 @@
                     </div>
                 </div>
 
+                <!-- 4.5 SUPPORT / CONTACT VIA WHATSAPP -->
+                <div id="view-support" class="view-panel space-y-6 hidden">
+                    <div class="glass-card p-5 md:p-6 rounded-2xl border border-white/10 shadow-2xl space-y-5 max-w-2xl mx-auto">
+                        <div class="flex items-center gap-3 border-b border-white/5 pb-4">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                                <i data-lucide="life-buoy" class="w-5 h-5 text-emerald-400"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-white">Get Support</h3>
+                                <p class="text-[11px] text-gray-400">Tell us what's wrong and we'll route your message to the right person on WhatsApp.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 1: category -->
+                        <div class="space-y-2">
+                            <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">1. What's this about?</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="support-category-group">
+                                <button type="button" onclick="selectSupportCategory('technical')" data-cat="technical" class="support-cat-btn flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border border-white/10 bg-slate-950/40 text-gray-300 hover:border-indigo-500/40 hover:text-white transition text-xs font-bold">
+                                    <i data-lucide="wrench" class="w-4 h-4"></i>
+                                    <span>Technical</span>
+                                    <span class="text-[9px] font-medium text-gray-500 normal-case">Bugs, login, site issues</span>
+                                </button>
+                                <button type="button" onclick="selectSupportCategory('educational')" data-cat="educational" class="support-cat-btn flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border border-white/10 bg-slate-950/40 text-gray-300 hover:border-indigo-500/40 hover:text-white transition text-xs font-bold">
+                                    <i data-lucide="graduation-cap" class="w-4 h-4"></i>
+                                    <span>Educational</span>
+                                    <span class="text-[9px] font-medium text-gray-500 normal-case">Lessons, grades, homework</span>
+                                </button>
+                                <button type="button" onclick="selectSupportCategory('other')" data-cat="other" class="support-cat-btn flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border border-white/10 bg-slate-950/40 text-gray-300 hover:border-indigo-500/40 hover:text-white transition text-xs font-bold">
+                                    <i data-lucide="circle-help" class="w-4 h-4"></i>
+                                    <span>Other</span>
+                                    <span class="text-[9px] font-medium text-gray-500 normal-case">Anything else</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: recommended contact -->
+                        <div class="space-y-2 hidden" id="support-contact-wrap">
+                            <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">2. Who to contact</label>
+                            <div id="support-contact-recommend" class="flex items-center gap-3 bg-indigo-500/10 border border-indigo-500/25 rounded-xl px-3 py-2.5 text-[11px] text-indigo-200">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5 shrink-0"></i>
+                                <span id="support-contact-recommend-text"></span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="support-contact-group">
+                                <button type="button" onclick="selectSupportContact('assistant')" data-contact="assistant" class="support-contact-btn flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/10 bg-slate-950/40 text-gray-300 hover:border-emerald-500/40 hover:text-white transition text-xs font-bold">
+                                    <i data-lucide="bot" class="w-4 h-4"></i>
+                                    <span>Assistant</span>
+                                </button>
+                                <button type="button" onclick="selectSupportContact('moderator')" data-contact="moderator" class="support-contact-btn flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/10 bg-slate-950/40 text-gray-300 hover:border-emerald-500/40 hover:text-white transition text-xs font-bold">
+                                    <i data-lucide="shield" class="w-4 h-4"></i>
+                                    <span>Moderator/Developer</span>
+                                </button>
+                                <button type="button" onclick="selectSupportContact('teacher')" data-contact="teacher" class="support-contact-btn flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/10 bg-slate-950/40 text-gray-300 hover:border-emerald-500/40 hover:text-white transition text-xs font-bold">
+                                    <i data-lucide="user" class="w-4 h-4"></i>
+                                    <span>Teacher</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: message -->
+                        <div class="space-y-2 hidden" id="support-message-wrap">
+                            <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">3. Your message</label>
+                            <textarea id="support-message" placeholder="Describe your issue or question..." class="w-full h-24 bg-slate-950/60 border border-white/5 rounded-xl p-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 resize-none"></textarea>
+                            <p class="text-[9px] text-gray-500">We'll open WhatsApp with your name, ID, grade and message already filled in — you just hit send there.</p>
+                            <button onclick="sendSupportMessage()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                                <i data-lucide="message-circle" class="w-4 h-4"></i>
+                                <span>Send via WhatsApp</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 5. ADMIN SYSTEM CONTROL CONSOLE -->
                 <div id="view-admin" class="view-panel space-y-6 hidden">
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -3946,37 +4022,58 @@
         }
         function closeTutoringModal() { document.getElementById('tutoring-modal').classList.add('hidden'); tutoringEditingId = null; }
 
+        let tutoringSubmitInFlight = false;
+
         async function submitTutoringForm(event) {
             event.preventDefault();
-            const payload = {
-                title: document.getElementById('tutoring-title').value.trim(),
-                session_date: document.getElementById('tutoring-date').value,
-                session_time: document.getElementById('tutoring-time').value,
-                location: document.getElementById('tutoring-location').value.trim(),
-                notes: document.getElementById('tutoring-notes').value.trim(),
-                grade: document.getElementById('tutoring-grade').value,
-                recurring: document.getElementById('tutoring-recurring').checked,
-                active: true
-            };
-            if (!payload.title || !payload.session_date || !payload.session_time) {
-                return toast('Please fill in the title, date and time.', 'warning');
-            }
 
-            if (tutoringEditingId) {
-                payload.id = tutoringEditingId;
-                const idx = tutoringSessions.findIndex(t => String(t.id) === String(tutoringEditingId));
-                if (idx > -1) tutoringSessions[idx] = { ...tutoringSessions[idx], ...payload };
-                await D1.updateTutoring(payload);
-                toast('Tutoring session updated.', 'success');
-            } else {
-                const res = await D1.saveTutoring(payload);
-                payload.id = res && res.id ? res.id : Date.now();
-                tutoringSessions.push(payload);
-                toast('Tutoring session added.', 'success');
+            // Guard against the "double/triple save" bug: if a save is already
+            // running, ignore extra clicks instead of firing another request.
+            if (tutoringSubmitInFlight) return;
+            tutoringSubmitInFlight = true;
+
+            const submitBtn = event.target && event.target.querySelector ? event.target.querySelector('button[type="submit"]') : null;
+            const submitBtnOriginalText = submitBtn ? submitBtn.textContent : null;
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving...'; submitBtn.classList.add('opacity-60', 'cursor-not-allowed'); }
+
+            try {
+                const payload = {
+                    title: document.getElementById('tutoring-title').value.trim(),
+                    session_date: document.getElementById('tutoring-date').value,
+                    session_time: document.getElementById('tutoring-time').value,
+                    location: document.getElementById('tutoring-location').value.trim(),
+                    notes: document.getElementById('tutoring-notes').value.trim(),
+                    grade: document.getElementById('tutoring-grade').value,
+                    recurring: document.getElementById('tutoring-recurring').checked,
+                    active: true
+                };
+                if (!payload.title || !payload.session_date || !payload.session_time) {
+                    toast('Please fill in the title, date and time.', 'warning');
+                    return;
+                }
+
+                if (tutoringEditingId) {
+                    payload.id = tutoringEditingId;
+                    const idx = tutoringSessions.findIndex(t => String(t.id) === String(tutoringEditingId));
+                    if (idx > -1) tutoringSessions[idx] = { ...tutoringSessions[idx], ...payload };
+                    await D1.updateTutoring(payload);
+                    toast('Tutoring session updated.', 'success');
+                } else {
+                    const res = await D1.saveTutoring(payload);
+                    payload.id = res && res.id ? res.id : Date.now();
+                    tutoringSessions.push(payload);
+                    toast('Tutoring session added.', 'success');
+                }
+                syncLocalDB();
+                renderTutoringCenter();
+                closeTutoringModal();
+            } catch (err) {
+                console.warn('Tutoring save failed:', err);
+                toast('Could not save the session. Please try again.', 'error');
+            } finally {
+                tutoringSubmitInFlight = false;
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtnOriginalText; submitBtn.classList.remove('opacity-60', 'cursor-not-allowed'); }
             }
-            syncLocalDB();
-            renderTutoringCenter();
-            closeTutoringModal();
         }
 
         async function deleteTutoringSession(id) {
@@ -4879,6 +4976,7 @@
                 materials: 'Worksheets & PDF Documents',
                 videos: 'Secure Video Sessions Center',
                 feed: 'Community Feed Announcements',
+                support: 'Get Support',
                 admin: 'System Control Node (D1 Database Direct)'
             };
             document.getElementById('active-tab-title').textContent = headerTitles[tabId] || 'Portal';
@@ -4908,6 +5006,7 @@
             if (tabId === 'materials') renderMaterials();
             if (tabId === 'videos') renderVideos();
             if (tabId === 'feed') renderFeed();
+            if (tabId === 'support') resetSupportForm();
             if (tabId === 'admin') renderAdmin();
 
             lucide.createIcons();
@@ -6799,6 +6898,86 @@
         }
 
         // -----------------------------------------------------------------
+        // SUPPORT / CONTACT-VIA-WHATSAPP SYSTEM
+        // Student picks a category (Technical / Educational / Other), gets a
+        // recommended person, can still pick anyone, types a message, and
+        // hitting Send opens WhatsApp with the message already composed as:
+        //   {Student name} {ID} {Grade} {Titles (if any)}
+        //   I need help with,
+        //   {Message}
+        // -----------------------------------------------------------------
+        const SUPPORT_CONTACTS = {
+            assistant: { label: 'Assistant', phone: '201150059503' },
+            moderator: { label: 'Website Moderator/Developer', phone: '201018355810' },
+            teacher:   { label: 'Teacher', phone: '201066940721' }
+        };
+        const SUPPORT_RECOMMENDATION = { technical: 'moderator', educational: 'teacher', other: 'assistant' };
+        const supportState = { category: null, contact: null };
+
+        function resetSupportForm() {
+            supportState.category = null;
+            supportState.contact = null;
+            document.querySelectorAll('.support-cat-btn').forEach(b => b.classList.remove('border-indigo-500', 'bg-indigo-500/15', 'text-white'));
+            document.querySelectorAll('.support-contact-btn').forEach(b => b.classList.remove('border-emerald-500', 'bg-emerald-500/15', 'text-white'));
+            const msgEl = document.getElementById('support-message');
+            if (msgEl) msgEl.value = '';
+            const contactWrap = document.getElementById('support-contact-wrap');
+            const msgWrap = document.getElementById('support-message-wrap');
+            if (contactWrap) contactWrap.classList.add('hidden');
+            if (msgWrap) msgWrap.classList.add('hidden');
+        }
+
+        function selectSupportCategory(cat) {
+            supportState.category = cat;
+            supportState.contact = SUPPORT_RECOMMENDATION[cat];
+
+            document.querySelectorAll('.support-cat-btn').forEach(b => {
+                b.classList.toggle('border-indigo-500', b.dataset.cat === cat);
+                b.classList.toggle('bg-indigo-500/15', b.dataset.cat === cat);
+                b.classList.toggle('text-white', b.dataset.cat === cat);
+            });
+
+            const recommendedLabel = SUPPORT_CONTACTS[supportState.contact].label;
+            const textEl = document.getElementById('support-contact-recommend-text');
+            if (textEl) textEl.textContent = `For ${cat} issues, we recommend messaging the ${recommendedLabel}. You can still pick someone else below.`;
+
+            document.getElementById('support-contact-wrap').classList.remove('hidden');
+            selectSupportContact(supportState.contact);
+        }
+
+        function selectSupportContact(contact) {
+            supportState.contact = contact;
+            document.querySelectorAll('.support-contact-btn').forEach(b => {
+                b.classList.toggle('border-emerald-500', b.dataset.contact === contact);
+                b.classList.toggle('bg-emerald-500/15', b.dataset.contact === contact);
+                b.classList.toggle('text-white', b.dataset.contact === contact);
+            });
+            document.getElementById('support-message-wrap').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function sendSupportMessage() {
+            if (!supportState.category) return showToast('Please choose what this is about first.', 'warning');
+            if (!supportState.contact) return showToast('Please choose who to contact.', 'warning');
+            const messageEl = document.getElementById('support-message');
+            const message = (messageEl ? messageEl.value : '').trim();
+            if (!message) return showToast('Please type your message first.', 'warning');
+
+            const name = (currentUser && currentUser.name) ? currentUser.name : 'Guest';
+            const id = (currentUser && currentUser.id) ? currentUser.id : '';
+            const grade = (currentUser && currentUser.grade) ? currentUser.grade : '';
+            const title = (currentUser && currentUser.title) ? currentUser.title : '';
+
+            const identityLine = [name, id, grade, title].filter(Boolean).join(' ');
+            const fullMessage = `${identityLine}\nI need help with,\n${message}`;
+
+            const contact = SUPPORT_CONTACTS[supportState.contact];
+            const waUrl = `https://wa.me/${contact.phone}?text=${encodeURIComponent(fullMessage)}`;
+            window.open(waUrl, '_blank');
+            showToast(`Opening WhatsApp for the ${contact.label}...`, 'success');
+        }
+
+        // -----------------------------------------------------------------
         // TOAST NOTIFICATIONS SYSTEMS
         // -----------------------------------------------------------------
         function showToast(message, type = 'info') {
@@ -7612,6 +7791,7 @@
         const fCanvas = document.getElementById('fluid-canvas');
         const fCtx = fCanvas.getContext('2d');
         let fParticles = [];
+        let fAmbientCount = 0;   // running count of "background current" particles (decay <= 0.002), kept in sync in fluidRenderLoop
         
         // 🚀 FULL-SCREEN 100% VIEWPORT CANVAS PARTICLE ENGINE
         let fWidth = window.innerWidth;
@@ -7743,12 +7923,17 @@
                 p.update();
                 p.draw();
                 if (p.alpha <= 0) {
+                    if (p.decay <= 0.002) fAmbientCount--;   // keep the running ambient tally in sync
                     fParticles.splice(i, 1);
                 }
             }
 
-            // Fill background fluid currents across full screen (100vw x 100vh)
-            if (fParticles.filter(p => p.decay <= 0.002).length < 160) {
+            // Fill background fluid currents across full screen (100vw x 100vh).
+            // Tracked with a running counter instead of filtering the whole array every
+            // frame just to check the cap — that filter was extra work happening 60x/sec
+            // for no visible benefit. The cap itself is also a little lighter now (110
+            // instead of 160) for a smoother frame rate on mid-range laptops.
+            if (fAmbientCount < 110) {
                 const x = Math.random() * fWidth;
                 const y = Math.random() * fHeight;
                 const size = Math.random() * 2 + 1;
@@ -7766,6 +7951,7 @@
                     Math.random() * 0.35 + 0.1, 
                     0.001 // Slow ambient decay
                 ));
+                fAmbientCount++;
             }
 
             requestAnimationFrame(fluidRenderLoop);
@@ -8073,9 +8259,10 @@
 // That hidden cost is the main thing that was making things feel laggy
 // on phones, so it now only runs where it's actually seen — and pauses
 // itself whenever the browser tab isn't in focus.
-      let fluidSimEnabled = window.innerWidth >= 1024;
+      const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let fluidSimEnabled = window.innerWidth >= 1024 && !prefersReducedMotion;
       window.addEventListener('resize', () => {
-          const shouldRun = window.innerWidth >= 1024;
+          const shouldRun = window.innerWidth >= 1024 && !prefersReducedMotion;
           const wasOff = !fluidSimEnabled;
           fluidSimEnabled = shouldRun;
           if (shouldRun && wasOff) fluidRenderLoop();
@@ -8124,26 +8311,45 @@
         display: flex; align-items: center; justify-content: center;
         padding: max(16px, env(safe-area-inset-top)) 20px max(16px, env(safe-area-inset-bottom));
         color: #e2e8f0;
-        background: radial-gradient(circle at 50% 38%, rgba(67,56,202,.42), rgba(2,6,23,.92) 70%);
-        -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2);
+        background:
+            radial-gradient(circle at 50% 26%, rgba(var(--va-a), .28), transparent 55%),
+            radial-gradient(circle at 50% 82%, rgba(var(--va-b), .16), transparent 60%),
+            radial-gradient(circle at 50% 38%, rgba(67,56,202,.4), rgba(2,6,23,.94) 72%);
+        -webkit-backdrop-filter: blur(22px) saturate(1.3); backdrop-filter: blur(22px) saturate(1.3);
         opacity: 0; visibility: hidden; pointer-events: none;
-        transition: opacity .25s ease, visibility 0s linear .25s;
+        transition: opacity .25s ease, visibility 0s linear .25s, background .6s ease;
     }
-    #va-overlay.va-show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .25s ease; }
+    #va-overlay.va-show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .25s ease, background .6s ease; }
     #va-overlay[data-mode="awake"]     { --va-a: 74,222,128;  --va-b: 34,211,238; --va-wave: .55; }
     #va-overlay[data-mode="countdown"] { --va-a: 129,140,248; --va-b: 236,72,153; --va-wave: .38; }
     #va-overlay[data-mode="reply"]     { --va-a: 34,211,238;  --va-b: 99,102,241; --va-wave: .45; }
     .light-theme #va-overlay {
         color: #0f172a;
-        background: radial-gradient(circle at 50% 38%, rgba(165,180,252,.55), rgba(248,250,252,.95) 72%);
+        background:
+            radial-gradient(circle at 50% 26%, rgba(var(--va-a), .22), transparent 55%),
+            radial-gradient(circle at 50% 38%, rgba(165,180,252,.55), rgba(248,250,252,.96) 72%);
     }
 
-    /* The card no longer clips anything: the glow and waves are free to spread out
-       all around the logo (the old scrolling card cut off the top of the halo). */
+    /* The card is now a real, distinct panel — a soft glass surface with its own border,
+       depth shadow and glow — instead of text floating directly on the full-screen blur.
+       It still never clips the waves/glow around the logo (grown via negative margin below). */
     #va-card {
-        width: min(560px, 100%); max-height: 100%;
-        display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px;
-        transform: scale(.94); transition: transform .25s ease;
+        width: min(560px, 100%); max-height: 100%; position: relative;
+        display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px;
+        padding: 30px 26px 26px;
+        border-radius: 28px;
+        background: linear-gradient(180deg, rgba(15,23,42,.58), rgba(15,23,42,.78));
+        border: 1px solid rgba(var(--va-a), .24);
+        box-shadow:
+            0 24px 60px -12px rgba(0,0,0,.55),
+            0 0 0 1px rgba(255,255,255,.04) inset,
+            0 0 90px -24px rgba(var(--va-a), .45);
+        transform: scale(.94); transition: transform .25s ease, border-color .5s ease, box-shadow .5s ease;
+    }
+    .light-theme #va-card {
+        background: linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.95));
+        border-color: rgba(99,102,241,.22);
+        box-shadow: 0 24px 60px -14px rgba(15,23,42,.22), 0 0 0 1px rgba(255,255,255,.5) inset, 0 0 90px -28px rgba(99,102,241,.32);
     }
     #va-overlay.va-show #va-card { transform: scale(1); }
 
@@ -8239,8 +8445,9 @@
         display: inline-flex; align-items: center; gap: 9px; max-width: 100%;
         padding: 7px 16px; border-radius: 999px;
         font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: #fff;
-        background: rgba(var(--va-a), .13); border: 1px solid rgba(var(--va-a), .38);
-        transition: background-color .5s ease, border-color .5s ease;
+        background: rgba(var(--va-a), .16); border: 1px solid rgba(var(--va-a), .42);
+        box-shadow: 0 4px 18px -6px rgba(var(--va-a), .5);
+        transition: background-color .5s ease, border-color .5s ease, box-shadow .5s ease;
     }
     #va-status::before {
         content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%;
@@ -8328,6 +8535,11 @@
     const WAKE_SRC = '(?:co|coe|ko|koh|kow|go|code|call|coo|cu|kuh|cuz|quo)[\\s-]*(?:assistants?|assistance|assistent|assist(?:ing|ed)?)';
     const WAKE_RE    = new RegExp('\\b' + WAKE_SRC + '\\b');
     const WAKE_START = new RegExp('^' + WAKE_SRC + '\\b[\\s,.:-]*');
+
+    // "Co Assistant Arabic" / "Co Assistant عربي" — said right after the plain English wake phrase —
+    // explicitly switches THIS interaction to Arabic. Plain "Co Assistant" alone always stays English;
+    // only this explicit suffix (or the native Arabic-pronunciation wake phrase below) goes Arabic.
+    const AR_SUFFIX_RE = /^(?:in\s+)?(?:arabic|عربي|بالعربي|بالعربية)\b[\s,.:-]*/;
 
     // Arabic wake phrase: "كو اسيستانت". Speech-to-text renders this transliterated English term in wildly
     // different ways, so instead of one rigid pattern we fuzzy-match every Arabic word (or pair of words) near
@@ -8970,6 +9182,13 @@
         const wasAwake = S.mode === 'awake';
         S.mode = 'awake'; S.awakeUntil = Date.now() + CFG.COMMAND_WINDOW_MS;
         if (lang) S.wakeLang = lang;
+        // Make sure the mic is actually listening in the right language for what comes next — e.g.
+        // right after "Co Assistant Arabic" the command that follows is spoken in Arabic, so the
+        // recognizer needs to switch to ar-SA immediately rather than waiting for the next idle swap.
+        if (lang && S.recLang !== lang) {
+            S.recLang = lang;
+            if (S.rec) { try { S.rec.abort(); } catch (e) {} }
+        }
         clearTimeout(S.awakeTimer);
         S.awakeTimer = setTimeout(() => { if (S.mode === 'awake') { S.mode = 'idle'; S.editing = false; render(); } }, CFG.COMMAND_WINDOW_MS);
         if (!wasAwake) { chime(); clickPulse(); }
@@ -9020,10 +9239,15 @@
 
         const w = wakeMatch(text);
         if (w) {
-            const lang = w.lang;
+            let lang = w.lang;
             const before = text.slice(0, w.m.index).replace(/\b(hey|hi|hello|ok|okay)\b/g, ' ').replace(/\s+/g, ' ').trim();
             let cmd = text.slice(w.m.index + w.m[0].length).replace(/^[\s,.:-]+/, '');
-            if (lang === 'en') while (WAKE_START.test(cmd)) cmd = cmd.replace(WAKE_START, '');
+            if (lang === 'en') {
+                while (WAKE_START.test(cmd)) cmd = cmd.replace(WAKE_START, '');
+                // "Co Assistant Arabic" / "Co Assistant عربي" right after the wake phrase explicitly
+                // switches this interaction to Arabic — plain "Co Assistant" always stays English.
+                if (AR_SUFFIX_RE.test(cmd)) { cmd = cmd.replace(AR_SUFFIX_RE, ''); lang = 'ar'; }
+            }
             const command = cmd || before;
             clearBuffer(); S.wakeLang = lang; enterAwake(lang);
             if (command) bufferAppend(command);                  // "open dashboard, Co Assistant" also works
