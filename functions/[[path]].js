@@ -338,6 +338,25 @@ export async function onRequest(context) {
             }
         }
 
+        // Updates only a session's length (in minutes). The site calls this when the real length of a video is
+        // read from the player, so a session that was saved with the old default of 45 minutes gets corrected.
+        if (pathname.startsWith('/api/db/lectures/') && request.method === 'PUT') {
+            try {
+                const lecId = pathname.split('/').pop();
+                const body = await request.json();
+                const mins = Math.round(Number(body.duration_mins));
+                if (!lecId || !Number.isFinite(mins) || mins < 1 || mins > 1440) {
+                    return jsonResponse({ error: 'duration_mins must be a whole number of minutes between 1 and 1440.' }, 400);
+                }
+                if (d1) {
+                    await d1.prepare('UPDATE videos_table SET duration_mins = ? WHERE id = ?').bind(mins, lecId).run();
+                }
+                return jsonResponse({ success: true, duration_mins: mins });
+            } catch (err) {
+                return jsonResponse({ error: err.message }, 400);
+            }
+        }
+
         if (pathname.startsWith('/api/db/lectures/') && request.method === 'DELETE') {
             const lecId = pathname.split('/').pop();
             if (d1 && lecId) {
