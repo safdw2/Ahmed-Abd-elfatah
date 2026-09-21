@@ -17,83 +17,77 @@
 
     /* Mic button (lives in the header next to the theme toggle) */
     #va-mic-btn { position: relative; }
-    #va-mic-btn.va-on { color: #c4b5fd; border-color: rgba(139,92,246,.7); animation: vaPulse 2.2s infinite; }
-    #va-mic-btn.va-awake { color: #e9d5ff; border-color: rgba(192,132,252,.9); animation-duration: 1s; }
+    #va-mic-btn.va-on { color: #a5b4fc; border-color: rgba(99,102,241,.65); animation: vaPulse 2.2s infinite; }
+    #va-mic-btn.va-awake { color: #4ade80; border-color: rgba(34,197,94,.8); animation-duration: 1s; }
     #va-mic-btn.va-fab { position: fixed; right: 16px; bottom: 90px; z-index: 99990; width: 48px; height: 48px; border-radius: 999px; }
     @keyframes vaPulse {
-        0%   { box-shadow: 0 0 0 0 rgba(168,85,247,.5); }
-        70%  { box-shadow: 0 0 0 10px rgba(168,85,247,0); }
-        100% { box-shadow: 0 0 0 0 rgba(168,85,247,0); }
+        0%   { box-shadow: 0 0 0 0 rgba(99,102,241,.45); }
+        70%  { box-shadow: 0 0 0 10px rgba(99,102,241,0); }
+        100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
     }
 
     /* ---------- Full-screen centered overlay ---------- */
-    /* Palette: everything stays in the purple family so it matches the logo.
-       Deep violet base, violet / orchid glow, lilac text. Cancel / Edit keep red / amber so they still read as actions. */
     #va-overlay {
-        /* glow colours as r,g,b — they shift slightly with the mode (see the data-mode rules below) */
-        --va-a: 168,85,247;
-        --va-b: 192,132,252;
-        --va-ink: 245,243,255;               /* text colour */
+        /* glow colours as r,g,b — they change with the mode (see the data-mode rules below) */
+        --va-a: 129,140,248;
+        --va-b: 168,85,247;
         --va-wave: .5;                       /* how visible the waves are (kept low on purpose) */
         position: fixed; inset: 0; z-index: 100000; overflow: hidden;
         display: flex; align-items: center; justify-content: center;
         padding: max(16px, env(safe-area-inset-top)) 20px max(16px, env(safe-area-inset-bottom));
-        color: rgb(var(--va-ink));
-        /* No backdrop blur on purpose: a full-screen blur over a page that is still animating underneath is what made
-           phones stutter. This gradient is almost opaque, so it looks just as deep and costs far less to draw. */
+        color: #e2e8f0;
         background:
-            radial-gradient(circle at 50% 24%, rgba(var(--va-a), .32), transparent 56%),
-            radial-gradient(circle at 50% 88%, rgba(var(--va-b), .16), transparent 62%),
-            radial-gradient(circle at 50% 42%, rgba(59,20,120,.55), rgba(9,3,22,.95) 76%);
+            radial-gradient(circle at 50% 26%, rgba(var(--va-a), .28), transparent 55%),
+            radial-gradient(circle at 50% 82%, rgba(var(--va-b), .16), transparent 60%),
+            radial-gradient(circle at 50% 38%, rgba(67,56,202,.4), rgba(2,6,23,.94) 72%);
+        -webkit-backdrop-filter: blur(22px) saturate(1.3); backdrop-filter: blur(22px) saturate(1.3);
         opacity: 0; visibility: hidden; pointer-events: none;
-        transition: opacity .25s ease, visibility 0s linear .25s;
+        transition: opacity .25s ease, visibility 0s linear .25s, background .6s ease;
     }
-    #va-overlay.va-show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .25s ease; }
-    #va-overlay[data-mode="awake"]     { --va-a: 168,85,247;  --va-b: 232,121,249; --va-wave: .55; }
-    #va-overlay[data-mode="countdown"] { --va-a: 192,132,252; --va-b: 129,140,248; --va-wave: .38; }
-    #va-overlay[data-mode="reply"]     { --va-a: 139,92,246;  --va-b: 196,181,253; --va-wave: .45; }
+    #va-overlay.va-show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .25s ease, background .6s ease; }
+    #va-overlay[data-mode="awake"]     { --va-a: 74,222,128;  --va-b: 34,211,238; --va-wave: .55; }
+    #va-overlay[data-mode="countdown"] { --va-a: 129,140,248; --va-b: 236,72,153; --va-wave: .38; }
+    #va-overlay[data-mode="reply"]     { --va-a: 34,211,238;  --va-b: 99,102,241; --va-wave: .45; }
     .light-theme #va-overlay {
-        --va-ink: 46,16,101;
+        color: #0f172a;
         background:
-            radial-gradient(circle at 50% 24%, rgba(var(--va-a), .22), transparent 56%),
-            radial-gradient(circle at 50% 42%, rgba(221,214,254,.78), rgba(250,245,255,.97) 76%);
+            radial-gradient(circle at 50% 26%, rgba(var(--va-a), .22), transparent 55%),
+            radial-gradient(circle at 50% 38%, rgba(165,180,252,.55), rgba(248,250,252,.96) 72%);
     }
 
-    /* The card is a real, distinct panel — a soft violet glass surface with its own border,
-       depth shadow and glow. It still never clips the waves/glow around the logo (grown via negative margin below). */
+    /* The card is now a real, distinct panel — a soft glass surface with its own border,
+       depth shadow and glow — instead of text floating directly on the full-screen blur.
+       It still never clips the waves/glow around the logo (grown via negative margin below). */
     #va-card {
         width: min(560px, 100%); max-height: 100%; position: relative;
         display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px;
         padding: 30px 26px 26px;
         border-radius: 28px;
-        background: linear-gradient(180deg, rgba(46,16,101,.55), rgba(20,7,46,.86));
-        border: 1px solid rgba(var(--va-a), .32);
+        background: linear-gradient(180deg, rgba(15,23,42,.58), rgba(15,23,42,.78));
+        border: 1px solid rgba(var(--va-a), .24);
         box-shadow:
-            0 24px 60px -12px rgba(4,1,14,.7),
-            0 1px 0 rgba(255,255,255,.10) inset,
-            0 0 0 1px rgba(255,255,255,.03) inset,
-            0 0 90px -26px rgba(var(--va-a), .55);
+            0 24px 60px -12px rgba(0,0,0,.55),
+            0 0 0 1px rgba(255,255,255,.04) inset,
+            0 0 90px -24px rgba(var(--va-a), .45);
         transform: scale(.94); transition: transform .25s ease, border-color .5s ease, box-shadow .5s ease;
     }
     .light-theme #va-card {
-        background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(250,245,255,.97));
-        border-color: rgba(139,92,246,.28);
-        box-shadow: 0 24px 60px -14px rgba(76,29,149,.25), 0 0 0 1px rgba(255,255,255,.6) inset, 0 0 90px -30px rgba(139,92,246,.4);
+        background: linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.95));
+        border-color: rgba(99,102,241,.22);
+        box-shadow: 0 24px 60px -14px rgba(15,23,42,.22), 0 0 0 1px rgba(255,255,255,.5) inset, 0 0 90px -28px rgba(99,102,241,.32);
     }
     #va-overlay.va-show #va-card { transform: scale(1); }
 
-    /* ---------- Logo + simple circular waves (soft violet, brighter orchid while speaking) ---------- */
+    /* ---------- Logo + simple circular waves (grey, purple while speaking) ---------- */
     #va-stage {
         --s: min(300px, 38vh);               /* size of the whole animated area */
         --L: calc(var(--s) * .36);           /* logo size */
-        --va-wr: 167,139,250;                /* wave colour: soft violet by default */
+        --va-wr: 148,163,184;                /* wave colour: grey by default */
         position: relative; flex: none; width: var(--s); height: var(--s);
         display: flex; align-items: center; justify-content: center;
         margin: calc(var(--s) * -.05) 0;
     }
-    #va-overlay.va-speaking #va-stage { --va-wr: 216,180,254; }   /* brighter orchid while it is talking */
-    .light-theme #va-stage { --va-wr: 139,92,246; }
-    .light-theme #va-overlay.va-speaking #va-stage { --va-wr: 124,58,237; }
+    #va-overlay.va-speaking #va-stage { --va-wr: 168,85,247; }   /* purple while it is talking */
 
     /* Soft ambient glow breathing behind everything — brings some life back
        to the stage on phones, where a couple of thin rings alone looked flat. */
@@ -111,7 +105,7 @@
         position: absolute; left: 50%; top: 50%; width: var(--L); height: var(--L);
         margin: calc(var(--L) / -2) 0 0 calc(var(--L) / -2);
         border-radius: 50%; pointer-events: none; opacity: 0;
-        border: 2.5px solid rgba(var(--va-wr), .6);
+        border: 2.5px solid rgba(var(--va-wr), .75);
         animation: vaWaveOut 2.8s cubic-bezier(.16,.6,.3,1) infinite;
         will-change: transform, opacity; transition: border-color .5s ease;
     }
@@ -128,7 +122,7 @@
         position: absolute; left: 50%; top: 50%; width: var(--L); height: var(--L);
         margin: calc(var(--L) / -2) 0 0 calc(var(--L) / -2);
         border-radius: 50%; pointer-events: none; opacity: 0;
-        border: 2.5px solid rgba(var(--va-wr), .6);
+        border: 2.5px solid rgba(var(--va-wr), .75);
         animation: vaWaveIn 2.8s cubic-bezier(.4,0,.5,1) infinite;
         will-change: transform, opacity; transition: border-color .5s ease;
     }
@@ -160,12 +154,12 @@
     @keyframes vaLogoClick { 0% { transform: scale(1); } 35% { transform: scale(1.18); } 100% { transform: scale(1); } }
     #va-logo {
         display: block; width: 100%; height: 100%; object-fit: contain; padding: 17%; box-sizing: border-box; border-radius: 50%;
-        background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.18), rgba(30,10,64,.88) 68%);
-        border: 1px solid rgba(216,180,254,.32);
+        background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.16), rgba(15,23,42,.78) 68%);
+        border: 1px solid rgba(255,255,255,.2);
         box-shadow: 0 8px 34px rgba(var(--va-wr), .5), inset 0 0 22px rgba(var(--va-wr), .3);
         transition: box-shadow .5s ease;
     }
-    .light-theme #va-logo { background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.95), rgba(237,233,254,.92) 70%); border-color: rgba(139,92,246,.4); }
+    .light-theme #va-logo { background: radial-gradient(circle at 30% 22%, rgba(255,255,255,.95), rgba(224,231,255,.9) 70%); border-color: rgba(99,102,241,.35); }
 
     @media (prefers-reduced-motion: reduce) {
         .va-wave-out, .va-wave-in, .va-click-ring.va-fire, #va-logo-wrap, #va-logo-wrap.va-fire, #va-stage::before { animation: none !important; }
@@ -175,16 +169,17 @@
     #va-status {
         display: inline-flex; align-items: center; gap: 9px; max-width: 100%;
         padding: 7px 16px; border-radius: 999px;
-        font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: rgb(var(--va-ink));
-        background: rgba(var(--va-a), .18); border: 1px solid rgba(var(--va-a), .45);
-        box-shadow: 0 4px 18px -6px rgba(var(--va-a), .55);
+        font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: #fff;
+        background: rgba(var(--va-a), .16); border: 1px solid rgba(var(--va-a), .42);
+        box-shadow: 0 4px 18px -6px rgba(var(--va-a), .5);
         transition: background-color .5s ease, border-color .5s ease, box-shadow .5s ease;
     }
     #va-status::before {
         content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%;
         background: rgb(var(--va-a)); box-shadow: 0 0 10px rgb(var(--va-a)); animation: vaBlink 1.2s ease-in-out infinite;
     }
-        #va-was { margin-top: -4px; font-size: 12px; opacity: .6; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .light-theme #va-status { color: #0f172a; }
+    #va-was { margin-top: -4px; font-size: 12px; opacity: .6; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #va-heard {
         min-height: 2.6em; width: 100%; padding: 0 6px;
         font-size: clamp(20px, 5vw, 30px); font-weight: 700; line-height: 1.3; word-break: break-word;
@@ -199,7 +194,7 @@
     #va-count { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
     #va-count .va-ring { position: relative; width: 124px; height: 124px; }
     #va-count .va-ring svg { width: 100%; height: 100%; }
-    #va-count .va-ring-bg { fill: none; stroke: rgba(196,181,253,.2); stroke-width: 5; }
+    #va-count .va-ring-bg { fill: none; stroke: rgba(148,163,184,.28); stroke-width: 5; }
     #va-ring-fg { fill: none; stroke: rgb(var(--va-a)); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 276.46; stroke-dashoffset: 0; transform: rotate(-90deg); transform-origin: 50% 50%; }
     #va-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 46px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
     #va-action { font-weight: 800; font-size: 18px; }
@@ -208,18 +203,17 @@
     #va-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 4px; }
 
     /* Text reply (help / progress) */
-    #va-reply { width: 100%; max-height: 34vh; overflow-y: auto; font-size: 15px; line-height: 1.55; padding: 12px 16px; border-radius: 16px; background: rgba(30,10,64,.55); border: 1px solid rgba(var(--va-a), .3); text-align: left; }
-    .light-theme #va-reply { background: rgba(255,255,255,.8); border-color: #ddd6fe; }
+    #va-reply { width: 100%; max-height: 34vh; overflow-y: auto; font-size: 15px; line-height: 1.55; padding: 12px 16px; border-radius: 16px; background: rgba(15,23,42,.55); border: 1px solid rgba(var(--va-a), .3); text-align: left; }
+    .light-theme #va-reply { background: rgba(255,255,255,.75); border-color: #c7d2fe; }
 
     #va-foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 4px; }
-    #va-overlay button { cursor: pointer; border-radius: 12px; border: 1px solid rgba(var(--va-a), .38); background: rgba(var(--va-a), .14); color: inherit; font-weight: 700; font-size: 12px; padding: 8px 14px; min-height: 36px; transition: background-color .2s ease, border-color .2s ease; }
-    #va-overlay button:hover { background: rgba(var(--va-a), .3); }
-    #va-overlay #va-cancel { border-color: rgba(251,113,133,.55); color: #fda4af; }
-    #va-overlay #va-edit { border-color: rgba(251,191,36,.55); color: #fcd34d; }
-    .light-theme #va-overlay #va-cancel { color: #be123c; }
+    #va-overlay button { cursor: pointer; border-radius: 12px; border: 1px solid rgba(148,163,184,.4); background: rgba(148,163,184,.14); color: inherit; font-weight: 700; font-size: 12px; padding: 8px 14px; min-height: 36px; }
+    #va-overlay button:hover { background: rgba(99,102,241,.3); }
+    #va-overlay #va-cancel { border-color: rgba(248,113,113,.55); color: #f87171; }
+    #va-overlay #va-edit { border-color: rgba(251,191,36,.55); color: #fbbf24; }
     .light-theme #va-overlay #va-edit { color: #b45309; }
-    #va-overlay #va-now { border-color: transparent; color: #fff; background: linear-gradient(135deg, #7c3aed, #a855f7); box-shadow: 0 6px 18px -6px rgba(124,58,237,.7); }
-    #va-overlay #va-now:hover { background: linear-gradient(135deg, #8b5cf6, #c084fc); }
+    #va-overlay #va-now { border-color: rgba(74,222,128,.55); color: #4ade80; }
+    .light-theme #va-overlay #va-now { color: #15803d; }
     #va-overlay #va-off { opacity: .65; font-weight: 600; }
 
     /* Short screens (phones held sideways, small laptops): shrink so everything still fits */
@@ -241,9 +235,6 @@
     // ------------------------------------------------------------------
     // SETTINGS — tweak these
     // ------------------------------------------------------------------
-    // Phones / tablets get gentler timings below: fewer mic restarts and a longer "ignore my own voice" tail.
-    const IS_TOUCH = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
-
     const CFG = {
         COUNTDOWN_SECONDS: 5,          // countdown before EVERY command runs
         LANG: 'en-US',                 // English recognition locale
@@ -255,14 +246,13 @@
         ANSWER_TIMEOUT_MS: 60000,      // give up waiting for the AI after this long
         SPEAK_ANSWER_MAX_CHARS: 220,   // AI answers up to this length are also read aloud; longer ones stay as text only
         MAX_SPOKEN_CHARS: 600,         // safety cap for anything else that is read aloud
-        ECHO_TAIL_MS: IS_TOUCH ? 1600 : 900,   // ignore the mic right after it finishes talking (phone speakers are close to the mic, so wait longer)
+        ECHO_TAIL_MS: 900,             // ignore the mic right after it finishes talking
         SPEAK_CONFIRM: true,           // say "Opening dashboard" when the countdown starts
         CHIME: true,                   // soft chime when it wakes up
         TICK_SOUND: true,              // soft tick on every countdown second
         CMD_SILENCE_MS: 1200,          // how long to wait after you stop talking before running the command (lets "what's 3 + 4" finish instead of firing on "what's")
-        IDLE_SILENCE_BEFORE_SWITCH_MS: IS_TOUCH ? 4000 : 3000,   // only swap the mic's language after this long of actual silence — never mid-sentence
-        IDLE_LANG_SWITCH_MIN_GAP_MS: IS_TOUCH ? 16000 : 6000,    // don't swap more often than this (every swap restarts the mic, which is what phones struggle with)
-        IDLE_LANG_CHECK_MS: 1000              // how often to check whether a swap is due
+        IDLE_SILENCE_BEFORE_SWITCH_MS: 3000,  // only swap the mic's language after this long of actual silence — never mid-sentence
+        IDLE_LANG_SWITCH_MIN_GAP_MS: 6000     // don't swap more often than this
     };
 
     // Wake phrase: "co assistant" plus the ways speech engines usually mis-hear it
@@ -340,7 +330,6 @@
         pending: null, cdTimer: null, busy: false, replyText: '',
         speaking: false, ttsSeq: 0, curResolve: null, ignoreUntil: 0, spoken: [],
         lastFinal: '', lastFinalAt: 0,
-        seenFinals: new Map(), lastCmdKey: '',
         editing: false, prevCmd: '', ctlAt: 0
     };
     try { S.userOff = localStorage.getItem('va_off') === '1'; } catch (e) {}
@@ -802,7 +791,7 @@
         S.mode = 'idle';
         if (!intent) { toast("Sorry, I didn't catch that.", 'warning'); speak("Sorry, I didn't catch that."); render(); return; }
         if (intent.refuse) { toast(intent.refuse, 'warning'); speak(intent.refuse); render(); return; }
-        intent.key = key; intent.heard = cap(key); S.lastCmdKey = key;
+        intent.key = key; intent.heard = cap(key);
         S.editing = false; S.prevCmd = '';
         startCountdown(intent);
     }
@@ -937,13 +926,7 @@
     // what lets "what's 3 + 4" finish instead of firing on "what's".
     function bufferAppend(text) {
         if (!text) return;
-        // Phones sometimes re-send words they already gave us (the same chunk again, or the same words with more on the end).
-        // Fold those into the buffer instead of stacking them up as "open open dashboard".
-        const cur = S.cmdBuf;
-        if (!cur) S.cmdBuf = text;
-        else if (text === cur || (text.length >= 6 && cur.endsWith(' ' + text))) { /* same chunk again — ignore */ }
-        else if (text.startsWith(cur + ' ')) S.cmdBuf = text;
-        else S.cmdBuf = cur + ' ' + text;
+        S.cmdBuf = (S.cmdBuf ? S.cmdBuf + ' ' : '') + text;
         showHeard(S.cmdBuf, true);
         enterAwake(S.wakeLang);                                   // keep the listening window open while more is being said
         clearTimeout(S.cmdBufTimer);
@@ -962,7 +945,7 @@
         if (!text) return;
         const now = Date.now();
         S.lastSpeechAt = now;
-        if (text === S.lastFinal && now - S.lastFinalAt < (IS_TOUCH ? 5000 : 2500)) return;   // Android Chrome sometimes repeats results
+        if (text === S.lastFinal && now - S.lastFinalAt < 2500) return;   // Android Chrome sometimes repeats results
         S.lastFinal = text; S.lastFinalAt = now;
 
         // "cancel" / "edit" work during the countdown, or while a command is still being buffered, without the wake phrase
@@ -991,9 +974,6 @@
                 if (AR_SUFFIX_RE.test(cmd)) { cmd = cmd.replace(AR_SUFFIX_RE, ''); lang = 'ar'; }
             }
             const command = cmd || before;
-            // The same command arriving again while it is already counting down / running is a repeated result, not a new request —
-            // without this guard it flipped the overlay from the countdown back to "listening".
-            if (command && (S.pending || S.busy) && command === S.lastCmdKey) return;
             clearBuffer(); S.wakeLang = lang; enterAwake(lang);
             if (command) bufferAppend(command);                  // "open dashboard, Co Assistant" also works
             else showHeard('', true);
@@ -1019,15 +999,7 @@
             const res = ev.results[i];
             // During the countdown react the instant "cancel" / "edit" is heard — no waiting for the sentence to finish
             if (S.pending) { const c = controlFrom(res, res.isFinal); if (c) { runControl(c); return; } }
-            if (res.isFinal) {
-                // Each final result is handled once. Some phones fire the same final again (or re-list old ones) on the next event.
-                const raw = pickAlt(res), k = i + '|' + norm(raw), t = Date.now();
-                const seenAt = S.seenFinals.get(k);
-                if (seenAt && t - seenAt < 8000) continue;
-                S.seenFinals.set(k, t);
-                if (S.seenFinals.size > 40) S.seenFinals.delete(S.seenFinals.keys().next().value);
-                handleFinal(raw);
-            }
+            if (res.isFinal) handleFinal(pickAlt(res));
             else interim += res[0].transcript;
         }
         if (!interim || S.speaking || S.mode === 'countdown' || S.busy) return;
@@ -1044,7 +1016,6 @@
     function startRec() {
         if (!SR || !S.enabled || S.rec) return;
         const rec = new SR();
-        S.seenFinals.clear();                                     // result numbering starts over with every new mic session
         rec.lang = S.recLang === 'ar' ? CFG.AR_LANG : CFG.LANG; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 5;
         rec.onstart = () => { S.listening = true; S.netWarned = false; render(); };
         rec.onresult = onResult;
@@ -1231,7 +1202,7 @@
         // Browsers pause the mic in background tabs — wake it back up when you return
         document.addEventListener('visibilitychange', () => { if (!document.hidden && S.enabled && !S.rec) startRec(); });
         setInterval(syncSession, 1000);
-        setInterval(idleLangSwitchTick, CFG.IDLE_LANG_CHECK_MS);
+        setInterval(idleLangSwitchTick, CFG.IDLE_LANG_SWITCH_MS);
         syncSession();
     }
 
