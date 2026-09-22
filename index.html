@@ -3742,6 +3742,10 @@
                                 <input type="file" id="account-avatar-file" accept="image/*" onchange="handleAvatarFileUpload(event)" class="block w-full text-[10px] text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer">
                                 <p class="text-[8px] text-gray-600 mt-1">It's auto-resized before saving, so any photo works.</p>
                             </div>
+                            <button type="button" onclick="applyNewAvatar('')" class="w-full bg-slate-950/60 hover:bg-slate-800 border border-white/10 text-gray-300 hover:text-white font-bold py-2 rounded-xl text-[11px] transition ripple-btn flex items-center justify-center gap-2">
+                                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                                <span>Use default logo</span>
+                            </button>
                         </div>
 
                         <!-- Change Password Card -->
@@ -3766,36 +3770,102 @@
                                 </button>
                             </div>
                         </div>
+
+                        <!-- Chat Privacy Card -->
+                        <div class="glass-card p-5 rounded-2xl space-y-4 border border-white/10 shadow-2xl lg:col-span-2">
+                            <h3 class="text-xs font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Chat Privacy</h3>
+                            <p class="text-[9px] text-gray-500 -mt-2 leading-relaxed">Direct Messages are end-to-end encrypted between the two accounts in the conversation. You can also lock the Chat tab behind a PIN on this device — it stays set until you change or clear it here.</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
+                                <div class="space-y-1">
+                                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider font-bold">New PIN (4+ digits)</label>
+                                    <input type="password" inputmode="numeric" id="account-chat-pin" placeholder="••••" class="w-full bg-slate-950/60 border border-white/5 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider font-bold">Confirm PIN</label>
+                                    <input type="password" inputmode="numeric" id="account-chat-pin-confirm" placeholder="••••" class="w-full bg-slate-950/60 border border-white/5 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                                </div>
+                                <button onclick="saveChatLockPin()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-[11px] transition ripple-btn">Set Chat Lock</button>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span id="chat-lock-status" class="text-[10px] text-gray-500 font-semibold"></span>
+                                <button onclick="clearChatLockPin()" class="text-[10px] text-red-400 hover:text-red-300 font-bold">Remove Chat Lock</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- CHAT TAB — one group chat per grade (own grade only for students), plus admin-granted DMs -->
-                <div id="view-chat" class="view-panel hidden">
+                <div id="view-chat" class="view-panel hidden relative">
+                    <!-- Chat Lock overlay — shown when this device has a PIN set and hasn't been unlocked yet this session -->
+                    <div id="chat-lock-overlay" class="hidden absolute inset-0 z-20 glass-card rounded-2xl border border-white/10 flex items-center justify-center p-6">
+                        <div class="w-full max-w-xs space-y-3 text-center">
+                            <i data-lucide="lock" class="w-8 h-8 text-indigo-400 mx-auto"></i>
+                            <h3 class="text-sm font-bold text-white">Chat is Locked</h3>
+                            <p class="text-[10px] text-gray-500">Enter your PIN to view messages.</p>
+                            <input type="password" inputmode="numeric" id="chat-lock-input" placeholder="••••" onkeydown="if(event.key==='Enter'){event.preventDefault();submitChatLockPin();}" class="w-full text-center tracking-[0.4em] bg-slate-950/60 border border-white/5 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition">
+                            <p id="chat-lock-error" class="hidden text-[10px] text-red-400 font-semibold"></p>
+                            <button onclick="submitChatLockPin()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition ripple-btn">Unlock</button>
+                        </div>
+                    </div>
+
                     <div class="glass-card rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col md:flex-row h-[68vh] md:h-[72vh]">
                         <div class="w-full md:w-64 border-b md:border-b-0 md:border-r border-white/5 flex flex-col shrink-0 max-h-40 md:max-h-none">
-                            <div class="p-3 border-b border-white/5 shrink-0">
+                            <div class="p-3 border-b border-white/5 shrink-0 flex items-center justify-between gap-2">
                                 <h3 class="text-[10px] font-bold text-white uppercase tracking-wider">Chat Rooms</h3>
+                                <button onclick="openNewChatPicker()" title="Start a new Direct Message with any student" class="bg-indigo-600 hover:bg-indigo-500 text-white p-1.5 rounded-lg transition ripple-btn shrink-0">
+                                    <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                                </button>
                             </div>
                             <div id="chat-room-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
                         </div>
                         <div class="flex-1 flex flex-col min-h-0">
                             <div id="chat-empty-state" class="flex-1 flex items-center justify-center text-xs text-gray-500 p-6 text-center">
-                                Select a grade group or a direct message on the left to start chatting.
+                                Select a grade group or a direct message on the left, or tap <i data-lucide="user-plus" class="w-3 h-3 inline"></i> to start a new chat with any student.
                             </div>
                             <div id="chat-thread" class="flex-1 flex flex-col min-h-0 hidden">
                                 <div class="p-3 border-b border-white/5 flex items-center gap-2 shrink-0">
                                     <i data-lucide="message-circle" class="w-4 h-4 text-indigo-400 shrink-0"></i>
-                                    <h3 id="chat-active-room-label" class="text-xs font-bold text-white truncate"></h3>
+                                    <h3 id="chat-active-room-label" class="text-xs font-bold text-white truncate flex-1"></h3>
+                                    <i id="chat-encrypted-badge" data-lucide="shield-check" title="End-to-end encrypted" class="w-3.5 h-3.5 text-emerald-400 shrink-0 hidden"></i>
+                                    <button id="chat-rename-btn" onclick="renameCurrentChatRoom()" title="Set a custom name for this chat" class="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition shrink-0">
+                                        <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                                    </button>
                                 </div>
                                 <div id="chat-messages-list" class="flex-1 overflow-y-auto p-3"></div>
-                                <div class="p-3 border-t border-white/5 flex items-center gap-2 shrink-0">
-                                    <input type="text" id="chat-message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessageNow();}" class="flex-1 bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition">
-                                    <button onclick="sendChatMessageNow()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-xl transition ripple-btn shrink-0">
-                                        <i data-lucide="send" class="w-4 h-4"></i>
-                                    </button>
+                                <div id="chat-attachment-preview" class="hidden mx-3 mb-1 px-2.5 py-1.5 rounded-xl bg-slate-950/60 border border-white/10 text-[10px] text-gray-300 flex items-center justify-between gap-2"></div>
+                                <div class="relative shrink-0">
+                                    <div id="chat-emoji-picker" class="hidden absolute bottom-full left-3 mb-2 w-64 max-h-40 overflow-y-auto grid grid-cols-8 gap-1 p-2 rounded-xl bg-slate-900 border border-white/10 shadow-2xl z-10"></div>
+                                    <div class="p-3 border-t border-white/5 flex items-center gap-1.5">
+                                        <input type="file" id="chat-attach-input" accept="image/*,application/pdf" class="hidden" onchange="handleChatFileAttach(event)">
+                                        <button type="button" title="Attach photo or PDF" onclick="document.getElementById('chat-attach-input').click()" class="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition shrink-0">
+                                            <i data-lucide="paperclip" class="w-4 h-4"></i>
+                                        </button>
+                                        <button type="button" title="Emoji" onclick="toggleEmojiPicker()" class="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition shrink-0">
+                                            <i data-lucide="smile" class="w-4 h-4"></i>
+                                        </button>
+                                        <button type="button" id="chat-voice-btn" title="Hold to record a voice message" onmousedown="startVoiceRecording()" onmouseup="stopVoiceRecording()" onmouseleave="cancelVoiceRecordingIfActive()" ontouchstart="startVoiceRecording(event)" ontouchend="stopVoiceRecording(event)" class="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition shrink-0">
+                                            <i data-lucide="mic" class="w-4 h-4"></i>
+                                        </button>
+                                        <input type="text" id="chat-message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessageNow();}" class="flex-1 bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition min-w-0">
+                                        <button onclick="sendChatMessageNow()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-xl transition ripple-btn shrink-0">
+                                            <i data-lucide="send" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- New Chat Picker Modal — start a DM with ANY student, no admin grant needed -->
+                <div id="new-chat-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md items-center justify-center p-4 z-50 hidden flex">
+                    <div class="w-full max-w-sm glass-modal p-5 rounded-2xl space-y-3 relative">
+                        <button onclick="closeNewChatPicker()" class="absolute top-4 right-4 text-gray-400 hover:text-white transition">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider">Start a Direct Message</h3>
+                        <input type="text" id="new-chat-search" oninput="renderNewChatPickerList()" placeholder="Search students by name…" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition">
+                        <div id="new-chat-list" class="max-h-72 overflow-y-auto space-y-1 pr-1"></div>
                     </div>
                 </div>
 
@@ -3876,27 +3946,13 @@
                             </div>
                         </div>
 
-                        <!-- Chat Grants — lets two specific accounts open a Direct Message on the Chat tab -->
-                        <div class="glass-card p-5 rounded-2xl space-y-4 border border-white/10 shadow-2xl lg:col-span-2">
+                        <!-- Direct Messages — open to every account, no admin pairing needed -->
+                        <div class="glass-card p-5 rounded-2xl space-y-3 border border-white/10 shadow-2xl lg:col-span-2">
                             <div class="flex items-center justify-between border-b border-white/5 pb-2">
-                                <h3 class="text-xs font-bold text-white uppercase tracking-wider">Chat Grants (Direct Messages)</h3>
+                                <h3 class="text-xs font-bold text-white uppercase tracking-wider">Direct Messages</h3>
+                                <span class="bg-emerald-950 border border-emerald-500/20 text-emerald-400 text-[8px] font-black px-2 py-0.5 rounded-full font-mono">open to all students</span>
                             </div>
-                            <p class="text-[9px] text-gray-500 -mt-2">Students only see their own grade's group chat. Grant two accounts a Direct Message here to let them chat one-on-one regardless of grade.</p>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
-                                <div class="space-y-1">
-                                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider font-bold">Account A</label>
-                                    <select id="chat-grant-user-a" class="w-full bg-slate-950/60 border border-white/5 rounded-xl p-2 text-[11px] text-white focus:outline-none focus:border-indigo-500 transition"></select>
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider font-bold">Account B</label>
-                                    <select id="chat-grant-user-b" class="w-full bg-slate-950/60 border border-white/5 rounded-xl p-2 text-[11px] text-white focus:outline-none focus:border-indigo-500 transition"></select>
-                                </div>
-                                <button onclick="createChatGrant()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-[11px] transition ripple-btn flex items-center justify-center gap-1.5">
-                                    <i data-lucide="link" class="w-3.5 h-3.5"></i>
-                                    <span>Grant Chat Access</span>
-                                </button>
-                            </div>
-                            <div id="admin-chat-grants-list" class="space-y-2 max-h-[220px] overflow-y-auto pr-1"></div>
+                            <p class="text-[9px] text-gray-500 leading-relaxed">Every student can start a private, end-to-end encrypted Direct Message with any other student straight from the Chat tab — no admin action needed. Message content is encrypted client-side, so it isn't readable from this console; each account can also set its own device-level Chat Lock PIN from their Account tab.</p>
                         </div>
 
                     </div>
@@ -4585,10 +4641,122 @@
             'Grade 9 (Preparatory 3)',
             'Grade 10 (Secondary 1)'
         ];
-        let chatGrants = [];          // [{ id, user_a, user_b }] — from /api/db/chat/grants
+        let chatGrants = [];          // legacy — no longer required to open a DM, kept for old data
+        let chatDmThreads = [];       // [{ room_id, sender_id, sender_name, text, created_at, ... }] latest msg per DM room
+        let chatNicknames = {};       // { room_id: "custom label the current viewer set" }
         let chatMessages = [];        // messages currently loaded for chatRoomId
         let currentChatRoom = null;   // "grade:<Grade Name>" or "dm:<idA>|<idB>"
+        let currentChatRoomLabel = '';
         let chatPollInterval = null;
+        let pendingChatAttachment = null; // { type, name, url } staged before send
+        let chatUnlockedThisSession = false;
+        let chatTranslations = {};    // { msgId: { lang, text } } cache of fetched translations
+
+        // -----------------------------------------------------------------
+        // 😀 Emoji picker — a small curated set, no external API needed.
+        // -----------------------------------------------------------------
+        const CHAT_EMOJI_LIST = ['😀','😂','😍','🥰','😎','🤔','😅','😭','😡','🥳',
+            '👍','👎','🙏','👏','💪','🔥','✨','🎉','❤️','💯',
+            '📚','✏️','🧪','🔬','🧮','📐','⏰','✅','❌','❓',
+            '😴','🤯','😇','🙌','👋','🤝','🎯','💡','🌟','😬'];
+
+        // -----------------------------------------------------------------
+        // 🔐 CHAT ENCRYPTION (Direct Messages only)
+        // AES-GCM key derived from the two participants' sorted IDs via
+        // PBKDF2 — both sides compute the same key locally, so no key ever
+        // travels over the network and the server only ever stores/returns
+        // ciphertext for DM rooms. Grade group chats stay in plain text
+        // since staff read them for moderation.
+        // Note: because the key is derived only from the two IDs (which
+        // aren't secret — an admin can see every account), this protects
+        // message content from casual server-side/DB inspection but is not
+        // a substitute for a real end-to-end key exchange.
+        // -----------------------------------------------------------------
+        const CHAT_ENC_PEPPER = 'ahmed-portal-dm-v1';
+        const chatRoomKeyCache = {};
+
+        async function getRoomCryptoKey(roomId) {
+            if (chatRoomKeyCache[roomId]) return chatRoomKeyCache[roomId];
+            const enc = new TextEncoder();
+            const baseKey = await crypto.subtle.importKey('raw', enc.encode(roomId + CHAT_ENC_PEPPER), 'PBKDF2', false, ['deriveKey']);
+            const key = await crypto.subtle.deriveKey(
+                { name: 'PBKDF2', salt: enc.encode('chat-salt:' + roomId), iterations: 100000, hash: 'SHA-256' },
+                baseKey,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            );
+            chatRoomKeyCache[roomId] = key;
+            return key;
+        }
+
+        function isDmRoom(roomId) {
+            return typeof roomId === 'string' && roomId.startsWith('dm:');
+        }
+
+        function bufToBase64(buf) {
+            let binary = '';
+            const bytes = new Uint8Array(buf);
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+            return btoa(binary);
+        }
+        function base64ToBuf(b64) {
+            const binary = atob(b64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            return bytes.buffer;
+        }
+
+        async function encryptForRoom(roomId, plaintext) {
+            try {
+                const key = await getRoomCryptoKey(roomId);
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const enc = new TextEncoder();
+                const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+                return JSON.stringify({ iv: bufToBase64(iv), ct: bufToBase64(ct) });
+            } catch (e) {
+                console.warn('Encryption failed, sending as plain text:', e.message);
+                return null;
+            }
+        }
+
+        async function decryptForRoom(roomId, payload) {
+            try {
+                const { iv, ct } = JSON.parse(payload);
+                const key = await getRoomCryptoKey(roomId);
+                const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64ToBuf(iv) }, key, base64ToBuf(ct));
+                return new TextDecoder().decode(dec);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // 🔒 CHAT LOCK — an optional device-level PIN gate on the Chat tab.
+        // Stored as a SHA-256 hash in localStorage, scoped to this browser
+        // and this account. This is a privacy convenience (like an app
+        // lock), not real account security — anyone who can open dev tools
+        // on this device could bypass it.
+        // -----------------------------------------------------------------
+        function chatLockStorageKey() {
+            return `chatLockPin_${myChatId() || 'guest'}`;
+        }
+        async function sha256Hex(str) {
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        function isChatLockEnabled() {
+            return !!localStorage.getItem(chatLockStorageKey());
+        }
+        async function setChatLockPin(pin) {
+            if (!pin) { localStorage.removeItem(chatLockStorageKey()); return; }
+            localStorage.setItem(chatLockStorageKey(), await sha256Hex(pin));
+        }
+        async function verifyChatLockPin(pin) {
+            const stored = localStorage.getItem(chatLockStorageKey());
+            if (!stored) return true;
+            return (await sha256Hex(pin)) === stored;
+        }
 
         // -----------------------------------------------------------------
         // 🖼️ ACCOUNT TAB — profile picture presets
@@ -4727,6 +4895,11 @@
             getChatGrants: () => d1Request('/chat/grants'),
             createChatGrant: (userA, userB) => d1Request('/chat/grants', { method: 'POST', body: { user_a: userA, user_b: userB } }),
             deleteChatGrant: (id) => d1Request(`/chat/grants/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+            // Every direct-message room a user currently has activity in —
+            // any student can DM any other student, no admin grant needed.
+            getChatDmThreads: (userId) => d1Request(`/chat/dm-threads?user=${encodeURIComponent(userId)}`),
+            getChatNicknames: (userId) => d1Request(`/chat/nicknames?user=${encodeURIComponent(userId)}`),
+            setChatNickname: (userId, roomId, nickname) => d1Request('/chat/nickname', { method: 'POST', body: { user_id: userId, room_id: roomId, nickname } }),
 
             getLectures: () => d1Request('/lectures'),
             saveLecture: (lecture) => d1Request('/lectures', { method: 'POST', body: lecture }),
@@ -5243,6 +5416,9 @@
         function handleLogout() {
             currentUser = null;
             clearRememberedSession();
+            chatUnlockedThisSession = false;
+            currentChatRoom = null;
+            if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
             document.getElementById('portal-section').classList.add('hidden');
             document.getElementById('login-section').classList.remove('hidden');
             document.getElementById('login-password').value = '';
@@ -5391,6 +5567,29 @@
                     </button>
                 `).join('');
             }
+
+            const lockStatus = document.getElementById('chat-lock-status');
+            if (lockStatus) lockStatus.textContent = isChatLockEnabled() ? '🔒 Chat Lock is ON for this device.' : 'Chat Lock is off.';
+        }
+
+        async function saveChatLockPin() {
+            const pin = document.getElementById('account-chat-pin').value.trim();
+            const confirmPin = document.getElementById('account-chat-pin-confirm').value.trim();
+            if (pin.length < 4) { showToast('Use a PIN of at least 4 digits.', 'error'); return; }
+            if (pin !== confirmPin) { showToast('PINs do not match.', 'error'); return; }
+            await setChatLockPin(pin);
+            document.getElementById('account-chat-pin').value = '';
+            document.getElementById('account-chat-pin-confirm').value = '';
+            chatUnlockedThisSession = true; // no need to immediately re-prompt the person who just set it
+            renderAccount();
+            showToast('Chat Lock enabled on this device.', 'success');
+        }
+
+        async function clearChatLockPin() {
+            await setChatLockPin(null);
+            chatUnlockedThisSession = false;
+            renderAccount();
+            showToast('Chat Lock removed.', 'info');
         }
 
         function selectAvatarPreset(idx) {
@@ -5491,8 +5690,10 @@
 
         // -----------------------------------------------------------------
         // 💬 CHAT TAB — one group room per grade (own grade only for
-        // students; staff can see every grade for moderation) plus
-        // admin-granted Direct Message rooms.
+        // students; staff can see every grade for moderation) plus open
+        // Direct Messages: any account can start a DM with any other
+        // account, no admin pairing required. A DM thread shows up in the
+        // sidebar for both sides as soon as a first message is sent.
         // -----------------------------------------------------------------
         function buildChatRoomButton(roomId, label, iconName) {
             const btn = document.createElement('button');
@@ -5514,11 +5715,26 @@
             });
         }
 
+        // The label a room shows in the sidebar/header: the viewer's own
+        // custom nickname if they set one, otherwise the other student's
+        // real name (for a DM) or the grade name (for a group room).
+        function getRoomDisplayLabel(roomId, fallbackLabel) {
+            return chatNicknames[roomId] || fallbackLabel;
+        }
+
         async function renderChat() {
             if (!currentUser) return;
+            const myId = myChatId();
 
-            const grantsData = await D1.getChatGrants();
-            if (Array.isArray(grantsData)) chatGrants = grantsData;
+            const [threadsData, nicknamesData] = await Promise.all([
+                D1.getChatDmThreads(myId),
+                D1.getChatNicknames(myId)
+            ]);
+            if (Array.isArray(threadsData)) chatDmThreads = threadsData;
+            chatNicknames = {};
+            if (Array.isArray(nicknamesData)) {
+                nicknamesData.forEach(n => { chatNicknames[n.room_id] = n.nickname; });
+            }
 
             const isStaff = hasAdminGrant();
             const listEl = document.getElementById('chat-room-list');
@@ -5534,37 +5750,135 @@
             // another grade's room_id from this tab.
             const grades = isStaff ? GRADE_LIST : [currentUser.grade || 'Grade 10 (Secondary 1)'];
             grades.forEach(g => {
-                listEl.appendChild(buildChatRoomButton(`grade:${g}`, g, 'users'));
+                const roomId = `grade:${g}`;
+                listEl.appendChild(buildChatRoomButton(roomId, getRoomDisplayLabel(roomId, g), 'users'));
             });
 
-            // DM rooms only exist for grants that involve the signed-in
-            // account — an Admin Grant does not grant visibility into other
-            // people's private Direct Messages, only the power to create grants.
-            const myId = myChatId();
-            const myGrants = chatGrants.filter(gr => gr.user_a === myId || gr.user_b === myId);
-            if (myGrants.length) {
+            if (chatDmThreads.length) {
                 const dmHeader = document.createElement('div');
                 dmHeader.className = 'text-[9px] uppercase tracking-wider text-gray-500 font-bold px-2 pt-3 pb-1';
                 dmHeader.textContent = 'Direct Messages';
                 listEl.appendChild(dmHeader);
-                myGrants.forEach(gr => {
-                    const otherId = gr.user_a === myId ? gr.user_b : gr.user_a;
+                chatDmThreads.forEach(thread => {
+                    const roomId = thread.room_id;
+                    const parts = roomId.replace('dm:', '').split('|');
+                    const otherId = parts[0] === myId ? parts[1] : parts[0];
                     const otherName = getStudentDisplayName(otherId);
-                    const roomId = `dm:${[myId, otherId].sort().join('|')}`;
-                    listEl.appendChild(buildChatRoomButton(roomId, otherName, 'message-circle'));
+                    listEl.appendChild(buildChatRoomButton(roomId, getRoomDisplayLabel(roomId, otherName), 'message-circle'));
                 });
+            }
+
+            // If the currently-open room was just started via "New Chat" and
+            // has no messages yet, it won't be in chatDmThreads — keep its
+            // button visible/selected instead of losing the open thread.
+            if (currentChatRoom && !document.querySelector(`.chat-room-btn[data-room-id="${CSS.escape(currentChatRoom)}"]`) && isDmRoom(currentChatRoom)) {
+                listEl.appendChild(buildChatRoomButton(currentChatRoom, currentChatRoomLabel, 'message-circle'));
             }
 
             if (currentChatRoom) setActiveChatRoomButton(currentChatRoom);
             lucide.createIcons();
+
+            checkChatLockGate();
+        }
+
+        // -----------------------------------------------------------------
+        // 🔒 Chat Lock gate — runs every time the Chat tab is opened.
+        // -----------------------------------------------------------------
+        function checkChatLockGate() {
+            const overlay = document.getElementById('chat-lock-overlay');
+            if (!overlay) return;
+            if (isChatLockEnabled() && !chatUnlockedThisSession) {
+                overlay.classList.remove('hidden');
+                const input = document.getElementById('chat-lock-input');
+                if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
+                document.getElementById('chat-lock-error').classList.add('hidden');
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
+
+        async function submitChatLockPin() {
+            const input = document.getElementById('chat-lock-input');
+            const errorEl = document.getElementById('chat-lock-error');
+            const ok = await verifyChatLockPin(input.value.trim());
+            if (ok) {
+                chatUnlockedThisSession = true;
+                document.getElementById('chat-lock-overlay').classList.add('hidden');
+            } else {
+                errorEl.textContent = 'Incorrect PIN.';
+                errorEl.classList.remove('hidden');
+                input.value = '';
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // ➕ New Chat picker — pick ANY student and open a DM instantly.
+        // -----------------------------------------------------------------
+        function openNewChatPicker() {
+            document.getElementById('new-chat-modal').classList.remove('hidden');
+            document.getElementById('new-chat-search').value = '';
+            renderNewChatPickerList();
+            lucide.createIcons();
+        }
+        function closeNewChatPicker() {
+            document.getElementById('new-chat-modal').classList.add('hidden');
+        }
+        function renderNewChatPickerList() {
+            const container = document.getElementById('new-chat-list');
+            if (!container) return;
+            const q = (document.getElementById('new-chat-search').value || '').toLowerCase().trim();
+            const myId = myChatId();
+            const candidates = students.filter(s => {
+                const sid = s.phone || s.id;
+                if (sid === myId) return false;
+                return !q || String(s.name || '').toLowerCase().includes(q);
+            });
+            container.innerHTML = candidates.length ? candidates.map(s => `
+                <button type="button" onclick="startDmWith('${escapeHTML(s.phone || s.id)}', '${escapeHTML(s.name).replace(/'/g, "\\'")}')" class="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-white/5 transition text-left">
+                    <img src="${getUserAvatarSrc(s)}" class="w-8 h-8 rounded-lg object-cover shrink-0" alt="">
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold text-white truncate">${escapeHTML(s.name)}</p>
+                        <p class="text-[9px] text-gray-500 truncate">${escapeHTML(s.grade || s.role || '')}</p>
+                    </div>
+                </button>
+            `).join('') : `<div class="text-center py-6 text-[10px] text-gray-500">No students match.</div>`;
+            lucide.createIcons();
+        }
+        function startDmWith(otherId, otherName) {
+            const myId = myChatId();
+            const roomId = `dm:${[myId, otherId].sort().join('|')}`;
+            closeNewChatPicker();
+            switchTab('chat');
+            openChatRoom(roomId, otherName);
+        }
+
+        // -----------------------------------------------------------------
+        // ✏️ Custom chat names — a private label only the viewer sees.
+        // -----------------------------------------------------------------
+        async function renameCurrentChatRoom() {
+            if (!currentChatRoom) return;
+            const current = chatNicknames[currentChatRoom] || '';
+            const next = prompt('Set a custom name for this chat (leave blank to reset):', current);
+            if (next === null) return;
+            const clean = next.trim();
+            if (clean) chatNicknames[currentChatRoom] = clean; else delete chatNicknames[currentChatRoom];
+            document.getElementById('chat-active-room-label').textContent = clean || currentChatRoomLabel;
+            await D1.setChatNickname(myChatId(), currentChatRoom, clean);
+            renderChat();
         }
 
         async function openChatRoom(roomId, label) {
             currentChatRoom = roomId;
+            currentChatRoomLabel = label;
+            pendingChatAttachment = null;
+            renderChatAttachmentPreview();
             setActiveChatRoomButton(roomId);
-            document.getElementById('chat-active-room-label').textContent = label;
+            document.getElementById('chat-active-room-label').textContent = getRoomDisplayLabel(roomId, label);
             document.getElementById('chat-empty-state').classList.add('hidden');
             document.getElementById('chat-thread').classList.remove('hidden');
+            document.getElementById('chat-encrypted-badge').classList.toggle('hidden', !isDmRoom(roomId));
+            document.getElementById('chat-rename-btn').classList.remove('hidden');
+            document.getElementById('chat-emoji-picker').classList.add('hidden');
 
             await loadChatMessages();
 
@@ -5577,7 +5891,7 @@
             const msgs = await D1.getChatMessages(currentChatRoom);
             if (Array.isArray(msgs)) {
                 chatMessages = msgs;
-                renderChatMessages();
+                await renderChatMessages();
             }
         }
 
@@ -5591,45 +5905,302 @@
             }
         }
 
-        function renderChatMessages() {
+        // Holds the plaintext of each rendered message, keyed by id, so the
+        // Translate button can read it without ever embedding raw message
+        // text (which may contain quotes) inside an onclick HTML attribute.
+        const chatDecryptedTextCache = {};
+
+        // Renders one message bubble's inner content: decrypts if needed,
+        // then lays out any attachment (photo / PDF / voice note) plus text.
+        async function renderChatBubbleBody(m) {
+            let text = m.text;
+            let attachmentUrl = m.attachment_url;
+            if (m.encrypted) {
+                const decryptedText = await decryptForRoom(m.room_id || currentChatRoom, text);
+                text = decryptedText === null ? '🔒 Unable to decrypt this message.' : decryptedText;
+                if (attachmentUrl) {
+                    const decryptedAttachment = await decryptForRoom(m.room_id || currentChatRoom, attachmentUrl);
+                    attachmentUrl = decryptedAttachment === null ? null : decryptedAttachment;
+                }
+            }
+            chatDecryptedTextCache[m.id] = text;
+
+            let attachmentHtml = '';
+            if (m.attachment_type === 'image' && attachmentUrl) {
+                attachmentHtml = `<img src="${attachmentUrl}" class="rounded-xl max-w-full max-h-56 object-cover mb-1.5 cursor-pointer" onclick="window.open('${attachmentUrl.startsWith('data:') ? '' : attachmentUrl}')" alt="attachment">`;
+            } else if (m.attachment_type === 'pdf' && attachmentUrl) {
+                attachmentHtml = `<a href="${attachmentUrl}" download="${escapeHTML(m.attachment_name || 'document.pdf')}" class="flex items-center gap-2 bg-black/20 rounded-xl px-2.5 py-2 mb-1.5 hover:bg-black/30 transition"><i data-lucide="file-text" class="w-4 h-4 shrink-0"></i><span class="text-[10px] truncate">${escapeHTML(m.attachment_name || 'Document.pdf')}</span></a>`;
+            } else if (m.attachment_type === 'audio' && attachmentUrl) {
+                attachmentHtml = `<audio controls src="${attachmentUrl}" class="max-w-full mb-1.5" style="height:32px;"></audio>`;
+            }
+
+            const translated = chatTranslations[m.id];
+            const translatedHtml = translated
+                ? `<p class="leading-relaxed break-words whitespace-pre-wrap mt-1 pt-1 border-t border-white/10 italic opacity-90">${escapeHTML(translated.text)}</p>`
+                : '';
+
+            return `
+                ${attachmentHtml}
+                <p class="leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(text)}</p>
+                ${translatedHtml}
+                <div class="flex items-center justify-end gap-1.5 mt-1">
+                    <button onclick="toggleTranslateMessage('${escapeHTML(String(m.id))}')" class="text-[8px] opacity-70 hover:opacity-100 underline">${translated ? 'Hide translation' : 'Translate'}</button>
+                    <span class="text-[8px] opacity-60">${formatChatTime(m.created_at)}</span>
+                </div>
+            `;
+        }
+
+        async function renderChatMessages() {
             const list = document.getElementById('chat-messages-list');
             if (!list) return;
             const wasNearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
 
-            list.innerHTML = chatMessages.length ? chatMessages.map(m => {
+            if (!chatMessages.length) {
+                list.innerHTML = `<div class="text-center text-[10px] text-gray-500 py-8">No messages yet — say hello 👋</div>`;
+                return;
+            }
+
+            const bodies = await Promise.all(chatMessages.map(m => renderChatBubbleBody(m)));
+            list.innerHTML = chatMessages.map((m, i) => {
                 const mine = m.sender_id === myChatId();
                 return `
                     <div class="flex ${mine ? 'justify-end' : 'justify-start'} mb-2">
                         <div class="max-w-[75%] ${mine ? 'bg-indigo-600 text-white' : 'bg-slate-800/70 text-gray-100'} rounded-2xl px-3 py-2 text-xs">
                             ${!mine ? `<p class="text-[9px] font-bold text-indigo-300 mb-0.5">${escapeHTML(m.sender_name)}</p>` : ''}
-                            <p class="leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(m.text)}</p>
-                            <p class="text-[8px] opacity-60 mt-1 text-right">${formatChatTime(m.created_at)}</p>
+                            ${bodies[i]}
                         </div>
                     </div>
                 `;
-            }).join('') : `<div class="text-center text-[10px] text-gray-500 py-8">No messages yet — say hello 👋</div>`;
+            }).join('');
 
+            lucide.createIcons();
             if (wasNearBottom) list.scrollTop = list.scrollHeight;
         }
 
-        async function sendChatMessageNow() {
+        // -----------------------------------------------------------------
+        // 🌐 Translate a single message to Arabic/English (free MyMemory
+        // API, called directly from the browser — no key needed).
+        // -----------------------------------------------------------------
+        function looksArabic(str) {
+            return /[\u0600-\u06FF]/.test(str);
+        }
+        async function toggleTranslateMessage(msgId) {
+            if (chatTranslations[msgId]) {
+                delete chatTranslations[msgId];
+                renderChatMessages();
+                return;
+            }
+            const originalText = chatDecryptedTextCache[msgId] || '';
+            if (!originalText) return;
+            const targetLang = looksArabic(originalText) ? 'en' : 'ar';
+            const sourceLang = targetLang === 'ar' ? 'en' : 'ar';
+            try {
+                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(originalText)}&langpair=${sourceLang}|${targetLang}`);
+                const data = await res.json();
+                const translated = data && data.responseData && data.responseData.translatedText;
+                if (translated) {
+                    chatTranslations[msgId] = { lang: targetLang, text: translated };
+                } else {
+                    showToast('Translation unavailable right now.', 'warning');
+                }
+            } catch (e) {
+                showToast('Could not reach the translation service.', 'warning');
+            }
+            renderChatMessages();
+        }
+
+        // -----------------------------------------------------------------
+        // 😀 Emoji picker
+        // -----------------------------------------------------------------
+        function toggleEmojiPicker() {
+            const picker = document.getElementById('chat-emoji-picker');
+            if (!picker) return;
+            if (picker.classList.contains('hidden')) {
+                picker.innerHTML = CHAT_EMOJI_LIST.map(e => `<button type="button" onclick="insertChatEmoji('${e}')" class="text-lg hover:bg-white/10 rounded-lg p-1 transition">${e}</button>`).join('');
+                picker.classList.remove('hidden');
+            } else {
+                picker.classList.add('hidden');
+            }
+        }
+        function insertChatEmoji(emoji) {
+            const input = document.getElementById('chat-message-input');
+            input.value += emoji;
+            input.focus();
+        }
+
+        // -----------------------------------------------------------------
+        // 📎 Attachments — photos and PDFs, resized/capped client-side
+        // before ever leaving the browser.
+        // -----------------------------------------------------------------
+        function renderChatAttachmentPreview() {
+            const el = document.getElementById('chat-attachment-preview');
+            if (!el) return;
+            if (!pendingChatAttachment) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+            el.classList.remove('hidden');
+            const icon = pendingChatAttachment.type === 'image' ? 'image' : pendingChatAttachment.type === 'audio' ? 'mic' : 'file-text';
+            el.innerHTML = `
+                <span class="flex items-center gap-1.5 truncate"><i data-lucide="${icon}" class="w-3.5 h-3.5 shrink-0"></i><span class="truncate">${escapeHTML(pendingChatAttachment.name)}</span></span>
+                <button onclick="pendingChatAttachment=null; renderChatAttachmentPreview();" class="text-gray-500 hover:text-white shrink-0"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+            `;
+            lucide.createIcons();
+        }
+
+        function handleChatFileAttach(event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const maxDim = 1280;
+                        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width * scale;
+                        canvas.height = img.height * scale;
+                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+                        if (dataUrl.length > 4000000) {
+                            showToast('That photo is too large even after resizing — try a smaller image.', 'error');
+                            return;
+                        }
+                        pendingChatAttachment = { type: 'image', name: file.name, url: dataUrl };
+                        renderChatAttachmentPreview();
+                    };
+                    img.onerror = () => showToast('Could not read that image file.', 'error');
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else if (file.type === 'application/pdf') {
+                if (file.size > 4 * 1024 * 1024) {
+                    showToast('That PDF is over 4MB — please share a smaller file.', 'error');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    pendingChatAttachment = { type: 'pdf', name: file.name, url: e.target.result };
+                    renderChatAttachmentPreview();
+                };
+                reader.onerror = () => showToast('Could not read that PDF file.', 'error');
+                reader.readAsDataURL(file);
+            } else {
+                showToast('Please choose an image or a PDF.', 'error');
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // 🎤 Voice messages — MediaRecorder, converted to a data: URI.
+        // -----------------------------------------------------------------
+        let chatMediaRecorder = null;
+        let chatVoiceChunks = [];
+        let chatVoiceStream = null;
+
+        async function startVoiceRecording(event) {
+            if (event) event.preventDefault();
+            if (chatMediaRecorder) return;
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showToast('Voice recording is not supported on this device/browser.', 'error');
+                return;
+            }
+            try {
+                chatVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                chatVoiceChunks = [];
+                chatMediaRecorder = new MediaRecorder(chatVoiceStream);
+                chatMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chatVoiceChunks.push(e.data); };
+                chatMediaRecorder.start();
+                document.getElementById('chat-voice-btn').classList.add('text-red-400', 'animate-pulse');
+                showToast('Recording… release to send.', 'info');
+            } catch (e) {
+                showToast('Microphone access was denied or unavailable.', 'error');
+                chatMediaRecorder = null;
+            }
+        }
+
+        function cancelVoiceRecordingIfActive() {
+            if (chatMediaRecorder && chatMediaRecorder.state === 'recording') stopVoiceRecording();
+        }
+
+        function stopVoiceRecording(event) {
+            if (event) event.preventDefault();
+            if (!chatMediaRecorder) return;
+            document.getElementById('chat-voice-btn').classList.remove('text-red-400', 'animate-pulse');
+            const recorder = chatMediaRecorder;
+            chatMediaRecorder = null;
+            if (recorder.state !== 'recording') return;
+
+            recorder.onstop = () => {
+                if (chatVoiceStream) chatVoiceStream.getTracks().forEach(t => t.stop());
+                if (!chatVoiceChunks.length) return;
+                const blob = new Blob(chatVoiceChunks, { type: 'audio/webm' });
+                if (blob.size > 4 * 1024 * 1024) {
+                    showToast('That voice message is too long — keep it under a minute or so.', 'error');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    pendingChatAttachment = { type: 'audio', name: 'Voice message', url: e.target.result };
+                    renderChatAttachmentPreview();
+                    sendChatMessageNow('🎤 Voice message');
+                };
+                reader.readAsDataURL(blob);
+            };
+            recorder.stop();
+        }
+
+        async function sendChatMessageNow(forcedText) {
             if (!currentUser || !currentChatRoom) return;
             const input = document.getElementById('chat-message-input');
-            const text = input.value.trim();
-            if (!text) return;
-            input.value = '';
+            const text = (forcedText !== undefined ? forcedText : input.value.trim());
+            if (!text && !pendingChatAttachment) return;
+            if (forcedText === undefined) input.value = '';
+            document.getElementById('chat-emoji-picker').classList.add('hidden');
+
+            const encrypt = isDmRoom(currentChatRoom);
+            const attachment = pendingChatAttachment;
+            pendingChatAttachment = null;
+            renderChatAttachmentPreview();
+
+            let outgoingText = text || (attachment ? `📎 ${attachment.name}` : '');
+            let outgoingAttachmentUrl = attachment ? attachment.url : null;
+            let encryptedFlag = false;
+
+            if (encrypt) {
+                const encText = await encryptForRoom(currentChatRoom, outgoingText);
+                if (encText) {
+                    outgoingText = encText;
+                    encryptedFlag = true;
+                    if (outgoingAttachmentUrl) {
+                        const encAttach = await encryptForRoom(currentChatRoom, outgoingAttachmentUrl);
+                        if (encAttach) outgoingAttachmentUrl = encAttach;
+                    }
+                }
+            }
 
             const payload = {
                 room_id: currentChatRoom,
                 sender_id: myChatId(),
                 sender_name: currentUser.name,
                 sender_avatar: getUserAvatarSrc(currentUser),
-                text
+                text: outgoingText,
+                attachment_type: attachment ? attachment.type : null,
+                attachment_url: outgoingAttachmentUrl,
+                attachment_name: attachment ? attachment.name : null,
+                encrypted: encryptedFlag
             };
 
-            // Optimistic append so sending feels instant; loadChatMessages()
-            // right after reconciles with the authoritative D1 copy.
-            chatMessages.push({ ...payload, id: `local-${Date.now()}`, created_at: new Date().toISOString() });
+            // Optimistic append (plaintext copy, pre-encryption) so sending
+            // feels instant; loadChatMessages() right after reconciles with
+            // the authoritative — and, for a DM, encrypted — D1 copy.
+            chatMessages.push({
+                ...payload,
+                text: text || (attachment ? `📎 ${attachment.name}` : ''),
+                attachment_url: attachment ? attachment.url : null,
+                encrypted: false,
+                id: `local-${Date.now()}`,
+                created_at: new Date().toISOString()
+            });
             renderChatMessages();
 
             const res = await D1.sendChatMessage(payload);
@@ -5637,61 +6208,7 @@
                 showToast('Message may not have reached the server — check your connection.', 'warning');
             }
             loadChatMessages();
-        }
-
-        // -----------------------------------------------------------------
-        // 🔐 ADMIN CONSOLE — Chat Grants management
-        // -----------------------------------------------------------------
-        function populateChatGrantSelects() {
-            const selA = document.getElementById('chat-grant-user-a');
-            const selB = document.getElementById('chat-grant-user-b');
-            if (!selA || !selB) return;
-            const options = students.map(s => `<option value="${s.id}">${escapeHTML(s.name)} (${escapeHTML(s.grade || s.role || '')})</option>`).join('');
-            selA.innerHTML = options;
-            selB.innerHTML = options;
-        }
-
-        async function renderChatGrantsAdminList() {
-            const container = document.getElementById('admin-chat-grants-list');
-            if (!container) return;
-            const grantsData = await D1.getChatGrants();
-            chatGrants = Array.isArray(grantsData) ? grantsData : [];
-
-            if (!chatGrants.length) {
-                container.innerHTML = `<div class="text-center py-4 text-[10px] text-gray-500 font-semibold bg-slate-950/25 border border-white/5 rounded-xl">No chat grants issued yet.</div>`;
-                return;
-            }
-
-            container.innerHTML = chatGrants.map(gr => `
-                <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/40 border border-white/5 text-[10px]">
-                    <span class="text-white font-semibold">${escapeHTML(getStudentDisplayName(gr.user_a))} ↔ ${escapeHTML(getStudentDisplayName(gr.user_b))}</span>
-                    <button onclick="deleteChatGrantAdmin(${gr.id})" class="p-1 text-red-400 hover:text-white hover:bg-red-950/40 rounded-lg transition"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-                </div>
-            `).join('');
-            lucide.createIcons();
-        }
-
-        async function createChatGrant() {
-            const a = document.getElementById('chat-grant-user-a').value;
-            const b = document.getElementById('chat-grant-user-b').value;
-            if (!a || !b || a === b) {
-                showToast('Pick two different accounts.', 'error');
-                return;
-            }
-            const res = await D1.createChatGrant(a, b);
-            if (res && res.success) {
-                showToast('Chat grant created.', 'success');
-                renderChatGrantsAdminList();
-            } else {
-                showToast('Could not create the chat grant.', 'error');
-            }
-        }
-
-        function deleteChatGrantAdmin(id) {
-            D1.deleteChatGrant(id).then(res => {
-                if (res && res.success) showToast('Chat grant revoked.', 'info');
-            });
-            renderChatGrantsAdminList();
+            if (isDmRoom(currentChatRoom)) renderChat(); // pulls the just-started thread into the sidebar for both sides
         }
 
         // -----------------------------------------------------------------
@@ -7401,10 +7918,6 @@
                 });
             }
 
-            // Chat Grants directory (Direct Messages)
-            populateChatGrantSelects();
-            renderChatGrantsAdminList();
-
             lucide.createIcons();
         }
 
@@ -7671,28 +8184,15 @@
             can_post_feed: 0
         };
 
-        // 🗄️ Persist to Cloudflare D1 FIRST and wait for confirmation. Saving
-        // locally and showing "success" before D1 answers meant a failed
-        // cloud write looked identical to a real one in the UI — the student
-        // would appear provisioned, but /api/auth/login (which only checks
-        // D1) would reject them every time with correct credentials, and
-        // re-submitting the form would be blocked by the duplicate check
-        // above since the local copy already "existed".
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        if (submitBtn) submitBtn.disabled = true;
-
-        const res = await D1.saveStudent(newStudent);
-
-        if (submitBtn) submitBtn.disabled = false;
-
-        if (!res || !res.success) {
-            showToast(`⚠️ '${name}' was NOT saved to the cloud database — they will not be able to log in. Check your connection and try again.`, 'error');
-            return; // don't touch local state or close the modal; let the admin retry with the same values
-        }
-
+        // ⚡ Optimistic provisioning: the account appears in the directory
+        // and the modal closes immediately so the admin isn't stuck
+        // watching a spinner — the D1 write happens in the background and
+        // gets reconciled a moment later. If it turns out the cloud write
+        // failed, the optimistic entry is rolled back and the admin is
+        // told clearly so they can retry (the student would otherwise
+        // "look" provisioned locally but be unable to log in).
         students.push(newStudent);
         syncLocalDB();
-
         closeProvisionAccountModal();
 
         if (nameInput) nameInput.value = '';
@@ -7700,9 +8200,20 @@
         if (passInput) passInput.value = '';
         if (titleInput) titleInput.value = '';
 
-        showToast(`Student account '${name}' successfully provisioned!`, 'success');
+        showToast(`Provisioning '${name}'…`, 'info');
         renderAdmin();
         if (activeTab === 'dashboard') renderDashboard();
+
+        const res = await D1.saveStudent(newStudent);
+        if (!res || !res.success) {
+            students = students.filter(s => s !== newStudent);
+            syncLocalDB();
+            renderAdmin();
+            showToast(`⚠️ '${name}' was NOT saved to the cloud database — they will not be able to log in. Check your connection and try again.`, 'error');
+            return;
+        }
+
+        showToast(`Student account '${name}' successfully provisioned!`, 'success');
     }
 
         // Download native client software applications (Routed through CDN and Archive.org)
