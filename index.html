@@ -3843,7 +3843,7 @@
                                         <button type="button" title="Emoji" onclick="toggleEmojiPicker()" class="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition shrink-0">
                                             <i data-lucide="smile" class="w-4 h-4"></i>
                                         </button>
-                                        <button type="button" id="chat-voice-btn" title="Hold to record a voice message" onmousedown="startVoiceRecording()" onmouseup="stopVoiceRecording()" onmouseleave="cancelVoiceRecordingIfActive()" ontouchstart="startVoiceRecording(event)" ontouchend="stopVoiceRecording(event)" class="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition shrink-0">
+                                        <button type="button" id="chat-voice-btn" title="Click to record a voice message" onclick="toggleVoiceRecording()" class="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition shrink-0">
                                             <i data-lucide="mic" class="w-4 h-4"></i>
                                         </button>
                                         <input type="text" id="chat-message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessageNow();}" class="flex-1 bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition min-w-0">
@@ -4892,6 +4892,8 @@
 
             getChatMessages: (room) => d1Request(`/chat/messages?room=${encodeURIComponent(room)}`),
             sendChatMessage: (msg) => d1Request('/chat/messages', { method: 'POST', body: msg }),
+            editChatMessage: (id, body) => d1Request(`/chat/messages/${encodeURIComponent(id)}`, { method: 'PUT', body }),
+            deleteChatMessage: (id, senderId) => d1Request(`/chat/messages/${encodeURIComponent(id)}?sender_id=${encodeURIComponent(senderId)}`, { method: 'DELETE' }),
             getChatGrants: () => d1Request('/chat/grants'),
             createChatGrant: (userA, userB) => d1Request('/chat/grants', { method: 'POST', body: { user_a: userA, user_b: userB } }),
             deleteChatGrant: (id) => d1Request(`/chat/grants/${encodeURIComponent(id)}`, { method: 'DELETE' }),
@@ -5065,6 +5067,12 @@
                     // network hiccup on some future refresh doesn't fall back to
                     // the pre-correction copy.
                     if (localStorage.getItem(REMEMBER_KEY)) saveRememberedSession(currentUser, true);
+                    // loadPortal() already painted the sidebar avatar from the
+                    // login snapshot; refresh it here too so a custom avatar
+                    // saved on a different device shows up the moment this
+                    // background hydrate lands, not just after a manual reload.
+                    const sidebarAvatar = document.getElementById('profile-avatar');
+                    if (sidebarAvatar) sidebarAvatar.src = getUserAvatarSrc(currentUser);
                 }
                 if (typeof applyCompletionFlags === 'function') applyCompletionFlags();
                 if (typeof renderDashboard === 'function') renderDashboard();
@@ -5644,10 +5652,18 @@
             if (meStudent) meStudent.avatar = avatarSrc;
             syncLocalDB();
 
+            // avatarSrc is '' for the "use default" button. Setting an <img>'s
+            // src straight to '' used to make it reload the page itself as an
+            // image (a broken-image icon) instead of falling back to anything.
+            // getUserAvatarSrc() is the single source of truth for "what image
+            // goes here" — with avatar now '', it correctly falls back to the
+            // gender-based picture chosen when this account was created, which
+            // is exactly what "use default" should show.
+            const displaySrc = getUserAvatarSrc(currentUser);
             const sidebarAvatar = document.getElementById('profile-avatar');
-            if (sidebarAvatar) sidebarAvatar.src = avatarSrc;
+            if (sidebarAvatar) sidebarAvatar.src = displaySrc;
             const preview = document.getElementById('account-avatar-preview');
-            if (preview) preview.src = avatarSrc;
+            if (preview) preview.src = displaySrc;
             if (localStorage.getItem(REMEMBER_KEY)) saveRememberedSession(currentUser, true);
 
             const res = await D1.updateAvatar(currentUser.id, avatarSrc);
@@ -5945,6 +5961,7 @@
                 ${translatedHtml}
                 <div class="flex items-center justify-end gap-1.5 mt-1">
                     <button onclick="toggleTranslateMessage('${escapeHTML(String(m.id))}')" class="text-[8px] opacity-70 hover:opacity-100 underline">${translated ? 'Hide translation' : 'Translate'}</button>
+                    ${m.edited ? '<span class="text-[8px] opacity-60 italic">edited</span>' : ''}
                     <span class="text-[8px] opacity-60">${formatChatTime(m.created_at)}</span>
                 </div>
             `;
@@ -5963,9 +5980,21 @@
             const bodies = await Promise.all(chatMessages.map(m => renderChatBubbleBody(m)));
             list.innerHTML = chatMessages.map((m, i) => {
                 const mine = m.sender_id === myChatId();
+                // Messages we just optimistically appended locally (before the
+                // real D1 row/id comes back) can't be edited or deleted yet.
+                const isSynced = !String(m.id).startsWith('local-');
+                const canEdit = mine && isSynced && m.attachment_type !== 'audio';
+                const canDelete = mine && isSynced;
+                const actionsHtml = (canEdit || canDelete) ? `
+                    <div class="absolute -top-2 ${mine ? '-left-2' : '-right-2'} flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 rounded-full px-1 py-0.5 border border-white/10 shadow-lg z-10">
+                        ${canEdit ? `<button onclick="startEditChatMessage('${escapeHTML(String(m.id))}')" title="Edit message" class="text-gray-300 hover:text-white p-1"><i data-lucide="edit-3" class="w-3 h-3"></i></button>` : ''}
+                        ${canDelete ? `<button onclick="deleteChatMessageConfirm('${escapeHTML(String(m.id))}')" title="Delete message" class="text-gray-300 hover:text-red-400 p-1"><i data-lucide="trash-2" class="w-3 h-3"></i></button>` : ''}
+                    </div>
+                ` : '';
                 return `
-                    <div class="flex ${mine ? 'justify-end' : 'justify-start'} mb-2">
-                        <div class="max-w-[75%] ${mine ? 'bg-indigo-600 text-white' : 'bg-slate-800/70 text-gray-100'} rounded-2xl px-3 py-2 text-xs">
+                    <div class="flex ${mine ? 'justify-end' : 'justify-start'} mb-2 group">
+                        <div class="relative max-w-[75%] ${mine ? 'bg-indigo-600 text-white' : 'bg-slate-800/70 text-gray-100'} rounded-2xl px-3 py-2 text-xs">
+                            ${actionsHtml}
                             ${!mine ? `<p class="text-[9px] font-bold text-indigo-300 mb-0.5">${escapeHTML(m.sender_name)}</p>` : ''}
                             ${bodies[i]}
                         </div>
@@ -6092,13 +6121,28 @@
 
         // -----------------------------------------------------------------
         // 🎤 Voice messages — MediaRecorder, converted to a data: URI.
+        // Click-to-toggle, not hold-to-record: the old press-and-hold
+        // (mousedown/mouseup/touchstart/touchend) was unreliable — a touch
+        // that turns into a scroll never fires touchend cleanly, so the
+        // recording either never started or never stopped. A plain click
+        // also carries the user-gesture browsers require before they'll
+        // grant microphone access, so it works at least as well on mobile.
+        // First click: start recording. Second click: stop and send.
         // -----------------------------------------------------------------
         let chatMediaRecorder = null;
         let chatVoiceChunks = [];
         let chatVoiceStream = null;
+        let chatIsRecordingVoice = false;
 
-        async function startVoiceRecording(event) {
-            if (event) event.preventDefault();
+        async function toggleVoiceRecording() {
+            if (chatIsRecordingVoice) {
+                stopVoiceRecording();
+            } else {
+                await startVoiceRecording();
+            }
+        }
+
+        async function startVoiceRecording() {
             if (chatMediaRecorder) return;
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 showToast('Voice recording is not supported on this device/browser.', 'error');
@@ -6110,22 +6154,28 @@
                 chatMediaRecorder = new MediaRecorder(chatVoiceStream);
                 chatMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chatVoiceChunks.push(e.data); };
                 chatMediaRecorder.start();
-                document.getElementById('chat-voice-btn').classList.add('text-red-400', 'animate-pulse');
-                showToast('Recording… release to send.', 'info');
+                chatIsRecordingVoice = true;
+                const btn = document.getElementById('chat-voice-btn');
+                if (btn) {
+                    btn.classList.add('text-red-400', 'animate-pulse');
+                    btn.title = 'Click to stop and send';
+                }
+                showToast('Recording… click the mic again to send.', 'info');
             } catch (e) {
                 showToast('Microphone access was denied or unavailable.', 'error');
                 chatMediaRecorder = null;
+                chatIsRecordingVoice = false;
             }
         }
 
-        function cancelVoiceRecordingIfActive() {
-            if (chatMediaRecorder && chatMediaRecorder.state === 'recording') stopVoiceRecording();
-        }
-
-        function stopVoiceRecording(event) {
-            if (event) event.preventDefault();
+        function stopVoiceRecording() {
             if (!chatMediaRecorder) return;
-            document.getElementById('chat-voice-btn').classList.remove('text-red-400', 'animate-pulse');
+            chatIsRecordingVoice = false;
+            const btn = document.getElementById('chat-voice-btn');
+            if (btn) {
+                btn.classList.remove('text-red-400', 'animate-pulse');
+                btn.title = 'Click to record a voice message';
+            }
             const recorder = chatMediaRecorder;
             chatMediaRecorder = null;
             if (recorder.state !== 'recording') return;
@@ -6209,6 +6259,65 @@
             }
             loadChatMessages();
             if (isDmRoom(currentChatRoom)) renderChat(); // pulls the just-started thread into the sidebar for both sides
+        }
+
+        // -----------------------------------------------------------------
+        // ✏️🗑️ Edit / delete your own chat messages. Voice messages can be
+        // deleted but never edited — there's no re-recording flow for them,
+        // so the edit button simply doesn't render for an audio bubble
+        // (renderChatMessages), and the server refuses it too either way.
+        // -----------------------------------------------------------------
+        function startEditChatMessage(id) {
+            const m = chatMessages.find(msg => String(msg.id) === String(id));
+            if (!m || m.sender_id !== myChatId() || m.attachment_type === 'audio') return;
+            const current = chatDecryptedTextCache[m.id] ?? m.text ?? '';
+            const next = prompt('Edit message:', current);
+            if (next === null) return;
+            const trimmed = next.trim();
+            if (!trimmed || trimmed === current) return;
+            editChatMessageNow(id, trimmed);
+        }
+
+        async function editChatMessageNow(id, newText) {
+            const encrypt = isDmRoom(currentChatRoom);
+            let outgoingText = newText;
+            let encryptedFlag = false;
+            if (encrypt) {
+                const enc = await encryptForRoom(currentChatRoom, newText);
+                if (enc) { outgoingText = enc; encryptedFlag = true; }
+            }
+            const res = await D1.editChatMessage(id, { text: outgoingText, sender_id: myChatId(), encrypted: encryptedFlag });
+            if (!res || res.success === false) {
+                showToast((res && res.error) || "Couldn't edit that message.", 'error');
+                return;
+            }
+            const m = chatMessages.find(msg => String(msg.id) === String(id));
+            if (m) {
+                m.text = outgoingText;
+                m.encrypted = encryptedFlag;
+                m.edited = 1;
+            }
+            chatDecryptedTextCache[id] = newText;
+            renderChatMessages();
+        }
+
+        function deleteChatMessageConfirm(id) {
+            const m = chatMessages.find(msg => String(msg.id) === String(id));
+            if (!m || m.sender_id !== myChatId()) return;
+            if (!confirm('Delete this message? This cannot be undone.')) return;
+            deleteChatMessageNow(id);
+        }
+
+        async function deleteChatMessageNow(id) {
+            const res = await D1.deleteChatMessage(id, myChatId());
+            if (!res || res.success === false) {
+                showToast((res && res.error) || "Couldn't delete that message.", 'error');
+                return;
+            }
+            chatMessages = chatMessages.filter(msg => String(msg.id) !== String(id));
+            delete chatDecryptedTextCache[id];
+            delete chatTranslations[id];
+            renderChatMessages();
         }
 
         // -----------------------------------------------------------------
