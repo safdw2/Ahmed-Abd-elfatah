@@ -10,7 +10,7 @@
  * ⚠️ ONE-TIME SETUP for the Tutoring Center (Roots) feature below:
  * Run 0008_add_tutoring_table.sql once against your D1 database before
  * using it, e.g.:
- *   wrangler d1 execute ahmed-abdelfatah-db --file=./0008_add_tutoring_table.sql --remote
+ *   wrangler d1 execute ahmedabdelfatah-db --file=./0008_add_tutoring_table.sql --remote
  * (use whatever database name wrangler.toml has under [[d1_databases]] ->
  * database_name — until that migration runs, the /api/db/tutoring routes
  * below will just silently return "no sessions" everywhere.)
@@ -677,8 +677,15 @@ export async function onRequest(context) {
         }
 
         // --- CHAT ENDPOINTS ---
-        // Requires a one-time table creation in D1 (see 0009_add_account_chat.sql):
-        //   wrangler d1 execute ahmed-abdelfatah-db --file=./0009_add_account_chat.sql --remote
+        // Requires the chat tables from schema.sql (chat_messages_table,
+        // chat_grants_table, chat_nicknames_table) to actually exist on your
+        // --remote D1 database, plus the `edited` column added in
+        // 0011_add_chat_message_edit_flag.sql:
+        //   wrangler d1 execute ahmedabdelfatah-db --file=./schema.sql --remote
+        //   wrangler d1 execute ahmedabdelfatah-db --file=./0011_add_chat_message_edit_flag.sql --remote
+        // (both are safe to run more than once). If messages send fine but
+        // never show up for the other person / on another browser, this is
+        // almost always why — re-run those two against --remote.
         // Rooms are plain string IDs the frontend builds and owns:
         //   "grade:<Grade Name>" for a grade's group chat, "dm:<idA>|<idB>"
         //   (IDs sorted) for a direct message thread between two granted users.
@@ -686,13 +693,27 @@ export async function onRequest(context) {
             if (request.method === 'GET') {
                 const room = url.searchParams.get('room');
                 if (!room) return jsonResponse({ error: 'Missing room parameter.' }, 400);
-                if (d1) {
-                    const { results } = await d1.prepare(
-                        'SELECT * FROM chat_messages_table WHERE room_id = ? ORDER BY id ASC LIMIT 300'
-                    ).bind(room).all();
-                    return jsonResponse(results || []);
+                // Wrapped in try/catch (unlike before): if chat_messages_table
+                // doesn't exist yet on this D1 database (schema.sql not applied
+                // --remote, or applied before the chat tables were added), this
+                // query throws. Previously that threw all the way out of the
+                // Function as an unhandled 500/HTML error page instead of JSON,
+                // so d1Request() on the frontend saw `res.ok === false`, returned
+                // null, and the Chat tab just silently showed no messages —
+                // including on a second browser that never got a real answer
+                // either. Run schema.sql (it's all `CREATE TABLE IF NOT EXISTS`,
+                // safe to re-run) against --remote if this keeps happening.
+                try {
+                    if (d1) {
+                        const { results } = await d1.prepare(
+                            'SELECT * FROM chat_messages_table WHERE room_id = ? ORDER BY id ASC LIMIT 300'
+                        ).bind(room).all();
+                        return jsonResponse(results || []);
+                    }
+                    return jsonResponse([]);
+                } catch (err) {
+                    return jsonResponse({ error: err.message }, 500);
                 }
-                return jsonResponse([]);
             }
 
             if (request.method === 'POST') {
@@ -728,6 +749,61 @@ export async function onRequest(context) {
                 } catch (err) {
                     return jsonResponse({ error: err.message }, 400);
                 }
+            }
+        }
+
+        // Edit your own chat message's text. Voice messages are never
+        // editable — enforced here server-side (not just by the frontend
+        // hiding the edit button), so a replayed request can't sneak an
+        // edit onto a voice note. `edited` is stamped so the bubble can
+        // show a small "edited" tag.
+        if (pathname.startsWith('/api/db/chat/messages/') && request.method === 'PUT') {
+            try {
+                const msgId = pathname.split('/').pop();
+                const { text, sender_id, encrypted } = await request.json();
+                if (!msgId || !sender_id || !String(text || '').trim()) {
+                    return jsonResponse({ error: 'text and sender_id are required.' }, 400);
+                }
+                if (d1) {
+                    const row = await d1.prepare('SELECT sender_id, attachment_type FROM chat_messages_table WHERE id = ?')
+                        .bind(msgId).first();
+                    if (!row) return jsonResponse({ error: 'Message not found.' }, 404);
+                    if (String(row.sender_id) !== String(sender_id)) {
+                        return jsonResponse({ error: 'You can only edit your own messages.' }, 403);
+                    }
+                    if (row.attachment_type === 'audio') {
+                        return jsonResponse({ error: 'Voice messages cannot be edited.' }, 400);
+                    }
+                    await d1.prepare('UPDATE chat_messages_table SET text = ?, encrypted = ?, edited = 1 WHERE id = ?')
+                        .bind(String(text).slice(0, 20000), encrypted ? 1 : 0, msgId).run();
+                    return jsonResponse({ success: true });
+                }
+                return jsonResponse({ success: true, mock: true });
+            } catch (err) {
+                return jsonResponse({ error: err.message }, 400);
+            }
+        }
+
+        // Delete your own chat message. sender_id travels as a query param
+        // (DELETE requests aren't guaranteed a body everywhere) and is
+        // checked against the stored row before anything is removed.
+        if (pathname.startsWith('/api/db/chat/messages/') && request.method === 'DELETE') {
+            try {
+                const msgId = pathname.split('/').pop();
+                const senderId = url.searchParams.get('sender_id');
+                if (!msgId || !senderId) return jsonResponse({ error: 'Missing message id or sender_id.' }, 400);
+                if (d1) {
+                    const row = await d1.prepare('SELECT sender_id FROM chat_messages_table WHERE id = ?').bind(msgId).first();
+                    if (!row) return jsonResponse({ success: true }); // already gone — treat as success
+                    if (String(row.sender_id) !== String(senderId)) {
+                        return jsonResponse({ error: 'You can only delete your own messages.' }, 403);
+                    }
+                    await d1.prepare('DELETE FROM chat_messages_table WHERE id = ?').bind(msgId).run();
+                    return jsonResponse({ success: true, message: 'Message deleted.' });
+                }
+                return jsonResponse({ success: true, mock: true });
+            } catch (err) {
+                return jsonResponse({ error: err.message }, 400);
             }
         }
 
