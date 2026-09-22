@@ -24,6 +24,10 @@ CREATE TABLE IF NOT EXISTS students_table (
     role                    TEXT DEFAULT 'student',
     can_post_feed           INTEGER DEFAULT 0,
     completed_lecture_ids   TEXT DEFAULT '[]',
+    -- Account tab profile picture: a preset filename (e.g. "student1.png")
+    -- or a self-contained data: URI (emoji avatar or resized upload).
+    -- Empty/NULL falls back to the old gender-based default avatar.
+    avatar                  TEXT DEFAULT '',
     created_at              TEXT DEFAULT (datetime('now'))
 );
 
@@ -122,6 +126,38 @@ CREATE TABLE IF NOT EXISTS tutoring_table (
 
 CREATE INDEX IF NOT EXISTS idx_tutoring_date ON tutoring_table (session_date);
 CREATE INDEX IF NOT EXISTS idx_tutoring_grade ON tutoring_table (grade);
+
+-- --------------------------------------------------------------------
+-- CHAT MESSAGES TABLE — every grade group chat and every direct message
+-- thread share this one table, distinguished by room_id:
+--   "grade:<Grade Name>"   e.g. "grade:Grade 10 (Secondary 1)"
+--   "dm:<idA>|<idB>"       IDs sorted alphabetically, one thread per pair
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS chat_messages_table (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_id         TEXT NOT NULL,
+    sender_id       TEXT NOT NULL,
+    sender_name     TEXT NOT NULL,
+    sender_avatar   TEXT DEFAULT '',
+    text            TEXT NOT NULL,
+    created_at      TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_room ON chat_messages_table (room_id, id);
+
+-- --------------------------------------------------------------------
+-- CHAT GRANTS TABLE — issued from the Admin Console. A row here is what
+-- lets two specific accounts see and use a "dm:<idA>|<idB>" room together.
+-- user_a/user_b are always stored sorted so a duplicate grant (either
+-- order) is caught by the UNIQUE constraint.
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS chat_grants_table (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_a      TEXT NOT NULL,
+    user_b      TEXT NOT NULL,
+    created_at  TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_a, user_b)
+);
 
 -- --------------------------------------------------------------------
 -- Seed the teacher/admin account so 'admin' / 'admin123' style logins
