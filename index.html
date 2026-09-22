@@ -2473,6 +2473,47 @@
                 animation: navBarGlow 2.4s ease-in-out infinite;
             }
 
+            /* 🎙️ Click-to-record mic button — expanding sonar rings while recording */
+            .voice-rec-ring {
+                position: absolute;
+                inset: 0;
+                border-radius: 0.75rem;
+                border: 2px solid rgba(248, 113, 113, 0.65);
+                animation: voiceRecPulse 1.6s ease-out infinite;
+                pointer-events: none;
+            }
+            @keyframes voiceRecPulse {
+                0%   { transform: scale(0.85); opacity: 0.9; }
+                100% { transform: scale(1.9); opacity: 0; }
+            }
+            #chat-voice-btn.is-recording {
+                color: #f87171 !important;
+                background: rgba(248, 113, 113, 0.12) !important;
+            }
+            #chat-voice-btn.is-recording i {
+                animation: voiceMicBob 0.9s ease-in-out infinite;
+            }
+            @keyframes voiceMicBob {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.18); }
+            }
+            /* Translate button spinner while a lookup is in flight */
+            .translate-spin i { animation: spin 0.8s linear infinite; }
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            /* Avatar saved — quick success glow ring */
+            @keyframes avatarSavedGlow {
+                0%   { box-shadow: 0 0 0 0 rgba(99,102,241,0.8); }
+                70%  { box-shadow: 0 0 0 10px rgba(99,102,241,0); }
+                100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+            }
+            .avatar-saved-flash { animation: avatarSavedGlow 0.9s ease-out; }
+            /* Fresh chat bubble slide-in */
+            @keyframes chatBubbleIn {
+                0%   { opacity: 0; transform: translateY(8px) scale(0.97); }
+                100% { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            .chat-bubble-new { animation: chatBubbleIn 0.28s ease-out; }
+
             /* Profile avatar gets a slow, subtle float — alive, not distracting */
             @keyframes avatarFloat {
                 0%, 100% { transform: translateY(0); }
@@ -3843,9 +3884,12 @@
                                         <button type="button" title="Emoji" onclick="toggleEmojiPicker()" class="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition shrink-0">
                                             <i data-lucide="smile" class="w-4 h-4"></i>
                                         </button>
-                                        <button type="button" id="chat-voice-btn" title="Hold to record a voice message" onmousedown="startVoiceRecording()" onmouseup="stopVoiceRecording()" onmouseleave="cancelVoiceRecordingIfActive()" ontouchstart="startVoiceRecording(event)" ontouchend="stopVoiceRecording(event)" class="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition shrink-0">
-                                            <i data-lucide="mic" class="w-4 h-4"></i>
+                                        <button type="button" id="chat-voice-btn" title="Click to record a voice message" onclick="toggleVoiceRecording()" class="relative text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition shrink-0">
+                                            <span id="chat-voice-ring-1" class="voice-rec-ring hidden"></span>
+                                            <span id="chat-voice-ring-2" class="voice-rec-ring hidden" style="animation-delay:.4s"></span>
+                                            <i data-lucide="mic" class="w-4 h-4 relative z-10"></i>
                                         </button>
+                                        <span id="chat-voice-timer" class="hidden text-[10px] font-mono text-red-400 tabular-nums shrink-0">0:00</span>
                                         <input type="text" id="chat-message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessageNow();}" class="flex-1 bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition min-w-0">
                                         <button onclick="sendChatMessageNow()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-xl transition ripple-btn shrink-0">
                                             <i data-lucide="send" class="w-4 h-4"></i>
@@ -4511,7 +4555,16 @@
                     // very first paint is already correct, not just after
                     // hydrateFromD1's network round-trip fixes it a moment later.
                     const cached = students.find(s => s.id === currentUser.id || s.phone === currentUser.id);
-                    if (cached) currentUser = { ...currentUser, ...cached };
+                    if (cached) {
+                        // Never let a cached/hydrated row blank out a custom avatar the
+                        // user already set on this device — only take cached.avatar when
+                        // it actually has something in it. Without this guard, a stale or
+                        // not-yet-synced server row (empty avatar column) silently reverts
+                        // the picture back to the default the moment the page reloads.
+                        const keepAvatar = currentUser.avatar;
+                        currentUser = { ...currentUser, ...cached };
+                        if (keepAvatar && !cached.avatar) currentUser.avatar = keepAvatar;
+                    }
                     loadPortal();
                 }
             } catch (e) { /* corrupted/no saved session — show login as normal */ }
@@ -4786,10 +4839,7 @@
         function getUserAvatarSrc(user) {
             if (user && user.avatar) return user.avatar;
             if (!user) return 'student1.png';
-            // Admin/teacher accounts always default to admin.png, regardless of
-            // whatever the "gender" column happens to be set to (the seeded
-            // admin row uses gender='Boy', so gender alone isn't reliable here).
-            if (user.role === 'teacher' || user.role === 'admin' || user.gender === 'Admin') return 'admin.png';
+            if (user.gender === 'Admin') return 'admin.png';
             if (user.gender === 'Girl') return 'student2.png';
             if (user.gender === 'Website Developer') return 'WD.png';
             return 'student1.png';
@@ -4845,7 +4895,16 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: options.body ? JSON.stringify(options.body) : undefined
                 });
-                if (!res.ok) throw new Error(`D1 request failed (${res.status})`);
+                if (!res.ok) {
+                    // Grab whatever the server said (D1 errors, payload-too-large,
+                    // etc.) instead of throwing it away — it's the only way to tell
+                    // "network hiccup" apart from "the server actually rejected this".
+                    let detail = '';
+                    try { detail = (await res.clone().json()).error || ''; } catch (e) { try { detail = await res.clone().text(); } catch (e2) {} }
+                    const err = new Error(`D1 request failed (${res.status})${detail ? ': ' + detail : ''}`);
+                    err.status = res.status;
+                    throw err;
+                }
                 return await res.json();
             } catch (err) {
                 console.warn(`D1 Sync notice [${path}]:`, err.message);
@@ -5063,7 +5122,13 @@
                 // forever.
                 const me = students.find(s => s.id === currentUser.id || s.phone === currentUser.id);
                 if (me) {
+                    // Same guard as attemptAutoLogin(): a fresh server row with an
+                    // empty avatar column (migration not applied yet, or the update
+                    // hasn't synced) must never blank out a picture the user already
+                    // has showing on this device.
+                    const keepAvatar = currentUser.avatar;
                     currentUser = { ...currentUser, ...me };
+                    if (keepAvatar && !me.avatar) currentUser.avatar = keepAvatar;
                     // Keep the remembered snapshot (if any) in sync too, so a
                     // network hiccup on some future refresh doesn't fall back to
                     // the pre-correction copy.
@@ -5379,17 +5444,6 @@
         }
 
         function loadPortal() {
-            // A fresh server login hands back the raw D1 row, where .id is the
-            // numeric primary key — but hydrateFromD1() normalizes every entry
-            // in the `students` array to use the phone as .id (see the comment
-            // there). Until this line, that mismatch meant every
-            // `students.find(s => s.id === currentUser.id)` lookup for this
-            // account silently failed right after login (avatar picks not
-            // saving locally, etc.) because the two ids lived in different
-            // spaces. Doing it once, here, keeps currentUser.id in the same
-            // space as `students[].id` for the rest of the session.
-            if (currentUser && currentUser.phone) currentUser.id = currentUser.phone;
-
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('portal-section').classList.remove('hidden');
 
@@ -5664,6 +5718,12 @@
             if (preview) preview.src = avatarSrc;
             if (localStorage.getItem(REMEMBER_KEY)) saveRememberedSession(currentUser, true);
 
+            [sidebarAvatar, preview].forEach(el => {
+                if (!el) return;
+                el.classList.add('avatar-saved-flash');
+                setTimeout(() => el.classList.remove('avatar-saved-flash'), 900);
+            });
+
             const res = await D1.updateAvatar(currentUser.id, avatarSrc);
             if (res && res.success) {
                 showToast('Profile picture updated.', 'success');
@@ -5738,13 +5798,6 @@
 
         async function renderChat() {
             if (!currentUser) return;
-
-            // Gate FIRST, synchronously, before any network round-trip below.
-            // Previously this ran at the very end of the function, after an
-            // `await Promise.all(...)` — so the PIN overlay only appeared once
-            // that fetch resolved, and never appeared at all if it hung or
-            // silently failed, leaving the Chat tab wide open behind nothing.
-            checkChatLockGate();
             const myId = myChatId();
 
             const [threadsData, nicknamesData] = await Promise.all([
@@ -5957,19 +6010,23 @@
 
             const translated = chatTranslations[m.id];
             const translatedHtml = translated
-                ? `<p class="leading-relaxed break-words whitespace-pre-wrap mt-1 pt-1 border-t border-white/10 italic opacity-90">${escapeHTML(translated.text)}</p>`
+                ? `<p class="leading-relaxed break-words whitespace-pre-wrap mt-1 pt-1 border-t border-white/10 italic opacity-90" dir="${translated.lang === 'ar' ? 'rtl' : 'ltr'}">${escapeHTML(translated.text)}</p>`
                 : '';
 
-            const textHtml = text
-                ? `<p class="leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(text)}</p>`
-                : '';
+            // Two explicit direction buttons instead of one auto-guessed toggle —
+            // works the same whichever language the message is actually in, and
+            // there's never any ambiguity about which way it's translating.
+            const translateControls = translated
+                ? `<button onclick="toggleTranslateMessage('${escapeHTML(String(m.id))}')" class="text-[8px] opacity-70 hover:opacity-100 underline">Hide translation</button>`
+                : `<button id="translate-btn-ar-${escapeHTML(String(m.id))}" onclick="toggleTranslateMessage('${escapeHTML(String(m.id))}','ar')" class="text-[8px] opacity-70 hover:opacity-100 underline flex items-center gap-0.5"><i data-lucide="languages" class="w-2.5 h-2.5"></i>EN→AR</button>
+                   <button id="translate-btn-en-${escapeHTML(String(m.id))}" onclick="toggleTranslateMessage('${escapeHTML(String(m.id))}','en')" class="text-[8px] opacity-70 hover:opacity-100 underline flex items-center gap-0.5"><i data-lucide="languages" class="w-2.5 h-2.5"></i>AR→EN</button>`;
 
             return `
                 ${attachmentHtml}
-                ${textHtml}
+                <p class="leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(text)}</p>
                 ${translatedHtml}
-                <div class="flex items-center justify-end gap-1.5 mt-1">
-                    <button onclick="toggleTranslateMessage('${escapeHTML(String(m.id))}')" class="text-[8px] opacity-70 hover:opacity-100 underline">${translated ? 'Hide translation' : 'Translate'}</button>
+                <div class="flex items-center justify-end gap-2 mt-1">
+                    ${translateControls}
                     <span class="text-[8px] opacity-60">${formatChatTime(m.created_at)}</span>
                 </div>
             `;
@@ -5986,11 +6043,13 @@
             }
 
             const bodies = await Promise.all(chatMessages.map(m => renderChatBubbleBody(m)));
+            const lastId = chatMessages.length ? chatMessages[chatMessages.length - 1].id : null;
             list.innerHTML = chatMessages.map((m, i) => {
                 const mine = m.sender_id === myChatId();
+                const isNewest = m.id === lastId;
                 return `
                     <div class="flex ${mine ? 'justify-end' : 'justify-start'} mb-2">
-                        <div class="max-w-[75%] ${mine ? 'bg-indigo-600 text-white' : 'bg-slate-800/70 text-gray-100'} rounded-2xl px-3 py-2 text-xs">
+                        <div class="max-w-[75%] ${mine ? 'bg-indigo-600 text-white' : 'bg-slate-800/70 text-gray-100'} rounded-2xl px-3 py-2 text-xs ${isNewest ? 'chat-bubble-new' : ''}">
                             ${!mine ? `<p class="text-[9px] font-bold text-indigo-300 mb-0.5">${escapeHTML(m.sender_name)}</p>` : ''}
                             ${bodies[i]}
                         </div>
@@ -6009,7 +6068,9 @@
         function looksArabic(str) {
             return /[\u0600-\u06FF]/.test(str);
         }
-        async function toggleTranslateMessage(msgId) {
+        // targetLang: 'ar' for the EN→AR button, 'en' for the AR→EN button.
+        // If omitted (hiding an existing translation), it just clears it.
+        async function toggleTranslateMessage(msgId, targetLang) {
             if (chatTranslations[msgId]) {
                 delete chatTranslations[msgId];
                 renderChatMessages();
@@ -6017,8 +6078,12 @@
             }
             const originalText = chatDecryptedTextCache[msgId] || '';
             if (!originalText) return;
-            const targetLang = looksArabic(originalText) ? 'en' : 'ar';
+            if (!targetLang) targetLang = looksArabic(originalText) ? 'en' : 'ar';
             const sourceLang = targetLang === 'ar' ? 'en' : 'ar';
+
+            const btn = document.getElementById(`translate-btn-${targetLang}-${msgId}`);
+            if (btn) btn.classList.add('translate-spin');
+
             try {
                 const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(originalText)}&langpair=${sourceLang}|${targetLang}`);
                 const data = await res.json();
@@ -6117,80 +6182,47 @@
 
         // -----------------------------------------------------------------
         // 🎤 Voice messages — MediaRecorder, converted to a data: URI.
-        //
-        // MediaRecorder's webm/opus output famously never writes a real
-        // duration into its file header (a long-standing Chromium/WebKit
-        // quirk) — so any <audio> element playing it back shows "0:00" and
-        // can't be scrubbed, even though the audio itself is fine. Fixed by
-        // decoding the recording with the Web Audio API and re-encoding it
-        // as a plain WAV file before it's ever saved: WAV's header always
-        // carries a real sample count, so every browser reports the correct
-        // duration immediately, both right after recording and after a
-        // reload (since the duration lives in the saved bytes, not just in
-        // this page's memory).
         // -----------------------------------------------------------------
         let chatMediaRecorder = null;
         let chatVoiceChunks = [];
         let chatVoiceStream = null;
 
-        function writeWavString(view, offset, str) {
-            for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-        }
+        let chatVoiceTimerInterval = null;
+        let chatVoiceStartedAt = 0;
+        const CHAT_VOICE_MAX_MS = 90 * 1000;          // hard stop at 90s so recordings can't run forever
+        const CHAT_VOICE_MAX_BYTES = 900 * 1024;       // ~900KB raw blob (~1.2MB once base64'd) — comfortably under D1's per-row/column size ceiling so the send never silently fails
 
-        // Mono 16-bit PCM WAV encoder — samples is a Float32Array in [-1, 1].
-        function encodeMonoWav(samples, sampleRate) {
-            const bytesPerSample = 2;
-            const buffer = new ArrayBuffer(44 + samples.length * bytesPerSample);
-            const view = new DataView(buffer);
-            writeWavString(view, 0, 'RIFF');
-            view.setUint32(4, 36 + samples.length * bytesPerSample, true);
-            writeWavString(view, 8, 'WAVE');
-            writeWavString(view, 12, 'fmt ');
-            view.setUint32(16, 16, true);          // PCM fmt chunk size
-            view.setUint16(20, 1, true);           // format = PCM
-            view.setUint16(22, 1, true);           // channels = mono
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * bytesPerSample, true); // byte rate
-            view.setUint16(32, bytesPerSample, true);              // block align
-            view.setUint16(34, 16, true);          // bits per sample
-            writeWavString(view, 36, 'data');
-            view.setUint32(40, samples.length * bytesPerSample, true);
-            let offset = 44;
-            for (let i = 0; i < samples.length; i++, offset += 2) {
-                const s = Math.max(-1, Math.min(1, samples[i]));
-                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+        // Click once to start, click again to stop and send — no more
+        // press-and-hold, which is unreliable on touch devices anyway.
+        function toggleVoiceRecording() {
+            if (chatMediaRecorder && chatMediaRecorder.state === 'recording') {
+                stopVoiceRecording();
+            } else {
+                startVoiceRecording();
             }
-            return buffer;
         }
 
-        // Decodes the raw recording, down-mixes to mono and resamples to
-        // 16kHz (plenty for a clear voice note, and keeps the resulting
-        // data: URI small), then encodes that as a WAV blob.
-        async function convertRecordingToWav(blob) {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            const arrayBuffer = await blob.arrayBuffer();
-            const decodeCtx = new AudioCtx();
-            let decoded;
-            try {
-                decoded = await decodeCtx.decodeAudioData(arrayBuffer);
-            } finally {
-                decodeCtx.close();
-            }
-            const targetRate = 16000;
-            const targetLength = Math.max(1, Math.ceil(decoded.duration * targetRate));
-            const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-            const offlineCtx = new OfflineCtx(1, targetLength, targetRate);
-            const source = offlineCtx.createBufferSource();
-            source.buffer = decoded;
-            source.connect(offlineCtx.destination);
-            source.start(0);
-            const rendered = await offlineCtx.startRendering();
-            const wavBuffer = encodeMonoWav(rendered.getChannelData(0), targetRate);
-            return new Blob([wavBuffer], { type: 'audio/wav' });
+        function setVoiceRecordingUI(active) {
+            const btn = document.getElementById('chat-voice-btn');
+            const r1 = document.getElementById('chat-voice-ring-1');
+            const r2 = document.getElementById('chat-voice-ring-2');
+            const timer = document.getElementById('chat-voice-timer');
+            if (btn) btn.classList.toggle('is-recording', active);
+            if (r1) r1.classList.toggle('hidden', !active);
+            if (r2) r2.classList.toggle('hidden', !active);
+            if (timer) timer.classList.toggle('hidden', !active);
+            if (btn) btn.title = active ? 'Click to stop and send' : 'Click to record a voice message';
         }
 
-        async function startVoiceRecording(event) {
-            if (event) event.preventDefault();
+        function tickVoiceTimer() {
+            const timer = document.getElementById('chat-voice-timer');
+            if (!timer) return;
+            const secs = Math.floor((Date.now() - chatVoiceStartedAt) / 1000);
+            const m = Math.floor(secs / 60), s = secs % 60;
+            timer.textContent = `${m}:${String(s).padStart(2, '0')}`;
+        }
+
+        async function startVoiceRecording() {
             if (chatMediaRecorder) return;
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 showToast('Voice recording is not supported on this device/browser.', 'error');
@@ -6199,11 +6231,24 @@
             try {
                 chatVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 chatVoiceChunks = [];
-                chatMediaRecorder = new MediaRecorder(chatVoiceStream);
+                // Cap the bitrate so a 90s clip stays well under the size limit
+                // instead of relying only on a post-hoc size check after recording.
+                let recorderOpts = { audioBitsPerSecond: 32000 };
+                try {
+                    chatMediaRecorder = new MediaRecorder(chatVoiceStream, recorderOpts);
+                } catch (e) {
+                    chatMediaRecorder = new MediaRecorder(chatVoiceStream); // fall back if the browser rejects the options
+                }
                 chatMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chatVoiceChunks.push(e.data); };
                 chatMediaRecorder.start();
-                document.getElementById('chat-voice-btn').classList.add('text-red-400', 'animate-pulse');
-                showToast('Recording… release to send.', 'info');
+                chatVoiceStartedAt = Date.now();
+                setVoiceRecordingUI(true);
+                tickVoiceTimer();
+                chatVoiceTimerInterval = setInterval(() => {
+                    tickVoiceTimer();
+                    if (Date.now() - chatVoiceStartedAt >= CHAT_VOICE_MAX_MS) stopVoiceRecording();
+                }, 500);
+                showToast('Recording… click the mic again to stop and send.', 'info');
             } catch (e) {
                 showToast('Microphone access was denied or unavailable.', 'error');
                 chatMediaRecorder = null;
@@ -6214,39 +6259,33 @@
             if (chatMediaRecorder && chatMediaRecorder.state === 'recording') stopVoiceRecording();
         }
 
-        function stopVoiceRecording(event) {
-            if (event) event.preventDefault();
+        function stopVoiceRecording() {
             if (!chatMediaRecorder) return;
-            document.getElementById('chat-voice-btn').classList.remove('text-red-400', 'animate-pulse');
+            if (chatVoiceTimerInterval) { clearInterval(chatVoiceTimerInterval); chatVoiceTimerInterval = null; }
+            setVoiceRecordingUI(false);
             const recorder = chatMediaRecorder;
             chatMediaRecorder = null;
             if (recorder.state !== 'recording') return;
 
-            recorder.onstop = async () => {
+            recorder.onstop = () => {
                 if (chatVoiceStream) chatVoiceStream.getTracks().forEach(t => t.stop());
                 if (!chatVoiceChunks.length) return;
-                const rawBlob = new Blob(chatVoiceChunks, { type: 'audio/webm' });
-
-                showToast('Processing recording…', 'info');
-                let wavBlob;
-                try {
-                    wavBlob = await convertRecordingToWav(rawBlob);
-                } catch (e) {
-                    showToast('Could not process that recording — please try again.', 'error');
+                const blob = new Blob(chatVoiceChunks, { type: recorder.mimeType || 'audio/webm' });
+                if (blob.size < 800) {
+                    showToast('Recording was too short to send.', 'warning');
                     return;
                 }
-                if (wavBlob.size > 4 * 1024 * 1024) {
-                    showToast('That voice message is too long — keep it under two minutes or so.', 'error');
+                if (blob.size > CHAT_VOICE_MAX_BYTES) {
+                    showToast('That voice message is too long to send reliably — keep it under ~45 seconds.', 'error');
                     return;
                 }
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     pendingChatAttachment = { type: 'audio', name: 'Voice message', url: e.target.result };
                     renderChatAttachmentPreview();
-                    sendChatMessageNow('');
+                    sendChatMessageNow('🎤 Voice message');
                 };
-                reader.onerror = () => showToast('Could not read that recording.', 'error');
-                reader.readAsDataURL(wavBlob);
+                reader.readAsDataURL(blob);
             };
             recorder.stop();
         }
@@ -6264,11 +6303,7 @@
             pendingChatAttachment = null;
             renderChatAttachmentPreview();
 
-            // A voice note (and any other attachment the user didn't caption)
-            // is sent as just the player, with no synthesized text underneath
-            // it — an audio attachment never falls back to "📎 <name>".
-            const attachmentFallbackText = (attachment && attachment.type !== 'audio') ? `📎 ${attachment.name}` : '';
-            let outgoingText = text || attachmentFallbackText;
+            let outgoingText = text || (attachment ? `📎 ${attachment.name}` : '');
             let outgoingAttachmentUrl = attachment ? attachment.url : null;
             let encryptedFlag = false;
 
@@ -6301,7 +6336,7 @@
             // the authoritative — and, for a DM, encrypted — D1 copy.
             chatMessages.push({
                 ...payload,
-                text: text || attachmentFallbackText,
+                text: text || (attachment ? `📎 ${attachment.name}` : ''),
                 attachment_url: attachment ? attachment.url : null,
                 encrypted: false,
                 id: `local-${Date.now()}`,
@@ -6309,9 +6344,22 @@
             });
             renderChatMessages();
 
-            const res = await D1.sendChatMessage(payload);
+            let res = await D1.sendChatMessage(payload);
             if (!res || res.success === false) {
-                showToast('Message may not have reached the server — check your connection.', 'warning');
+                // One quiet retry — most failures at this point are a cold-starting
+                // Worker or a momentary drop, not a real rejection, so give it a
+                // second try before bothering the user with a warning.
+                await new Promise(r => setTimeout(r, 800));
+                res = await D1.sendChatMessage(payload);
+            }
+            if (!res || res.success === false) {
+                const isVoice = attachment && attachment.type === 'audio';
+                showToast(
+                    isVoice
+                        ? 'That voice message may not have reached the server — it might be too large. Try a shorter recording.'
+                        : 'Message may not have reached the server — check your connection.',
+                    'warning'
+                );
             }
             loadChatMessages();
             if (isDmRoom(currentChatRoom)) renderChat(); // pulls the just-started thread into the sidebar for both sides
@@ -9029,7 +9077,7 @@
 
                 bubble.innerHTML = `
                     <div class="flex items-center gap-1.5 ${isAI ? 'self-start' : 'self-end'} select-none">
-                        <img src="${isAI ? 'ai.png' : getUserAvatarSrc(currentUser)}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/></svg>';" class="w-3.5 h-3.5 rounded-full shrink-0">
+                        <img src="${isAI ? 'ai.png' : (currentUser && currentUser.gender === 'Admin' ? 'admin.png' : (currentUser && currentUser.gender === 'Girl' ? 'student2.png' : (currentUser && currentUser.gender === 'Website Developer' ? 'WD.png' : 'student1.png')))}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/></svg>';" class="w-3.5 h-3.5 rounded-full shrink-0">
                         <span class="text-[9px] font-mono font-black text-gray-500 flex items-center gap-1">${isAI ? 'Co Assistant' : (currentUser ? currentUser.name : 'Enrolled Student')}${isAI ? '<svg viewBox="0 0 24 24" width="9" height="9" class="inline-block shrink-0" aria-hidden="true" title="Verified Co Assistant AI"><path fill="#4f9eff" d="M12 1.5l2.35 1.87 2.98-.5.97 2.85 2.85.97-.5 2.98L22.5 12l-1.85 2.33.5 2.98-2.85.97-.97 2.85-2.98-.5L12 22.5l-2.35-1.87-2.98.5-.97-2.85-2.85-.97.5-2.98L1.5 12l1.85-2.33-.5-2.98 2.85-.97.97-2.85 2.98.5z"/><path fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M8 12.2l2.6 2.6 5.4-5.8"/></svg>' : ''}</span>
                     </div>
                     <div class="${cardBg} p-3 shadow-xl">
@@ -9605,7 +9653,7 @@
                 const newFeedback = {
                     id: Date.now(),
                     author: currentUser.name,
-                    gender: (currentUser.role === 'teacher' || currentUser.role === 'admin') ? 'Admin' : (currentUser.gender || 'Boy'),
+                    gender: currentUser.gender || 'Boy',
                     idVal: currentUser.id || 'student-guest',
                     rating: feedbackSelectedRating,
                     text: text,
