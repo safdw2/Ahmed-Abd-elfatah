@@ -133,14 +133,23 @@ CREATE INDEX IF NOT EXISTS idx_tutoring_grade ON tutoring_table (grade);
 --   "grade:<Grade Name>"   e.g. "grade:Grade 10 (Secondary 1)"
 --   "dm:<idA>|<idB>"       IDs sorted alphabetically, one thread per pair
 -- --------------------------------------------------------------------
+-- attachment_* columns hold a photo, PDF or voice note as a data: URI
+-- (already resized/capped client-side before it ever reaches this table).
+-- encrypted=1 means `text` (and attachment_url, if present) are AES-GCM
+-- ciphertext produced client-side for that room; the server just stores
+-- and returns bytes, it never sees plaintext for those rows.
 CREATE TABLE IF NOT EXISTS chat_messages_table (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    room_id         TEXT NOT NULL,
-    sender_id       TEXT NOT NULL,
-    sender_name     TEXT NOT NULL,
-    sender_avatar   TEXT DEFAULT '',
-    text            TEXT NOT NULL,
-    created_at      TEXT DEFAULT (datetime('now'))
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_id             TEXT NOT NULL,
+    sender_id           TEXT NOT NULL,
+    sender_name         TEXT NOT NULL,
+    sender_avatar       TEXT DEFAULT '',
+    text                TEXT NOT NULL,
+    attachment_type     TEXT,
+    attachment_url      TEXT,
+    attachment_name     TEXT,
+    encrypted           INTEGER DEFAULT 0,
+    created_at          TEXT DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_room ON chat_messages_table (room_id, id);
@@ -157,6 +166,23 @@ CREATE TABLE IF NOT EXISTS chat_grants_table (
     user_b      TEXT NOT NULL,
     created_at  TEXT DEFAULT (datetime('now')),
     UNIQUE(user_a, user_b)
+);
+
+-- --------------------------------------------------------------------
+-- CHAT NICKNAMES TABLE — Direct Messaging is open to every account (any
+-- student can message any other student, no admin pairing needed), so
+-- chat_grants_table above is kept only for backward compatibility and is
+-- no longer required to open a DM. This table instead lets each person
+-- set a private custom label for a chat room (a DM or a grade group) —
+-- it never changes anyone's real name, only what that one viewer sees.
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS chat_nicknames_table (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     TEXT NOT NULL,
+    room_id     TEXT NOT NULL,
+    nickname    TEXT NOT NULL,
+    created_at  TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, room_id)
 );
 
 -- --------------------------------------------------------------------
