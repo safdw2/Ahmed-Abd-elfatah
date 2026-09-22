@@ -149,6 +149,10 @@ CREATE TABLE IF NOT EXISTS chat_messages_table (
     attachment_url      TEXT,
     attachment_name     TEXT,
     encrypted           INTEGER DEFAULT 0,
+    -- Set to 1 the first time a message's text is edited (voice messages
+    -- can never be edited, only deleted). Lets the chat bubble show a
+    -- small "edited" tag next to the timestamp.
+    edited              INTEGER DEFAULT 0,
     created_at          TEXT DEFAULT (datetime('now'))
 );
 
