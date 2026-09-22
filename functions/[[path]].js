@@ -701,16 +701,26 @@ export async function onRequest(context) {
                     if (!m.room_id || !m.sender_id || !String(m.text || '').trim()) {
                         return jsonResponse({ error: 'room_id, sender_id and text are required.' }, 400);
                     }
+                    // Attachments (photo / PDF / voice note) travel as data: URIs
+                    // already resized/capped client-side. encrypted=1 means
+                    // `text` (and attachment_url, if present) are AES-GCM
+                    // ciphertext the client will decrypt on read — the server
+                    // never sees plaintext for those rooms.
                     if (d1) {
                         const result = await d1.prepare(`
-                            INSERT INTO chat_messages_table (room_id, sender_id, sender_name, sender_avatar, text)
-                            VALUES (?, ?, ?, ?, ?)
+                            INSERT INTO chat_messages_table
+                                (room_id, sender_id, sender_name, sender_avatar, text, attachment_type, attachment_url, attachment_name, encrypted)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                         `).bind(
                             m.room_id,
                             m.sender_id,
                             m.sender_name || 'Student',
                             m.sender_avatar || '',
-                            String(m.text).slice(0, 2000)
+                            String(m.text).slice(0, 20000),
+                            m.attachment_type || null,
+                            m.attachment_url ? String(m.attachment_url).slice(0, 6000000) : null,
+                            m.attachment_name ? String(m.attachment_name).slice(0, 200) : null,
+                            m.encrypted ? 1 : 0
                         ).run();
                         return jsonResponse({ success: true, id: result.meta.last_row_id });
                     }
@@ -718,6 +728,71 @@ export async function onRequest(context) {
                 } catch (err) {
                     return jsonResponse({ error: err.message }, 400);
                 }
+            }
+        }
+
+        // DM Threads — every direct-message room a given account currently
+        // has activity in, newest first. Replaces the old "admin must grant
+        // every A<->B pair" model: any account can open a DM with any other
+        // account from the Chat tab, and the thread simply appears here for
+        // both sides the moment a first message is sent.
+        if (pathname === '/api/db/chat/dm-threads') {
+            const me = url.searchParams.get('user');
+            if (!me) return jsonResponse({ error: 'Missing user parameter.' }, 400);
+            if (d1) {
+                const { results: idRows } = await d1.prepare(`
+                    SELECT room_id, MAX(id) as last_id FROM chat_messages_table
+                    WHERE room_id LIKE 'dm:%' AND (room_id LIKE ? OR room_id LIKE ?)
+                    GROUP BY room_id
+                `).bind(`dm:${me}|%`, `dm:%|${me}`).all();
+
+                if (!idRows || !idRows.length) return jsonResponse([]);
+                const ids = idRows.map(r => r.last_id);
+                const placeholders = ids.map(() => '?').join(',');
+                const { results } = await d1.prepare(
+                    `SELECT * FROM chat_messages_table WHERE id IN (${placeholders}) ORDER BY id DESC`
+                ).bind(...ids).all();
+                return jsonResponse(results || []);
+            }
+            return jsonResponse([]);
+        }
+
+        // Chat Nicknames — a private, per-viewer custom label for a chat
+        // room (a DM or a grade group). Never overwrites anyone's real
+        // name; it's purely local display text for the person who set it.
+        if (pathname === '/api/db/chat/nicknames') {
+            const me = url.searchParams.get('user');
+            if (!me) return jsonResponse({ error: 'Missing user parameter.' }, 400);
+            if (d1) {
+                const { results } = await d1.prepare(
+                    'SELECT room_id, nickname FROM chat_nicknames_table WHERE user_id = ?'
+                ).bind(me).all();
+                return jsonResponse(results || []);
+            }
+            return jsonResponse([]);
+        }
+
+        if (pathname === '/api/db/chat/nickname' && request.method === 'POST') {
+            try {
+                const { user_id, room_id, nickname } = await request.json();
+                if (!user_id || !room_id) return jsonResponse({ error: 'user_id and room_id are required.' }, 400);
+                if (d1) {
+                    const clean = String(nickname || '').trim().slice(0, 60);
+                    if (clean) {
+                        await d1.prepare(`
+                            INSERT INTO chat_nicknames_table (user_id, room_id, nickname) VALUES (?, ?, ?)
+                            ON CONFLICT(user_id, room_id) DO UPDATE SET nickname = excluded.nickname
+                        `).bind(user_id, room_id, clean).run();
+                    } else {
+                        // Empty nickname clears the custom label back to the default.
+                        await d1.prepare('DELETE FROM chat_nicknames_table WHERE user_id = ? AND room_id = ?')
+                            .bind(user_id, room_id).run();
+                    }
+                    return jsonResponse({ success: true });
+                }
+                return jsonResponse({ success: true, mock: true });
+            } catch (err) {
+                return jsonResponse({ error: err.message }, 400);
             }
         }
 
