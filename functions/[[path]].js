@@ -17,6 +17,28 @@
  */
 
 export async function onRequest(context) {
+  try {
+    return await handleRequest(context);
+  } catch (err) {
+    // Last-resort safety net: ANY unexpected throw anywhere below (a bad
+    // D1 bind, a malformed body that slipped past a route's own try/catch,
+    // etc.) used to bubble up as Cloudflare's raw HTML/plain-text error
+    // page. The frontend's d1Request() then failed to parse that as JSON,
+    // treated it as "server unreachable", and showed a generic
+    // "may not have reached the server" warning even though the request
+    // DID reach the server and WAS processed — just not cleanly. Catching
+    // here guarantees every response is real JSON the frontend can read.
+    return new Response(JSON.stringify({ error: err && err.message ? err.message : 'Unexpected server error.' }), {
+      status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      }
+    });
+  }
+}
+
+async function handleRequest(context) {
     const { request, env } = context;
     const url = new URL(request.url);
     const pathname = url.pathname;
@@ -727,6 +749,19 @@ export async function onRequest(context) {
                     // `text` (and attachment_url, if present) are AES-GCM
                     // ciphertext the client will decrypt on read — the server
                     // never sees plaintext for those rooms.
+                    //
+                    // D1 rejects any single bound parameter over ~2,000,000 bytes.
+                    // The old code sliced attachment_url down to 6,000,000 chars,
+                    // which is well OVER that ceiling — so any voice note/photo
+                    // past ~2MB of base64 made the INSERT throw, D1.sendChatMessage()
+                    // came back null, and the frontend showed "may not have reached
+                    // the server" even though the real problem was "too big for D1".
+                    // Reject clearly instead of truncating (truncating a base64
+                    // data: URI corrupts it into something that can't decode anyway).
+                    const MAX_ATTACHMENT_B64 = 1800000; // stays safely under D1's ~2MB bound-parameter limit
+                    if (m.attachment_url && String(m.attachment_url).length > MAX_ATTACHMENT_B64) {
+                        return jsonResponse({ error: 'That attachment is too large to store — try a shorter recording or a smaller image.' }, 413);
+                    }
                     if (d1) {
                         const result = await d1.prepare(`
                             INSERT INTO chat_messages_table
@@ -739,7 +774,7 @@ export async function onRequest(context) {
                             m.sender_avatar || '',
                             String(m.text).slice(0, 20000),
                             m.attachment_type || null,
-                            m.attachment_url ? String(m.attachment_url).slice(0, 6000000) : null,
+                            m.attachment_url || null,
                             m.attachment_name ? String(m.attachment_name).slice(0, 200) : null,
                             m.encrypted ? 1 : 0
                         ).run();
