@@ -10,6 +10,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Patches the correct duration into a MediaRecorder webm blob before it's
+         sent, so voice-note playback shows the real length immediately for
+         every listener instead of "0:00" until the clip is played once. -->
+    <script src="https://cdn.jsdelivr.net/npm/fix-webm-duration@1.0.6/fix-webm-duration.js"></script>
     <!-- Premium Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3884,6 +3888,10 @@
                                 </div>
                                 <div id="chat-messages-list" class="flex-1 overflow-y-auto p-3"></div>
                                 <div id="chat-attachment-preview" class="hidden mx-3 mb-1 px-2.5 py-1.5 rounded-xl bg-slate-950/60 border border-white/10 text-[10px] text-gray-300 flex items-center justify-between gap-2"></div>
+                                <div id="chat-editing-banner" class="hidden mx-3 mb-1 px-2.5 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-300 flex items-center justify-between gap-2">
+                                    <span class="flex items-center gap-1.5"><i data-lucide="pencil" class="w-3 h-3"></i>Editing message</span>
+                                    <button type="button" onclick="cancelEditChatMessage()" class="text-gray-400 hover:text-white font-bold">Cancel</button>
+                                </div>
                                 <div class="relative shrink-0">
                                     <div id="chat-emoji-picker" class="hidden absolute bottom-full left-3 mb-2 w-64 max-h-40 overflow-y-auto grid grid-cols-8 gap-1 p-2 rounded-xl bg-slate-900 border border-white/10 shadow-2xl z-10"></div>
                                     <div class="p-3 border-t border-white/5 flex items-center gap-1.5">
@@ -3900,8 +3908,8 @@
                                             <i data-lucide="mic" class="w-4 h-4 relative z-10"></i>
                                         </button>
                                         <span id="chat-voice-timer" class="hidden text-[10px] font-mono text-red-400 tabular-nums shrink-0">0:00</span>
-                                        <input type="text" id="chat-message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessageNow();}" class="flex-1 bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition min-w-0">
-                                        <button onclick="sendChatMessageNow()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-xl transition ripple-btn shrink-0">
+                                        <input type="text" id="chat-message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendOrEditChatMessage();}" class="flex-1 bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition min-w-0">
+                                        <button onclick="sendOrEditChatMessage()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-xl transition ripple-btn shrink-0">
                                             <i data-lucide="send" class="w-4 h-4"></i>
                                         </button>
                                     </div>
@@ -5020,6 +5028,11 @@
 
             getChatMessages: (room) => d1Request(`/chat/messages?room=${encodeURIComponent(room)}`),
             sendChatMessage: (msg) => d1Request('/chat/messages', { method: 'POST', body: msg }),
+            // Text-only edit (voice notes are rejected server-side) and
+            // delete-your-own-message — sender_id travels with both so the
+            // server can enforce ownership before touching the row.
+            editChatMessage: (id, text, senderId, encrypted) => d1Request(`/chat/messages/${encodeURIComponent(id)}`, { method: 'PUT', body: { text, sender_id: senderId, encrypted: !!encrypted } }),
+            deleteChatMessage: (id, senderId) => d1Request(`/chat/messages/${encodeURIComponent(id)}?sender_id=${encodeURIComponent(senderId)}`, { method: 'DELETE' }),
             getChatGrants: () => d1Request('/chat/grants'),
             createChatGrant: (userA, userB) => d1Request('/chat/grants', { method: 'POST', body: { user_a: userA, user_b: userB } }),
             deleteChatGrant: (id) => d1Request(`/chat/grants/${encodeURIComponent(id)}`, { method: 'DELETE' }),
@@ -5870,6 +5883,16 @@
 
         async function renderChat() {
             if (!currentUser) return;
+
+            // Gate FIRST, synchronously, before any network round-trip below —
+            // switchTab() already un-hides the Chat panel before renderChat()
+            // even runs, so if this waited until after the awaits (as it used
+            // to), a locked chat's room list and DM previews were briefly
+            // visible on screen — worse the slower the connection — before the
+            // PIN overlay ever appeared. Checking here first means the overlay
+            // is already up before that panel is ever visible to the person.
+            checkChatLockGate();
+
             const myId = myChatId();
 
             const [threadsData, nicknamesData] = await Promise.all([
@@ -6059,6 +6082,13 @@
         // text (which may contain quotes) inside an onclick HTML attribute.
         const chatDecryptedTextCache = {};
 
+        // Marks the placeholder text a voice note is sent with server-side
+        // (the backend requires non-empty text on every message). It is
+        // never shown in the UI — renderChatBubbleBody skips the text line,
+        // the translate controls and the edit button whenever a bubble has
+        // an audio attachment, so this string never reaches the screen.
+        const VOICE_MESSAGE_PLACEHOLDER = '🎤 Voice message';
+
         // Renders one message bubble's inner content: decrypts if needed,
         // then lays out any attachment (photo / PDF / voice note) plus text.
         async function renderChatBubbleBody(m) {
@@ -6074,34 +6104,52 @@
             }
             chatDecryptedTextCache[m.id] = text;
 
+            const isVoice = m.attachment_type === 'audio';
+            const mine = m.sender_id === myChatId();
+
             let attachmentHtml = '';
             if (m.attachment_type === 'image' && attachmentUrl) {
                 attachmentHtml = `<img src="${attachmentUrl}" class="rounded-xl max-w-full max-h-56 object-cover mb-1.5 cursor-pointer" onclick="window.open('${attachmentUrl.startsWith('data:') ? '' : attachmentUrl}')" alt="attachment">`;
             } else if (m.attachment_type === 'pdf' && attachmentUrl) {
                 attachmentHtml = `<a href="${attachmentUrl}" download="${escapeHTML(m.attachment_name || 'document.pdf')}" class="flex items-center gap-2 bg-black/20 rounded-xl px-2.5 py-2 mb-1.5 hover:bg-black/30 transition"><i data-lucide="file-text" class="w-4 h-4 shrink-0"></i><span class="text-[10px] truncate">${escapeHTML(m.attachment_name || 'Document.pdf')}</span></a>`;
-            } else if (m.attachment_type === 'audio' && attachmentUrl) {
+            } else if (isVoice && attachmentUrl) {
                 attachmentHtml = `<audio controls preload="metadata" src="${attachmentUrl}" class="max-w-full mb-1.5 chat-voice-audio" style="height:32px;" onloadedmetadata="fixAudioDuration(this)"></audio>`;
             }
 
-            const translated = chatTranslations[m.id];
+            // Voice notes never show a text line (just the placeholder the
+            // server requires under the hood), never offer translation, and
+            // are never editable — only text messages get any of that.
+            const translated = !isVoice ? chatTranslations[m.id] : null;
             const translatedHtml = translated
                 ? `<p class="leading-relaxed break-words whitespace-pre-wrap mt-1 pt-1 border-t border-white/10 italic opacity-90" dir="${translated.lang === 'ar' ? 'rtl' : 'ltr'}">${escapeHTML(translated.text)}</p>`
                 : '';
 
-            // Two explicit direction buttons instead of one auto-guessed toggle —
-            // works the same whichever language the message is actually in, and
-            // there's never any ambiguity about which way it's translating.
-            const translateControls = translated
-                ? `<button onclick="toggleTranslateMessage('${escapeHTML(String(m.id))}')" class="text-[8px] opacity-70 hover:opacity-100 underline">Hide translation</button>`
-                : `<button id="translate-btn-ar-${escapeHTML(String(m.id))}" onclick="toggleTranslateMessage('${escapeHTML(String(m.id))}','ar')" class="text-[8px] opacity-70 hover:opacity-100 underline flex items-center gap-0.5"><i data-lucide="languages" class="w-2.5 h-2.5"></i>EN→AR</button>
-                   <button id="translate-btn-en-${escapeHTML(String(m.id))}" onclick="toggleTranslateMessage('${escapeHTML(String(m.id))}','en')" class="text-[8px] opacity-70 hover:opacity-100 underline flex items-center gap-0.5"><i data-lucide="languages" class="w-2.5 h-2.5"></i>AR→EN</button>`;
+            // One button that auto-detects the message's language and
+            // translates the other way — no more picking a direction.
+            let translateControls = '';
+            if (!isVoice) {
+                translateControls = translated
+                    ? `<button onclick="toggleTranslateMessage('${escapeHTML(String(m.id))}')" class="text-[8px] opacity-70 hover:opacity-100 underline">Hide translation</button>`
+                    : `<button id="translate-btn-${escapeHTML(String(m.id))}" onclick="toggleTranslateMessage('${escapeHTML(String(m.id))}')" class="text-[8px] opacity-70 hover:opacity-100 underline flex items-center gap-0.5"><i data-lucide="languages" class="w-2.5 h-2.5"></i>Translate</button>`;
+            }
+
+            const editedTag = m.edited ? `<span class="text-[8px] opacity-50 italic">edited</span>` : '';
+            const editBtn = (mine && !isVoice && String(m.id).indexOf('local-') !== 0)
+                ? `<button onclick="startEditChatMessage('${escapeHTML(String(m.id))}')" title="Edit" class="opacity-70 hover:opacity-100"><i data-lucide="pencil" class="w-2.5 h-2.5"></i></button>`
+                : '';
+            const deleteBtn = (mine && String(m.id).indexOf('local-') !== 0)
+                ? `<button onclick="deleteChatMessage('${escapeHTML(String(m.id))}')" title="Delete" class="opacity-70 hover:opacity-100 hover:text-red-400"><i data-lucide="trash-2" class="w-2.5 h-2.5"></i></button>`
+                : '';
 
             return `
                 ${attachmentHtml}
-                <p class="leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(text)}</p>
+                ${!isVoice ? `<p class="leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(text)}</p>` : ''}
                 ${translatedHtml}
                 <div class="flex items-center justify-end gap-2 mt-1">
                     ${translateControls}
+                    ${editedTag}
+                    ${editBtn}
+                    ${deleteBtn}
                     <span class="text-[8px] opacity-60">${formatChatTime(m.created_at)}</span>
                 </div>
             `;
@@ -6137,15 +6185,15 @@
         }
 
         // -----------------------------------------------------------------
-        // 🌐 Translate a single message to Arabic/English (free MyMemory
-        // API, called directly from the browser — no key needed).
+        // 🌐 Translate a single message (free MyMemory API, called directly
+        // from the browser — no key needed). Direction is auto-detected from
+        // the message's own text — Arabic script → English, anything else →
+        // Arabic — so there's just one button and nothing to pick.
         // -----------------------------------------------------------------
         function looksArabic(str) {
             return /[\u0600-\u06FF]/.test(str);
         }
-        // targetLang: 'ar' for the EN→AR button, 'en' for the AR→EN button.
-        // If omitted (hiding an existing translation), it just clears it.
-        async function toggleTranslateMessage(msgId, targetLang) {
+        async function toggleTranslateMessage(msgId) {
             if (chatTranslations[msgId]) {
                 delete chatTranslations[msgId];
                 renderChatMessages();
@@ -6153,10 +6201,10 @@
             }
             const originalText = chatDecryptedTextCache[msgId] || '';
             if (!originalText) return;
-            if (!targetLang) targetLang = looksArabic(originalText) ? 'en' : 'ar';
+            const targetLang = looksArabic(originalText) ? 'en' : 'ar';
             const sourceLang = targetLang === 'ar' ? 'en' : 'ar';
 
-            const btn = document.getElementById(`translate-btn-${targetLang}-${msgId}`);
+            const btn = document.getElementById(`translate-btn-${msgId}`);
             if (btn) btn.classList.add('translate-spin');
 
             try {
@@ -6172,6 +6220,97 @@
                 showToast('Could not reach the translation service.', 'warning');
             }
             renderChatMessages();
+        }
+
+        // -----------------------------------------------------------------
+        // ✏️ Edit / 🗑️ Delete a chat message — text messages only for edit
+        // (voice notes can never be edited, enforced both here and on the
+        // server); either action only ever targets the sender's own message,
+        // also enforced server-side.
+        // -----------------------------------------------------------------
+        let editingChatMessageId = null;
+
+        function updateChatEditingBanner() {
+            const banner = document.getElementById('chat-editing-banner');
+            if (banner) banner.classList.toggle('hidden', !editingChatMessageId);
+        }
+
+        function startEditChatMessage(msgId) {
+            const text = chatDecryptedTextCache[msgId];
+            if (text === undefined) return;
+            editingChatMessageId = msgId;
+            const input = document.getElementById('chat-message-input');
+            input.value = text;
+            input.focus();
+            updateChatEditingBanner();
+        }
+
+        function cancelEditChatMessage() {
+            editingChatMessageId = null;
+            const input = document.getElementById('chat-message-input');
+            if (input) input.value = '';
+            updateChatEditingBanner();
+        }
+
+        // Dispatches Enter/Send to editing or sending, whichever is active.
+        function sendOrEditChatMessage() {
+            if (editingChatMessageId) {
+                submitChatMessageEdit();
+            } else {
+                sendChatMessageNow();
+            }
+        }
+
+        async function submitChatMessageEdit() {
+            const input = document.getElementById('chat-message-input');
+            const newText = input.value.trim();
+            const msgId = editingChatMessageId;
+            if (!msgId) return;
+            if (!newText) { showToast('Message cannot be empty.', 'warning'); return; }
+
+            const msg = chatMessages.find(mm => String(mm.id) === String(msgId));
+            if (!msg) { editingChatMessageId = null; updateChatEditingBanner(); return; }
+
+            const encrypt = isDmRoom(currentChatRoom);
+            let outgoingText = newText;
+            let encryptedFlag = false;
+            if (encrypt) {
+                const encText = await encryptForRoom(currentChatRoom, newText);
+                if (encText) { outgoingText = encText; encryptedFlag = true; }
+            }
+
+            // Optimistic local update so the edit feels instant.
+            msg.text = outgoingText;
+            msg.encrypted = encryptedFlag;
+            msg.edited = 1;
+            chatDecryptedTextCache[msgId] = newText;
+            delete chatTranslations[msgId]; // a stale translation of the old text would be misleading
+            renderChatMessages();
+
+            input.value = '';
+            editingChatMessageId = null;
+            updateChatEditingBanner();
+
+            const res = await D1.editChatMessage(msgId, outgoingText, myChatId(), encryptedFlag);
+            if (!res || res.success === false) {
+                showToast((res && res.error) || 'Could not save the edit — check your connection.', 'warning');
+            }
+            loadChatMessages();
+        }
+
+        async function deleteChatMessage(msgId) {
+            if (!confirm('Delete this message? This cannot be undone.')) return;
+
+            // Optimistic removal.
+            chatMessages = chatMessages.filter(mm => String(mm.id) !== String(msgId));
+            if (editingChatMessageId === msgId) cancelEditChatMessage();
+            renderChatMessages();
+
+            const res = await D1.deleteChatMessage(msgId, myChatId());
+            if (!res || res.success === false) {
+                showToast((res && res.error) || 'Could not delete the message — check your connection.', 'warning');
+            }
+            loadChatMessages();
         }
 
         // -----------------------------------------------------------------
@@ -6341,11 +6480,12 @@
             const recorder = chatMediaRecorder;
             chatMediaRecorder = null;
             if (recorder.state !== 'recording') return;
+            const recordedMs = Date.now() - chatVoiceStartedAt;
 
-            recorder.onstop = () => {
+            recorder.onstop = async () => {
                 if (chatVoiceStream) chatVoiceStream.getTracks().forEach(t => t.stop());
                 if (!chatVoiceChunks.length) return;
-                const blob = new Blob(chatVoiceChunks, { type: recorder.mimeType || 'audio/webm' });
+                let blob = new Blob(chatVoiceChunks, { type: recorder.mimeType || 'audio/webm' });
                 if (blob.size < 800) {
                     showToast('Recording was too short to send.', 'warning');
                     return;
@@ -6354,11 +6494,27 @@
                     showToast('That voice message is too long to send reliably — keep it under ~45 seconds.', 'error');
                     return;
                 }
+
+                // MediaRecorder writes webm with no duration in its header, which
+                // is why voice notes used to show "0:00" until played once — the
+                // browser had no idea how long the file was until it scanned it
+                // itself. Patching the true recorded duration into the blob here
+                // (before it's ever turned into a data: URI and sent) fixes the
+                // player for every listener, not just whoever happens to play it
+                // first on this device.
+                if (typeof ysFixWebmDuration === 'function' && recordedMs > 0) {
+                    try {
+                        blob = await ysFixWebmDuration(blob, recordedMs, { logger: false });
+                    } catch (e) {
+                        console.warn('Could not patch voice note duration, sending as-is:', e.message);
+                    }
+                }
+
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     pendingChatAttachment = { type: 'audio', name: 'Voice message', url: e.target.result };
                     renderChatAttachmentPreview();
-                    sendChatMessageNow('🎤 Voice message');
+                    sendChatMessageNow(VOICE_MESSAGE_PLACEHOLDER);
                 };
                 reader.readAsDataURL(blob);
             };
