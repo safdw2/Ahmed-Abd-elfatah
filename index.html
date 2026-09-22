@@ -2799,6 +2799,11 @@
                     <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
                     <span>Dashboard</span>
                 </button>
+
+                <button onclick="switchTab('account')" id="nav-account" class="nav-btn ripple-btn w-auto md:w-full flex items-center gap-3 px-3.5 py-2 md:px-4 md:py-3 rounded-xl text-xs md:text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-300 ease-out whitespace-nowrap shrink-0">
+                    <i data-lucide="circle-user" class="w-4 h-4"></i>
+                    <span>My Account</span>
+                </button>
                 
 
                 
@@ -2815,6 +2820,11 @@
                 <button onclick="switchTab('feed')" id="nav-feed" class="nav-btn ripple-btn w-auto md:w-full flex items-center gap-3 px-3.5 py-2 md:px-4 md:py-3 rounded-xl text-xs md:text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-300 ease-out whitespace-nowrap shrink-0">
                     <i data-lucide="megaphone" class="w-4 h-4"></i>
                     <span>Community Feed</span>
+                </button>
+
+                <button onclick="switchTab('chat')" id="nav-chat" class="nav-btn ripple-btn w-auto md:w-full flex items-center gap-3 px-3.5 py-2 md:px-4 md:py-3 rounded-xl text-xs md:text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-300 ease-out whitespace-nowrap shrink-0">
+                    <i data-lucide="message-square" class="w-4 h-4"></i>
+                    <span>Chat</span>
                 </button>
 
                 <button onclick="switchTab('support')" id="nav-support" class="nav-btn ripple-btn w-auto md:w-full flex items-center gap-3 px-3.5 py-2 md:px-4 md:py-3 rounded-xl text-xs md:text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 hover:translate-x-1 transition-all duration-300 ease-out whitespace-nowrap shrink-0">
@@ -3709,6 +3719,86 @@
                     </div>
                 </div>
 
+                <!-- ACCOUNT TAB — change password + profile picture -->
+                <div id="view-account" class="view-panel space-y-6 hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+                        <!-- Profile Picture Card -->
+                        <div class="glass-card p-5 rounded-2xl space-y-4 border border-white/10 shadow-2xl">
+                            <h3 class="text-xs font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Profile Picture</h3>
+                            <div class="flex items-center gap-4">
+                                <img id="account-avatar-preview" src="student1.png" alt="Avatar preview" class="w-20 h-20 rounded-2xl object-cover aspect-square border border-white/10 shadow-lg shrink-0">
+                                <div class="space-y-0.5 overflow-hidden">
+                                    <p id="account-user-name" class="text-sm font-extrabold text-white truncate"></p>
+                                    <p id="account-user-meta" class="text-[10px] text-gray-500 truncate"></p>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-2">Pick an avatar</p>
+                                <div id="account-avatar-presets" class="grid grid-cols-5 gap-2"></div>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-2">Or upload your own photo</p>
+                                <input type="file" id="account-avatar-file" accept="image/*" onchange="handleAvatarFileUpload(event)" class="block w-full text-[10px] text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer">
+                                <p class="text-[8px] text-gray-600 mt-1">It's auto-resized before saving, so any photo works.</p>
+                            </div>
+                        </div>
+
+                        <!-- Change Password Card -->
+                        <div class="glass-card p-5 rounded-2xl space-y-4 border border-white/10 shadow-2xl">
+                            <h3 class="text-xs font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2">Change Password</h3>
+                            <div class="space-y-3">
+                                <div class="space-y-1">
+                                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider font-bold">Current password</label>
+                                    <input type="password" id="account-current-password" placeholder="••••••••" class="w-full bg-slate-950/60 border border-white/5 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider font-bold">New password</label>
+                                    <input type="password" id="account-new-password" placeholder="At least 4 characters" class="w-full bg-slate-950/60 border border-white/5 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider font-bold">Confirm new password</label>
+                                    <input type="password" id="account-confirm-password" placeholder="Repeat new password" class="w-full bg-slate-950/60 border border-white/5 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                                </div>
+                                <button onclick="changeAccountPassword()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 ripple-btn">
+                                    <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                                    <span>Update Password</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHAT TAB — one group chat per grade (own grade only for students), plus admin-granted DMs -->
+                <div id="view-chat" class="view-panel hidden">
+                    <div class="glass-card rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col md:flex-row h-[68vh] md:h-[72vh]">
+                        <div class="w-full md:w-64 border-b md:border-b-0 md:border-r border-white/5 flex flex-col shrink-0 max-h-40 md:max-h-none">
+                            <div class="p-3 border-b border-white/5 shrink-0">
+                                <h3 class="text-[10px] font-bold text-white uppercase tracking-wider">Chat Rooms</h3>
+                            </div>
+                            <div id="chat-room-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+                        </div>
+                        <div class="flex-1 flex flex-col min-h-0">
+                            <div id="chat-empty-state" class="flex-1 flex items-center justify-center text-xs text-gray-500 p-6 text-center">
+                                Select a grade group or a direct message on the left to start chatting.
+                            </div>
+                            <div id="chat-thread" class="flex-1 flex flex-col min-h-0 hidden">
+                                <div class="p-3 border-b border-white/5 flex items-center gap-2 shrink-0">
+                                    <i data-lucide="message-circle" class="w-4 h-4 text-indigo-400 shrink-0"></i>
+                                    <h3 id="chat-active-room-label" class="text-xs font-bold text-white truncate"></h3>
+                                </div>
+                                <div id="chat-messages-list" class="flex-1 overflow-y-auto p-3"></div>
+                                <div class="p-3 border-t border-white/5 flex items-center gap-2 shrink-0">
+                                    <input type="text" id="chat-message-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessageNow();}" class="flex-1 bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition">
+                                    <button onclick="sendChatMessageNow()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-xl transition ripple-btn shrink-0">
+                                        <i data-lucide="send" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 5. ADMIN SYSTEM CONTROL CONSOLE -->
                 <div id="view-admin" class="view-panel space-y-6 hidden">
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -3784,6 +3874,29 @@
                             <div id="admin-lectures-list" class="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                                 <!-- Dynamic video list -->
                             </div>
+                        </div>
+
+                        <!-- Chat Grants — lets two specific accounts open a Direct Message on the Chat tab -->
+                        <div class="glass-card p-5 rounded-2xl space-y-4 border border-white/10 shadow-2xl lg:col-span-2">
+                            <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                                <h3 class="text-xs font-bold text-white uppercase tracking-wider">Chat Grants (Direct Messages)</h3>
+                            </div>
+                            <p class="text-[9px] text-gray-500 -mt-2">Students only see their own grade's group chat. Grant two accounts a Direct Message here to let them chat one-on-one regardless of grade.</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
+                                <div class="space-y-1">
+                                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider font-bold">Account A</label>
+                                    <select id="chat-grant-user-a" class="w-full bg-slate-950/60 border border-white/5 rounded-xl p-2 text-[11px] text-white focus:outline-none focus:border-indigo-500 transition"></select>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider font-bold">Account B</label>
+                                    <select id="chat-grant-user-b" class="w-full bg-slate-950/60 border border-white/5 rounded-xl p-2 text-[11px] text-white focus:outline-none focus:border-indigo-500 transition"></select>
+                                </div>
+                                <button onclick="createChatGrant()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-[11px] transition ripple-btn flex items-center justify-center gap-1.5">
+                                    <i data-lucide="link" class="w-3.5 h-3.5"></i>
+                                    <span>Grant Chat Access</span>
+                                </button>
+                            </div>
+                            <div id="admin-chat-grants-list" class="space-y-2 max-h-[220px] overflow-y-auto pr-1"></div>
                         </div>
 
                     </div>
@@ -4463,6 +4576,74 @@
         // Tutoring Center (Roots) — { id, title, session_date, session_time, location, notes, grade, recurring, active }
         let tutoringSessions = JSON.parse(localStorage.getItem('tutoringSessions')) || [];
 
+        // -----------------------------------------------------------------
+        // 💬 CHAT TAB — one group room per grade + admin-granted DM rooms
+        // -----------------------------------------------------------------
+        const GRADE_LIST = [
+            'Grade 7 (Preparatory 1)',
+            'Grade 8 (Preparatory 2)',
+            'Grade 9 (Preparatory 3)',
+            'Grade 10 (Secondary 1)'
+        ];
+        let chatGrants = [];          // [{ id, user_a, user_b }] — from /api/db/chat/grants
+        let chatMessages = [];        // messages currently loaded for chatRoomId
+        let currentChatRoom = null;   // "grade:<Grade Name>" or "dm:<idA>|<idB>"
+        let chatPollInterval = null;
+
+        // -----------------------------------------------------------------
+        // 🖼️ ACCOUNT TAB — profile picture presets
+        // Rendered client-side as a small SVG "sticker" data: URI, so a preset
+        // is a fully valid <img src> on its own with no extra image assets.
+        // -----------------------------------------------------------------
+        const AVATAR_EMOJI_PRESETS = [
+            { emoji: '🦊', bg: '#f97316' },
+            { emoji: '🐼', bg: '#334155' },
+            { emoji: '🚀', bg: '#6366f1' },
+            { emoji: '🎓', bg: '#0ea5e9' },
+            { emoji: '⭐', bg: '#eab308' },
+            { emoji: '🔥', bg: '#ef4444' },
+            { emoji: '🌊', bg: '#0891b2' },
+            { emoji: '🍀', bg: '#22c55e' },
+            { emoji: '🐯', bg: '#f59e0b' },
+            { emoji: '🎮', bg: '#8b5cf6' }
+        ];
+        function buildEmojiAvatarDataUri(emoji, bg) {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="128" height="128" rx="28" fill="${bg}"/><text x="50%" y="54%" font-size="64" text-anchor="middle" dominant-baseline="middle">${emoji}</text></svg>`;
+            return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+        }
+
+        // Single source of truth for "what image goes in this user's avatar
+        // slot" — a saved custom avatar (preset filename or data: URI) always
+        // wins; otherwise falls back to the original gender-based default.
+        function getUserAvatarSrc(user) {
+            if (user && user.avatar) return user.avatar;
+            if (!user) return 'student1.png';
+            if (user.gender === 'Admin') return 'admin.png';
+            if (user.gender === 'Girl') return 'student2.png';
+            if (user.gender === 'Website Developer') return 'WD.png';
+            return 'student1.png';
+        }
+
+        function escapeHTML(str) {
+            return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function getStudentDisplayName(id) {
+            const s = students.find(st => st.id === id || st.phone === id);
+            return s ? s.name : id;
+        }
+
+        // Canonical identity for chat sender_id / grant matching / room IDs.
+        // Mirrors the existing "student.phone || student.id" fix used by
+        // D1.saveProgress: right after login (before hydrateFromD1 merges in
+        // the phone-normalized copy from `students`), currentUser.id is
+        // briefly the raw numeric D1 row id instead of the phone login ID.
+        // Using phone-first here keeps a given account's chat identity
+        // stable across that window instead of splitting into two senders.
+        function myChatId() {
+            return currentUser ? (currentUser.phone || currentUser.id) : null;
+        }
+
         // Try to restore a remembered session immediately, before any network
         // round-trip, so a returning student lands straight on their dashboard.
         attemptAutoLogin();
@@ -4501,6 +4682,25 @@
             }
         }
 
+        // Dedicated (not d1Request-based) so a rejected password change — e.g.
+        // "Current password is incorrect." — reaches the Account tab instead
+        // of being swallowed into a generic null the way d1Request does on
+        // any non-2xx response.
+        async function updatePasswordRequest(id, oldPassword, newPassword) {
+            try {
+                const res = await fetch(`${D1_API_BASE}/students/password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, old_password: oldPassword, new_password: newPassword })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) return { success: false, error: data.error || 'Current password is incorrect.' };
+                return { success: true, message: data.message };
+            } catch (err) {
+                return { success: false, error: 'Could not reach the server. Please try again.' };
+            }
+        }
+
         const D1 = {
             getStudents: () => d1Request('/students'),
             saveStudent: (student) => d1Request('/students', { method: 'POST', body: student }),
@@ -4519,6 +4719,14 @@
                 }
             }),
             deleteStudent: (id) => d1Request(`/students/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+            updatePassword: updatePasswordRequest,
+            updateAvatar: (id, avatar) => d1Request('/students/avatar', { method: 'POST', body: { id, avatar } }),
+
+            getChatMessages: (room) => d1Request(`/chat/messages?room=${encodeURIComponent(room)}`),
+            sendChatMessage: (msg) => d1Request('/chat/messages', { method: 'POST', body: msg }),
+            getChatGrants: () => d1Request('/chat/grants'),
+            createChatGrant: (userA, userB) => d1Request('/chat/grants', { method: 'POST', body: { user_a: userA, user_b: userB } }),
+            deleteChatGrant: (id) => d1Request(`/chat/grants/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
             getLectures: () => d1Request('/lectures'),
             saveLecture: (lecture) => d1Request('/lectures', { method: 'POST', body: lecture }),
@@ -5007,7 +5215,7 @@
                 document.getElementById('admin-material-upload-btn').classList.remove('hidden');
                 document.getElementById('admin-video-upload-btn').classList.remove('hidden');
                 document.getElementById('admin-feed-composer').classList.remove('hidden');
-                avatar.src = "admin.png";
+                avatar.src = getUserAvatarSrc(currentUser);
             } else {
                 document.getElementById('nav-admin').classList.add('hidden');
                 document.getElementById('admin-material-upload-btn').classList.add('hidden');
@@ -5017,15 +5225,7 @@
                 } else {
                     document.getElementById('admin-feed-composer').classList.add('hidden');
                 }
-                            if (currentUser.gender === 'Admin') {
-                avatar.src = "admin.png";
-            } else if (currentUser.gender === 'Girl') {
-                avatar.src = "student2.png";
-            } else if (currentUser.gender === 'Website Developer') {
-                avatar.src = "WD.png";
-            } else {
-                avatar.src = "student1.png";
-            }
+                avatar.src = getUserAvatarSrc(currentUser);
             }
 
             applyCompletionFlags();
@@ -5081,6 +5281,14 @@
             }
 
             activeTab = tabId;
+
+            // Chat polling only makes sense while the Chat tab is actually on
+            // screen — stop it the moment the user navigates anywhere else.
+            if (tabId !== 'chat' && chatPollInterval) {
+                clearInterval(chatPollInterval);
+                chatPollInterval = null;
+            }
+
             // Hide floating trigger inside Co Assistant tab to avoid visual replication
             const floatCont = document.getElementById('floating-co-assistant-container');
             if (floatCont) {
@@ -5118,9 +5326,11 @@
             const headerTitles = {
                 'co-assistant': 'Co Assistant AI Navigator',
                 dashboard: 'Portal Dashboard',
+                account: 'My Account',
                 materials: 'Worksheets & PDF Documents',
                 videos: 'Secure Video Sessions Center',
                 feed: 'Community Feed Announcements',
+                chat: 'Portal Chat',
                 support: 'Get Support',
                 admin: 'System Control Node (D1 Database Direct)'
             };
@@ -5148,13 +5358,340 @@
             }
             // Execute component rendering
             if (tabId === 'dashboard') renderDashboard();
+            if (tabId === 'account') renderAccount();
             if (tabId === 'materials') renderMaterials();
             if (tabId === 'videos') renderVideos();
             if (tabId === 'feed') renderFeed();
+            if (tabId === 'chat') renderChat();
             if (tabId === 'support') resetSupportForm();
             if (tabId === 'admin') renderAdmin();
 
             lucide.createIcons();
+        }
+
+        // -----------------------------------------------------------------
+        // 🖼️ ACCOUNT TAB — profile picture + change password
+        // -----------------------------------------------------------------
+        function renderAccount() {
+            if (!currentUser) return;
+
+            document.getElementById('account-user-name').textContent = currentUser.name;
+            document.getElementById('account-user-meta').textContent = hasAdminGrant()
+                ? `Workspace Staff · ID: ${currentUser.id}`
+                : `${currentUser.grade || 'Grade 10 (Secondary 1)'} · ID: ${currentUser.id}`;
+
+            const preview = document.getElementById('account-avatar-preview');
+            if (preview) preview.src = getUserAvatarSrc(currentUser);
+
+            const presetsWrap = document.getElementById('account-avatar-presets');
+            if (presetsWrap) {
+                presetsWrap.innerHTML = AVATAR_EMOJI_PRESETS.map((p, idx) => `
+                    <button type="button" onclick="selectAvatarPreset(${idx})" title="Use this avatar" class="aspect-square rounded-xl overflow-hidden border border-white/10 hover:border-indigo-500/50 transition ripple-btn">
+                        <img src="${buildEmojiAvatarDataUri(p.emoji, p.bg)}" class="w-full h-full object-cover" alt="Avatar option">
+                    </button>
+                `).join('');
+            }
+        }
+
+        function selectAvatarPreset(idx) {
+            const preset = AVATAR_EMOJI_PRESETS[idx];
+            if (!preset) return;
+            applyNewAvatar(buildEmojiAvatarDataUri(preset.emoji, preset.bg));
+        }
+
+        // Reads the chosen file, crops/resizes it to a small square JPEG in the
+        // browser (canvas), and hands the resulting data: URI to applyNewAvatar
+        // — so "whatever photo the student picks" always ends up small enough
+        // to store as a single D1 text column, with no server-side image step.
+        function handleAvatarFileUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                showToast('Please choose an image file.', 'error');
+                event.target.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const size = 160;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = size;
+                    canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    const scale = Math.max(size / img.width, size / img.height);
+                    const w = img.width * scale, h = img.height * scale;
+                    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+                    if (dataUrl.length > 380000) {
+                        showToast('That image is too large even after resizing — try a simpler photo.', 'error');
+                        return;
+                    }
+                    applyNewAvatar(dataUrl);
+                };
+                img.onerror = () => showToast('Could not read that image file.', 'error');
+                img.src = e.target.result;
+            };
+            reader.onerror = () => showToast('Could not read that image file.', 'error');
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        async function applyNewAvatar(avatarSrc) {
+            if (!currentUser) return;
+            currentUser.avatar = avatarSrc;
+            const meStudent = students.find(s => s.id === currentUser.id || s.phone === currentUser.id);
+            if (meStudent) meStudent.avatar = avatarSrc;
+            syncLocalDB();
+
+            const sidebarAvatar = document.getElementById('profile-avatar');
+            if (sidebarAvatar) sidebarAvatar.src = avatarSrc;
+            const preview = document.getElementById('account-avatar-preview');
+            if (preview) preview.src = avatarSrc;
+            if (localStorage.getItem(REMEMBER_KEY)) saveRememberedSession(currentUser, true);
+
+            const res = await D1.updateAvatar(currentUser.id, avatarSrc);
+            if (res && res.success) {
+                showToast('Profile picture updated.', 'success');
+            } else {
+                showToast('Saved on this device — cloud sync will retry.', 'warning');
+            }
+        }
+
+        async function changeAccountPassword() {
+            if (!currentUser) return;
+            const cur = document.getElementById('account-current-password').value;
+            const next = document.getElementById('account-new-password').value;
+            const confirmVal = document.getElementById('account-confirm-password').value;
+
+            if (!cur || !next || !confirmVal) {
+                showToast('Fill in all three password fields.', 'error');
+                return;
+            }
+            if (next.length < 4) {
+                showToast('New password must be at least 4 characters.', 'error');
+                return;
+            }
+            if (next !== confirmVal) {
+                showToast('New password and confirmation do not match.', 'error');
+                return;
+            }
+
+            const res = await D1.updatePassword(currentUser.id, cur, next);
+            if (res && res.success) {
+                showToast('Password updated successfully.', 'success');
+                document.getElementById('account-current-password').value = '';
+                document.getElementById('account-new-password').value = '';
+                document.getElementById('account-confirm-password').value = '';
+            } else {
+                showToast((res && res.error) || 'Could not update your password. Try again.', 'error');
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // 💬 CHAT TAB — one group room per grade (own grade only for
+        // students; staff can see every grade for moderation) plus
+        // admin-granted Direct Message rooms.
+        // -----------------------------------------------------------------
+        function buildChatRoomButton(roomId, label, iconName) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.dataset.roomId = roomId;
+            btn.className = 'chat-room-btn w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-semibold transition text-left border border-transparent text-gray-400 hover:text-white hover:bg-white/5';
+            btn.innerHTML = `<i data-lucide="${iconName}" class="w-3.5 h-3.5 shrink-0"></i><span class="truncate">${escapeHTML(label)}</span>`;
+            btn.addEventListener('click', () => openChatRoom(roomId, label));
+            return btn;
+        }
+
+        function setActiveChatRoomButton(roomId) {
+            document.querySelectorAll('.chat-room-btn').forEach(btn => {
+                const active = btn.dataset.roomId === roomId;
+                btn.className = 'chat-room-btn w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-semibold transition text-left border ' +
+                    (active
+                        ? 'bg-indigo-600/15 text-indigo-300 border-indigo-500/20'
+                        : 'border-transparent text-gray-400 hover:text-white hover:bg-white/5');
+            });
+        }
+
+        async function renderChat() {
+            if (!currentUser) return;
+
+            const grantsData = await D1.getChatGrants();
+            if (Array.isArray(grantsData)) chatGrants = grantsData;
+
+            const isStaff = hasAdminGrant();
+            const listEl = document.getElementById('chat-room-list');
+            listEl.innerHTML = '';
+
+            const groupHeader = document.createElement('div');
+            groupHeader.className = 'text-[9px] uppercase tracking-wider text-gray-500 font-bold px-2 pt-1 pb-1';
+            groupHeader.textContent = 'Grade Groups';
+            listEl.appendChild(groupHeader);
+
+            // 🔒 Students only ever get a room button for their own grade —
+            // there is no way for a student account to construct or open
+            // another grade's room_id from this tab.
+            const grades = isStaff ? GRADE_LIST : [currentUser.grade || 'Grade 10 (Secondary 1)'];
+            grades.forEach(g => {
+                listEl.appendChild(buildChatRoomButton(`grade:${g}`, g, 'users'));
+            });
+
+            // DM rooms only exist for grants that involve the signed-in
+            // account — an Admin Grant does not grant visibility into other
+            // people's private Direct Messages, only the power to create grants.
+            const myId = myChatId();
+            const myGrants = chatGrants.filter(gr => gr.user_a === myId || gr.user_b === myId);
+            if (myGrants.length) {
+                const dmHeader = document.createElement('div');
+                dmHeader.className = 'text-[9px] uppercase tracking-wider text-gray-500 font-bold px-2 pt-3 pb-1';
+                dmHeader.textContent = 'Direct Messages';
+                listEl.appendChild(dmHeader);
+                myGrants.forEach(gr => {
+                    const otherId = gr.user_a === myId ? gr.user_b : gr.user_a;
+                    const otherName = getStudentDisplayName(otherId);
+                    const roomId = `dm:${[myId, otherId].sort().join('|')}`;
+                    listEl.appendChild(buildChatRoomButton(roomId, otherName, 'message-circle'));
+                });
+            }
+
+            if (currentChatRoom) setActiveChatRoomButton(currentChatRoom);
+            lucide.createIcons();
+        }
+
+        async function openChatRoom(roomId, label) {
+            currentChatRoom = roomId;
+            setActiveChatRoomButton(roomId);
+            document.getElementById('chat-active-room-label').textContent = label;
+            document.getElementById('chat-empty-state').classList.add('hidden');
+            document.getElementById('chat-thread').classList.remove('hidden');
+
+            await loadChatMessages();
+
+            if (chatPollInterval) clearInterval(chatPollInterval);
+            chatPollInterval = setInterval(loadChatMessages, 4000);
+        }
+
+        async function loadChatMessages() {
+            if (!currentChatRoom) return;
+            const msgs = await D1.getChatMessages(currentChatRoom);
+            if (Array.isArray(msgs)) {
+                chatMessages = msgs;
+                renderChatMessages();
+            }
+        }
+
+        function formatChatTime(ts) {
+            if (!ts) return '';
+            try {
+                const iso = ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z';
+                return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function renderChatMessages() {
+            const list = document.getElementById('chat-messages-list');
+            if (!list) return;
+            const wasNearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+
+            list.innerHTML = chatMessages.length ? chatMessages.map(m => {
+                const mine = m.sender_id === myChatId();
+                return `
+                    <div class="flex ${mine ? 'justify-end' : 'justify-start'} mb-2">
+                        <div class="max-w-[75%] ${mine ? 'bg-indigo-600 text-white' : 'bg-slate-800/70 text-gray-100'} rounded-2xl px-3 py-2 text-xs">
+                            ${!mine ? `<p class="text-[9px] font-bold text-indigo-300 mb-0.5">${escapeHTML(m.sender_name)}</p>` : ''}
+                            <p class="leading-relaxed break-words whitespace-pre-wrap">${escapeHTML(m.text)}</p>
+                            <p class="text-[8px] opacity-60 mt-1 text-right">${formatChatTime(m.created_at)}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('') : `<div class="text-center text-[10px] text-gray-500 py-8">No messages yet — say hello 👋</div>`;
+
+            if (wasNearBottom) list.scrollTop = list.scrollHeight;
+        }
+
+        async function sendChatMessageNow() {
+            if (!currentUser || !currentChatRoom) return;
+            const input = document.getElementById('chat-message-input');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+
+            const payload = {
+                room_id: currentChatRoom,
+                sender_id: myChatId(),
+                sender_name: currentUser.name,
+                sender_avatar: getUserAvatarSrc(currentUser),
+                text
+            };
+
+            // Optimistic append so sending feels instant; loadChatMessages()
+            // right after reconciles with the authoritative D1 copy.
+            chatMessages.push({ ...payload, id: `local-${Date.now()}`, created_at: new Date().toISOString() });
+            renderChatMessages();
+
+            const res = await D1.sendChatMessage(payload);
+            if (!res || res.success === false) {
+                showToast('Message may not have reached the server — check your connection.', 'warning');
+            }
+            loadChatMessages();
+        }
+
+        // -----------------------------------------------------------------
+        // 🔐 ADMIN CONSOLE — Chat Grants management
+        // -----------------------------------------------------------------
+        function populateChatGrantSelects() {
+            const selA = document.getElementById('chat-grant-user-a');
+            const selB = document.getElementById('chat-grant-user-b');
+            if (!selA || !selB) return;
+            const options = students.map(s => `<option value="${s.id}">${escapeHTML(s.name)} (${escapeHTML(s.grade || s.role || '')})</option>`).join('');
+            selA.innerHTML = options;
+            selB.innerHTML = options;
+        }
+
+        async function renderChatGrantsAdminList() {
+            const container = document.getElementById('admin-chat-grants-list');
+            if (!container) return;
+            const grantsData = await D1.getChatGrants();
+            chatGrants = Array.isArray(grantsData) ? grantsData : [];
+
+            if (!chatGrants.length) {
+                container.innerHTML = `<div class="text-center py-4 text-[10px] text-gray-500 font-semibold bg-slate-950/25 border border-white/5 rounded-xl">No chat grants issued yet.</div>`;
+                return;
+            }
+
+            container.innerHTML = chatGrants.map(gr => `
+                <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/40 border border-white/5 text-[10px]">
+                    <span class="text-white font-semibold">${escapeHTML(getStudentDisplayName(gr.user_a))} ↔ ${escapeHTML(getStudentDisplayName(gr.user_b))}</span>
+                    <button onclick="deleteChatGrantAdmin(${gr.id})" class="p-1 text-red-400 hover:text-white hover:bg-red-950/40 rounded-lg transition"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function createChatGrant() {
+            const a = document.getElementById('chat-grant-user-a').value;
+            const b = document.getElementById('chat-grant-user-b').value;
+            if (!a || !b || a === b) {
+                showToast('Pick two different accounts.', 'error');
+                return;
+            }
+            const res = await D1.createChatGrant(a, b);
+            if (res && res.success) {
+                showToast('Chat grant created.', 'success');
+                renderChatGrantsAdminList();
+            } else {
+                showToast('Could not create the chat grant.', 'error');
+            }
+        }
+
+        function deleteChatGrantAdmin(id) {
+            D1.deleteChatGrant(id).then(res => {
+                if (res && res.success) showToast('Chat grant revoked.', 'info');
+            });
+            renderChatGrantsAdminList();
         }
 
         // -----------------------------------------------------------------
@@ -6863,6 +7400,10 @@
                     lectureContainer.appendChild(row);
                 });
             }
+
+            // Chat Grants directory (Direct Messages)
+            populateChatGrantSelects();
+            renderChatGrantsAdminList();
 
             lucide.createIcons();
         }
