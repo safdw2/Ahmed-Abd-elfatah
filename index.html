@@ -2473,6 +2473,16 @@
                 animation: navBarGlow 2.4s ease-in-out infinite;
             }
 
+            /* Chat Lock overlay entrance */
+            @keyframes chatLockFadeIn {
+                0%   { opacity: 0; }
+                100% { opacity: 1; }
+            }
+            #chat-lock-overlay.chat-lock-fade-in { animation: chatLockFadeIn 0.22s ease-out; }
+            #chat-lock-overlay.chat-lock-fade-in > div {
+                animation: chatBubbleIn 0.3s ease-out;
+            }
+
             /* 🎙️ Click-to-record mic button — expanding sonar rings while recording */
             .voice-rec-ring {
                 position: absolute;
@@ -3838,8 +3848,8 @@
                 <!-- CHAT TAB — one group chat per grade (own grade only for students), plus admin-granted DMs -->
                 <div id="view-chat" class="view-panel hidden relative">
                     <!-- Chat Lock overlay — shown when this device has a PIN set and hasn't been unlocked yet this session -->
-                    <div id="chat-lock-overlay" class="hidden absolute inset-0 z-20 glass-card rounded-2xl border border-white/10 flex items-center justify-center p-6">
-                        <div class="w-full max-w-xs space-y-3 text-center">
+                    <div id="chat-lock-overlay" class="hidden absolute inset-0 z-50 rounded-2xl flex items-center justify-center p-6" style="background:rgba(4,6,15,0.86); backdrop-filter:blur(10px);">
+                        <div class="w-full max-w-xs space-y-3 text-center glass-card p-6 rounded-2xl border border-white/10 shadow-2xl">
                             <i data-lucide="lock" class="w-8 h-8 text-indigo-400 mx-auto"></i>
                             <h3 class="text-sm font-bold text-white">Chat is Locked</h3>
                             <p class="text-[10px] text-gray-500">Enter your PIN to view messages.</p>
@@ -4791,12 +4801,47 @@
         // lock), not real account security — anyone who can open dev tools
         // on this device could bypass it.
         // -----------------------------------------------------------------
+        // 🎧 Voice-note playback always showed "0:00" for the total length.
+        // This is a known browser quirk, not a bug in the recording itself:
+        // MediaRecorder writes WebM without a duration in its header (it's a
+        // live-style stream), so <audio> has no idea how long the file is
+        // until forced to scan it. Seeking near the end forces that scan;
+        // then we snap back to the start before the person notices.
+        function fixAudioDuration(audioEl) {
+            if (!audioEl || isFinite(audioEl.duration)) return; // already has a real duration — nothing to fix
+            const onTimeUpdate = () => {
+                audioEl.removeEventListener('timeupdate', onTimeUpdate);
+                audioEl.currentTime = 0;
+            };
+            audioEl.addEventListener('timeupdate', onTimeUpdate);
+            audioEl.currentTime = 1e101;
+        }
+
         function chatLockStorageKey() {
             return `chatLockPin_${myChatId() || 'guest'}`;
         }
+        // Tiny synchronous fallback hash (FNV-1a) — used only when
+        // crypto.subtle isn't available (some non-HTTPS previews/local
+        // testing block the Web Crypto API entirely, which was silently
+        // throwing inside sha256Hex() and killing Chat Lock before it ever
+        // got to write/read localStorage). Not cryptographic-grade, but this
+        // is a device-convenience PIN, not account security, so that's fine.
+        function fnv1aHex(str) {
+            let h = 0x811c9dc5;
+            for (let i = 0; i < str.length; i++) {
+                h ^= str.charCodeAt(i);
+                h = Math.imul(h, 0x01000193);
+            }
+            return (h >>> 0).toString(16).padStart(8, '0');
+        }
         async function sha256Hex(str) {
-            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+            try {
+                if (window.crypto && window.crypto.subtle && window.crypto.subtle.digest) {
+                    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+                    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+                }
+            } catch (e) { /* fall through to the fallback below */ }
+            return 'fnv1:' + fnv1aHex(str);
         }
         function isChatLockEnabled() {
             return !!localStorage.getItem(chatLockStorageKey());
@@ -4836,9 +4881,30 @@
         // Single source of truth for "what image goes in this user's avatar
         // slot" — a saved custom avatar (preset filename or data: URI) always
         // wins; otherwise falls back to the original gender-based default.
+        //
+        // 🔒 Local override: kept in localStorage, keyed to the account's
+        // phone/id, completely separate from currentUser/students/D1 sync.
+        // This is what actually survives a refresh no matter what — even if
+        // "Remember me" was off, a hydrate race overwrote currentUser, or
+        // the D1 write hadn't finished yet, THIS device still shows the
+        // last picture that was set for THIS account, instantly, with zero
+        // network round-trip.
+        function avatarOverrideKey(idOrPhone) {
+            return `avatarOverride_${idOrPhone}`;
+        }
+        function saveAvatarOverride(idOrPhone, avatarSrc) {
+            if (!idOrPhone) return;
+            try { localStorage.setItem(avatarOverrideKey(idOrPhone), avatarSrc); } catch (e) {}
+        }
+        function getAvatarOverride(idOrPhone) {
+            if (!idOrPhone) return null;
+            try { return localStorage.getItem(avatarOverrideKey(idOrPhone)); } catch (e) { return null; }
+        }
         function getUserAvatarSrc(user) {
-            if (user && user.avatar) return user.avatar;
             if (!user) return 'student1.png';
+            const override = getAvatarOverride(user.phone) || getAvatarOverride(user.id);
+            if (override) return override;
+            if (user.avatar) return user.avatar;
             if (user.gender === 'Admin') return 'admin.png';
             if (user.gender === 'Girl') return 'student2.png';
             if (user.gender === 'Website Developer') return 'WD.png';
@@ -5711,6 +5777,12 @@
             const meStudent = students.find(s => s.id === currentUser.id || s.phone === currentUser.id);
             if (meStudent) meStudent.avatar = avatarSrc;
             syncLocalDB();
+            // The one write that actually guarantees this survives a refresh —
+            // see getUserAvatarSrc() above. Everything else (currentUser,
+            // students[], D1) can still lag or get clobbered by a hydrate; this
+            // can't, because nothing else is allowed to touch this key.
+            saveAvatarOverride(currentUser.phone, avatarSrc);
+            saveAvatarOverride(currentUser.id, avatarSrc);
 
             const sidebarAvatar = document.getElementById('profile-avatar');
             if (sidebarAvatar) sidebarAvatar.src = avatarSrc;
@@ -5861,13 +5933,16 @@
         function checkChatLockGate() {
             const overlay = document.getElementById('chat-lock-overlay');
             if (!overlay) return;
+            const errEl = document.getElementById('chat-lock-error');
             if (isChatLockEnabled() && !chatUnlockedThisSession) {
                 overlay.classList.remove('hidden');
+                overlay.classList.add('chat-lock-fade-in');
                 const input = document.getElementById('chat-lock-input');
                 if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
-                document.getElementById('chat-lock-error').classList.add('hidden');
+                if (errEl) errEl.classList.add('hidden');
             } else {
                 overlay.classList.add('hidden');
+                overlay.classList.remove('chat-lock-fade-in');
             }
         }
 
@@ -6005,7 +6080,7 @@
             } else if (m.attachment_type === 'pdf' && attachmentUrl) {
                 attachmentHtml = `<a href="${attachmentUrl}" download="${escapeHTML(m.attachment_name || 'document.pdf')}" class="flex items-center gap-2 bg-black/20 rounded-xl px-2.5 py-2 mb-1.5 hover:bg-black/30 transition"><i data-lucide="file-text" class="w-4 h-4 shrink-0"></i><span class="text-[10px] truncate">${escapeHTML(m.attachment_name || 'Document.pdf')}</span></a>`;
             } else if (m.attachment_type === 'audio' && attachmentUrl) {
-                attachmentHtml = `<audio controls src="${attachmentUrl}" class="max-w-full mb-1.5" style="height:32px;"></audio>`;
+                attachmentHtml = `<audio controls preload="metadata" src="${attachmentUrl}" class="max-w-full mb-1.5 chat-voice-audio" style="height:32px;" onloadedmetadata="fixAudioDuration(this)"></audio>`;
             }
 
             const translated = chatTranslations[m.id];
