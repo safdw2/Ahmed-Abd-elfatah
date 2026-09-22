@@ -302,6 +302,58 @@ export async function onRequest(context) {
             return jsonResponse({ success: true });
         }
 
+        // Account tab: change-your-own-password. Verifies the CURRENT password
+        // server-side (the client never holds it — /api/auth/login strips it
+        // from the response) before writing the new one. Never routes through
+        // the general /students upsert, same reasoning as /students/progress.
+        if (pathname === '/api/db/students/password' && request.method === 'POST') {
+            try {
+                const { id, old_password, new_password } = await request.json();
+                if (!id || !old_password || !new_password) {
+                    return jsonResponse({ error: 'Missing id, old_password or new_password.' }, 400);
+                }
+                if (String(new_password).length < 4) {
+                    return jsonResponse({ error: 'New password must be at least 4 characters.' }, 400);
+                }
+                if (!d1) return jsonResponse({ success: true, mock: true });
+
+                const row = await d1.prepare('SELECT password FROM students_table WHERE phone = ? OR id = ?')
+                    .bind(id, id).first();
+                if (!row || String(row.password) !== String(old_password)) {
+                    return jsonResponse({ error: 'Current password is incorrect.' }, 401);
+                }
+
+                await d1.prepare('UPDATE students_table SET password = ? WHERE phone = ? OR id = ?')
+                    .bind(String(new_password), id, id).run();
+                return jsonResponse({ success: true, message: 'Password updated.' });
+            } catch (err) {
+                return jsonResponse({ error: err.message }, 400);
+            }
+        }
+
+        // Account tab: change-your-own-avatar. Accepts either a preset filename
+        // (e.g. "student1.png") or a self-contained data: URI (emoji avatar or
+        // an uploaded/resized photo). Kept separate from the general /students
+        // upsert for the same password-safety reason as /students/progress.
+        if (pathname === '/api/db/students/avatar' && request.method === 'POST') {
+            try {
+                const { id, avatar } = await request.json();
+                if (!id) return jsonResponse({ error: 'Missing student id.' }, 400);
+                const avatarStr = String(avatar || '');
+                if (avatarStr.length > 400000) {
+                    return jsonResponse({ error: 'That image is too large even after resizing — try a simpler photo.' }, 400);
+                }
+                if (d1) {
+                    await d1.prepare('UPDATE students_table SET avatar = ? WHERE phone = ? OR id = ?')
+                        .bind(avatarStr, id, id).run();
+                    return jsonResponse({ success: true, message: 'Avatar updated.' });
+                }
+                return jsonResponse({ success: true, mock: true });
+            } catch (err) {
+                return jsonResponse({ error: err.message }, 400);
+            }
+        }
+
         // --- VIDEOS / LECTURES ENDPOINTS ---
         if (pathname === '/api/db/lectures') {
             if (request.method === 'GET') {
@@ -620,6 +672,96 @@ export async function onRequest(context) {
             if (d1 && tId) {
                 await d1.prepare('DELETE FROM tutoring_table WHERE id = ?').bind(tId).run();
                 return jsonResponse({ success: true, message: 'Tutoring session deleted.' });
+            }
+            return jsonResponse({ success: true });
+        }
+
+        // --- CHAT ENDPOINTS ---
+        // Requires a one-time table creation in D1 (see 0009_add_account_chat.sql):
+        //   wrangler d1 execute ahmed-abdelfatah-db --file=./0009_add_account_chat.sql --remote
+        // Rooms are plain string IDs the frontend builds and owns:
+        //   "grade:<Grade Name>" for a grade's group chat, "dm:<idA>|<idB>"
+        //   (IDs sorted) for a direct message thread between two granted users.
+        if (pathname === '/api/db/chat/messages') {
+            if (request.method === 'GET') {
+                const room = url.searchParams.get('room');
+                if (!room) return jsonResponse({ error: 'Missing room parameter.' }, 400);
+                if (d1) {
+                    const { results } = await d1.prepare(
+                        'SELECT * FROM chat_messages_table WHERE room_id = ? ORDER BY id ASC LIMIT 300'
+                    ).bind(room).all();
+                    return jsonResponse(results || []);
+                }
+                return jsonResponse([]);
+            }
+
+            if (request.method === 'POST') {
+                try {
+                    const m = await request.json();
+                    if (!m.room_id || !m.sender_id || !String(m.text || '').trim()) {
+                        return jsonResponse({ error: 'room_id, sender_id and text are required.' }, 400);
+                    }
+                    if (d1) {
+                        const result = await d1.prepare(`
+                            INSERT INTO chat_messages_table (room_id, sender_id, sender_name, sender_avatar, text)
+                            VALUES (?, ?, ?, ?, ?)
+                        `).bind(
+                            m.room_id,
+                            m.sender_id,
+                            m.sender_name || 'Student',
+                            m.sender_avatar || '',
+                            String(m.text).slice(0, 2000)
+                        ).run();
+                        return jsonResponse({ success: true, id: result.meta.last_row_id });
+                    }
+                    return jsonResponse({ success: true, mock: true });
+                } catch (err) {
+                    return jsonResponse({ error: err.message }, 400);
+                }
+            }
+        }
+
+        // Chat Grants — created from the Admin Console, these are what let two
+        // specific accounts open a direct message with each other. Stored with
+        // user_a/user_b sorted alphabetically so the UNIQUE constraint catches
+        // a duplicate grant regardless of which account was picked first.
+        if (pathname === '/api/db/chat/grants') {
+            if (request.method === 'GET') {
+                if (d1) {
+                    const { results } = await d1.prepare('SELECT * FROM chat_grants_table ORDER BY id DESC').all();
+                    return jsonResponse(results || []);
+                }
+                return jsonResponse([]);
+            }
+
+            if (request.method === 'POST') {
+                try {
+                    const { user_a, user_b } = await request.json();
+                    if (!user_a || !user_b || user_a === user_b) {
+                        return jsonResponse({ error: 'Two different users are required.' }, 400);
+                    }
+                    const [a, b] = [String(user_a), String(user_b)].sort();
+                    if (d1) {
+                        await d1.prepare(`
+                            INSERT INTO chat_grants_table (user_a, user_b) VALUES (?, ?)
+                            ON CONFLICT(user_a, user_b) DO NOTHING
+                        `).bind(a, b).run();
+                        const row = await d1.prepare('SELECT id FROM chat_grants_table WHERE user_a = ? AND user_b = ?')
+                            .bind(a, b).first();
+                        return jsonResponse({ success: true, id: row ? row.id : null, message: 'Chat grant created.' });
+                    }
+                    return jsonResponse({ success: true, mock: true });
+                } catch (err) {
+                    return jsonResponse({ error: err.message }, 400);
+                }
+            }
+        }
+
+        if (pathname.startsWith('/api/db/chat/grants/') && request.method === 'DELETE') {
+            const grantId = pathname.split('/').pop();
+            if (d1 && grantId) {
+                await d1.prepare('DELETE FROM chat_grants_table WHERE id = ?').bind(grantId).run();
+                return jsonResponse({ success: true, message: 'Chat grant revoked.' });
             }
             return jsonResponse({ success: true });
         }
