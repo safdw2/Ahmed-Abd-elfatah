@@ -97,7 +97,8 @@
         /* Modal animate states */
         #student-modal:not(.hidden) > div,
         #video-modal:not(.hidden) > div,
-        #material-upload-modal:not(.hidden) > div {
+        #material-upload-modal:not(.hidden) > div,
+        #request-account-modal:not(.hidden) > div {
             animation: modalScaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
 
@@ -2817,6 +2818,59 @@
                     Access Website
                 </button>
 
+            </form>
+
+            <p class="text-center text-[11px] text-gray-500">
+                Don't have an account?
+                <button type="button" onclick="openRequestAccountModal()" class="text-indigo-400 hover:text-indigo-300 font-semibold transition">Request one</button>
+            </p>
+        </div>
+    </div>
+
+    <!-- Request Account Modal (login screen — "Don't have an account? Request one") -->
+    <div id="request-account-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md items-center justify-center p-4 z-50 flex hidden">
+        <div class="w-full max-w-md glass-modal p-6 rounded-2xl space-y-4 relative max-h-[90vh] overflow-y-auto">
+            <button type="button" onclick="closeRequestAccountModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white transition">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+            <div class="space-y-1">
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Request an Account</h3>
+                <p class="text-[11px] text-gray-400">Fill this in, then send it on WhatsApp — MR. Ahmed's team will set your account up and reply once it's ready.</p>
+            </div>
+            <form onsubmit="handleRequestAccountSubmit(event)" class="space-y-3">
+                <div class="space-y-1">
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Full Name</label>
+                    <input type="text" id="request-name" required placeholder="e.g. Sherif Khaled" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 placeholder-gray-600">
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Phone Number / ID</label>
+                    <input type="text" id="request-id" required placeholder="e.g. 01012345678" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 placeholder-gray-600 font-mono">
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Choose a Password</label>
+                    <input type="text" id="request-password" required placeholder="Pick something you'll remember" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 placeholder-gray-600">
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Grade</label>
+                    <select id="request-grade" required class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <option value="Grade 7 (Preparatory 1)">Grade 7 (Preparatory 1)</option>
+                        <option value="Grade 8 (Preparatory 2)">Grade 8 (Preparatory 2)</option>
+                        <option value="Grade 9 (Preparatory 3)">Grade 9 (Preparatory 3)</option>
+                        <option value="Grade 10 (Secondary 1)" selected>Grade 10 (Secondary 1)</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider font-bold">Gender</label>
+                    <select id="request-gender" required class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <option value="Boy">Boy</option>
+                        <option value="Girl">Girl</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition">
+                    <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+                    <span>Request via WhatsApp</span>
+                </button>
+                <p class="text-[9px] text-gray-500">This opens WhatsApp with your details already filled in as a message — you just hit send.</p>
             </form>
         </div>
     </div>
@@ -8528,6 +8582,49 @@
 
         function openProvisionAccountModal() { document.getElementById('student-modal').classList.remove('hidden'); }
         function closeProvisionAccountModal() { document.getElementById('student-modal').classList.add('hidden'); }
+
+        // -----------------------------------------------------------------
+        // "Don't have an account? Request one" — login screen only. Collects
+        // Name / ID / Password / Grade / Gender and opens WhatsApp with a
+        // ready-made message to the Website Moderator/Developer. No account
+        // is created here — a staff member reads the message and provisions
+        // it from the Admin Console (Provision Student License Account).
+        // -----------------------------------------------------------------
+        const REQUEST_ACCOUNT_PHONE = '201018355810';
+
+        function openRequestAccountModal() {
+            document.getElementById('request-account-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+        function closeRequestAccountModal() {
+            document.getElementById('request-account-modal').classList.add('hidden');
+        }
+
+        function handleRequestAccountSubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('request-name').value.trim();
+            const id = document.getElementById('request-id').value.trim();
+            const password = document.getElementById('request-password').value.trim();
+            const grade = document.getElementById('request-grade').value;
+            const gender = document.getElementById('request-gender').value;
+
+            if (!name || !id || !password) {
+                showToast('Please fill in your name, ID and password first.', 'warning');
+                return;
+            }
+
+            const message =
+                `Hey I'd like to add my account MR. Ahmed Abd-Elfatah Website!\n` +
+                `${name} ${grade}\n` +
+                `${id}\n` +
+                `${password}\n` +
+                `${gender}`;
+
+            const waUrl = `https://wa.me/${REQUEST_ACCOUNT_PHONE}?text=${encodeURIComponent(message)}`;
+            window.open(waUrl, '_blank');
+            showToast('Opening WhatsApp — just hit send.', 'success');
+            closeRequestAccountModal();
+        }
         async function handleProvisionSubmit(e) {
         e.preventDefault();
         const nameInput = document.getElementById('student-name');
