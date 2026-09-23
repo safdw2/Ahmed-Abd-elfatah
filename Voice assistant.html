@@ -265,6 +265,15 @@
     // ------------------------------------------------------------------
     // Phones / tablets get gentler timings below: fewer mic restarts and a longer "ignore my own voice" tail.
     const IS_TOUCH = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+    // iPhone/iPad Safari (iPadOS reports itself as "Macintosh" but still has touch, so this catches it too).
+    // Safari itself HAS supported SpeechRecognition since Safari 14.1 / iOS 14.5, so `SR` below already picks
+    // it up (via the webkitSpeechRecognition prefix) — no separate flag is needed for that. What iOS specifically
+    // gets wrong is `continuous: true`: the mic session silently clogs/stops responding after a while. On iOS we
+    // instead run short (continuous:false) sessions and let the existing onend -> scheduleRestart loop chain
+    // them back to back, which behaves like continuous listening without the iOS bug. macOS Safari doesn't have
+    // this problem, so it keeps continuous:true like every other desktop browser.
+    const IS_IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || '') ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
     const CFG = {
         COUNTDOWN_SECONDS: 5,          // countdown before EVERY command runs
@@ -1097,7 +1106,7 @@
         if (!SR || !S.enabled || S.rec) return;
         const rec = new SR();
         S.seenFinals.clear();                                     // result numbering starts over with every new mic session
-        rec.lang = S.recLang === 'ar' ? CFG.AR_LANG : CFG.LANG; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 5;
+        rec.lang = S.recLang === 'ar' ? CFG.AR_LANG : CFG.LANG; rec.continuous = !IS_IOS; rec.interimResults = true; rec.maxAlternatives = 5;
         rec.onstart = () => { S.listening = true; S.netWarned = false; render(); };
         rec.onresult = onResult;
         rec.onerror = (e) => {
@@ -1136,7 +1145,12 @@
         clearTimeout(S.restartTimer);
         const now = Date.now();
         S.restarts = S.restarts.filter((t) => now - t < 10000); S.restarts.push(now);
-        const d = delay || (S.restarts.length > 6 ? 3000 : 250);   // back off if the browser keeps ending the session
+        // On iOS every finished sentence ends the session on purpose (continuous is off up above), so a burst
+        // of restarts there is normal, not a sign the browser is struggling — give it a lot more headroom before
+        // backing off, and restart it faster than on desktop so listening feels continuous between sentences.
+        const backoffAfter = IS_IOS ? 30 : 6;
+        const fastDelay = IS_IOS ? 150 : 250;
+        const d = delay || (S.restarts.length > backoffAfter ? 3000 : fastDelay);
         S.restartTimer = setTimeout(startRec, d);
     }
 
@@ -1161,7 +1175,7 @@
     }
 
     function enable(quiet) {
-        if (!SR) { if (!quiet) toast('Voice control needs Chrome, Edge or Samsung Internet on this device.', 'error'); return; }
+        if (!SR) { if (!quiet) toast('Voice control isn\'t supported in this browser. Try Chrome, Edge, Safari or Samsung Internet.', 'error'); return; }
         if (!inPortal()) return;
         S.enabled = true; S.userOff = false; S.blocked = false;
         try { localStorage.setItem('va_off', '0'); } catch (e) {}
@@ -1244,7 +1258,7 @@
             else { btn.classList.add('va-fab'); document.body.appendChild(btn); }
         }
         btn.addEventListener('click', () => { S.gestureGranted = true; S.enabled ? disable() : enable(); });
-        if (!SR) btn.title = 'Voice control is not supported in this browser (use Chrome, Edge or Samsung Internet)';
+        if (!SR) btn.title = 'Voice control is not supported in this browser (use Chrome, Edge, Safari or Samsung Internet)';
 
         const ov = document.createElement('div');
         ov.id = 'va-overlay'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-live', 'polite'); ov.setAttribute('aria-label', 'Co Assistant voice control'); ov.dataset.mode = 'idle';
