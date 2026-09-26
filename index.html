@@ -102,6 +102,11 @@
             transition: opacity 0.14s ease, transform 0.14s ease;
             pointer-events: none;
         }
+        /* Login ⇄ Portal crossfade — this used to be an instant hard cut, the
+           single biggest visual jump in the whole app. Now it eases out/in. */
+        #login-section, #portal-section { transition: opacity 0.18s ease; }
+        .app-fade-out { opacity: 0 !important; pointer-events: none; }
+        .app-fade-in { animation: slideUpFade 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
         /* 🌊 Global smoothing pass: every Tailwind transition-* utility in the app
            (buttons, nav items, cards, badges — hundreds of elements) upgrades from
@@ -5844,8 +5849,15 @@
         }
 
         function loadPortal() {
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('portal-section').classList.remove('hidden');
+            const loginSec = document.getElementById('login-section');
+            const portalSec = document.getElementById('portal-section');
+            loginSec.classList.add('app-fade-out');
+            setTimeout(() => {
+                loginSec.classList.add('hidden');
+                loginSec.classList.remove('app-fade-out');
+                portalSec.classList.remove('hidden');
+                portalSec.classList.add('app-fade-in');
+                setTimeout(() => portalSec.classList.remove('app-fade-in'), 460);
 
             // Render details
             document.getElementById('user-name').textContent = currentUser.name;
@@ -5879,6 +5891,7 @@
             // The portal is already on screen (from the login response + the cached copy);
             // now refresh everything from the database in the background.
             startBackgroundHydrate();
+            }, 180);
         }
 
         function handleLogout() {
@@ -5887,8 +5900,16 @@
             chatUnlockedThisSession = false;
             currentChatRoom = null;
             if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
-            document.getElementById('portal-section').classList.add('hidden');
-            document.getElementById('login-section').classList.remove('hidden');
+            const portalSec = document.getElementById('portal-section');
+            const loginSec = document.getElementById('login-section');
+            portalSec.classList.add('app-fade-out');
+            setTimeout(() => {
+                portalSec.classList.add('hidden');
+                portalSec.classList.remove('app-fade-out');
+                loginSec.classList.remove('hidden');
+                loginSec.classList.add('app-fade-in');
+                setTimeout(() => loginSec.classList.remove('app-fade-in'), 460);
+            }, 180);
             document.getElementById('login-password').value = '';
             const rememberBox = document.getElementById('login-remember');
             if (rememberBox) rememberBox.checked = false;
