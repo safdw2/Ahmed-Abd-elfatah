@@ -139,6 +139,48 @@
         .modal-closing { opacity: 0 !important; pointer-events: none; }
         .modal-closing > div { animation: none !important; transform: scale(0.95) translateY(6px) !important; opacity: 0 !important; }
 
+        /* 🖱️ Custom smooth scrollbar — every scroll area in the app used to use
+           the bare browser default. Now it's a soft indigo thumb that brightens
+           on hover, with a transition instead of an instant color swap. */
+        .overflow-y-auto, .overflow-y-scroll, .overflow-auto {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(99, 102, 241, 0.35) transparent;
+        }
+        .overflow-y-auto::-webkit-scrollbar, .overflow-y-scroll::-webkit-scrollbar, .overflow-auto::-webkit-scrollbar { width: 7px; height: 7px; }
+        .overflow-y-auto::-webkit-scrollbar-track, .overflow-y-scroll::-webkit-scrollbar-track, .overflow-auto::-webkit-scrollbar-track { background: transparent; }
+        .overflow-y-auto::-webkit-scrollbar-thumb, .overflow-y-scroll::-webkit-scrollbar-thumb, .overflow-auto::-webkit-scrollbar-thumb {
+            background-color: rgba(99, 102, 241, 0.35);
+            border-radius: 999px;
+            transition: background-color 0.25s ease;
+        }
+        .overflow-y-auto:hover::-webkit-scrollbar-thumb, .overflow-y-scroll:hover::-webkit-scrollbar-thumb, .overflow-auto:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(129, 140, 248, 0.65);
+        }
+
+        /* 🧭 Nav icons get a small springy bounce on hover instead of sitting
+           static — cheap, subtle, and now applied to every sidebar item. */
+        @keyframes navIconBounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            35% { transform: translateY(-2px) scale(1.12); }
+            60% { transform: translateY(0.5px) scale(0.97); }
+        }
+        .nav-btn:hover [data-lucide] { animation: navIconBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        /* 🔎 Inputs get a soft glow that eases in on focus rather than the
+           instant hard outline swap Tailwind gives them by default. */
+        input, textarea, select {
+            transition: border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                        box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                        background-color 0.25s ease !important;
+        }
+        input:focus, textarea:focus, select:focus {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+        }
+
+        /* 🏷️ Badges/pills breathe in gently when they first render (XP badge,
+           rank badge, filter chips) instead of just appearing mid-layout. */
+        [id*="badge"], [id*="rank"] { animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
         /* Liking bounce effect */
         .fill-red-500 {
             animation: heartPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
@@ -3306,7 +3348,7 @@
                             </div>
                             
                             <!-- Leaderboard list grid (responsive 1 or 2 cols) -->
-                            <div id="dashboard-leaderboard-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 min-h-[80px]">
+                            <div id="dashboard-leaderboard-grid" class="stagger-container grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 min-h-[80px]">
                                 <!-- Rendered dynamically -->
                             </div>
                         </div>
@@ -3442,7 +3484,7 @@
                                     <span id="feedback-count-badge" class="bg-slate-950 border border-white/5 text-gray-500 text-[9px] font-bold px-2 py-0.5 rounded-full">0 Reviews</span>
                                 </h4>
                                 
-                                <div id="feedback-list" class="space-y-3 max-h-[290px] overflow-y-auto pr-1">
+                                <div id="feedback-list" class="stagger-container space-y-3 max-h-[290px] overflow-y-auto pr-1">
                                     <!-- Populated dynamically via JavaScript -->
                                 </div>
                             </div>
@@ -3475,7 +3517,7 @@
                                 </div>
                                 
                                 <!-- Scrollable Chat Sessions List -->
-                                <div id="ai-sessions-list" class="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                                <div id="ai-sessions-list" class="stagger-container flex-1 overflow-y-auto space-y-1.5 pr-1">
                                     <!-- Populated dynamically via JS -->
                                 </div>
                             </div>
@@ -3564,7 +3606,7 @@
                         </div>
                     </div>
                         
-                    <div id="materials-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div id="materials-grid" class="stagger-container grid grid-cols-1 md:grid-cols-3 gap-6">
                         <!-- Populated dynamically -->
                     </div>
                 </div>
@@ -3591,7 +3633,7 @@
                                 <input type="text" id="videos-search-input" oninput="applyVideosFilters()" placeholder="Search sessions..." class="w-full bg-slate-950/60 border border-white/5 rounded-xl pl-9 pr-3 py-2 text-[10px] text-white focus:outline-none focus:border-indigo-500 placeholder-gray-650 transition">
                             </div>
 
-                            <div id="video-sessions-list" class="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                            <div id="video-sessions-list" class="stagger-container space-y-2 max-h-[350px] overflow-y-auto pr-1">
                                 <!-- Dynamic list -->
                             </div>
                         </div>
@@ -3685,7 +3727,7 @@
                                         </button>
                                     </div>
 
-                                    <div id="bookmarks-list-container" class="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
+                                    <div id="bookmarks-list-container" class="stagger-container space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
                                         <!-- Dynamic bookmarks list -->
                                     </div>
                                 </div>
@@ -3760,7 +3802,7 @@
                     </div>
 
                     <!-- Announcements Feed Stream -->
-                    <div id="feed-stream" class="space-y-6">
+                    <div id="feed-stream" class="stagger-container space-y-6">
                         <!-- Populated dynamically -->
                     </div>
                 </div>
@@ -4189,7 +4231,7 @@
                                     <span>Provision Account</span>
                                 </button>
                             </div>
-                            <div id="admin-students-list" class="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                            <div id="admin-students-list" class="stagger-container space-y-2 max-h-[300px] overflow-y-auto pr-1">
                                 <!-- Dynamic dynamic rows -->
                             </div>
                         </div>
@@ -5627,6 +5669,25 @@
             if (!currentUser) fetch('/api/ping', { cache: 'no-store' }).catch(() => {});
         });
         window.addEventListener('DOMContentLoaded', initCursorParticles);
+
+        // 🌊 Global click-ripple engine — every .ripple-btn in the app (nav items,
+        // filter chips, modal buttons, upload buttons…) already had the CSS for a
+        // ripple-from-click-point effect, but nothing ever created the ripple
+        // element, so it never actually fired anywhere. One delegated listener
+        // now lights up every one of them, from the exact spot you clicked.
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.ripple-btn');
+            if (!btn) return;
+            const rect = btn.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height) * 1.4;
+            const circle = document.createElement('span');
+            circle.className = 'click-ripple-circle';
+            circle.style.width = circle.style.height = size + 'px';
+            circle.style.left = (e.clientX - rect.left - size / 2) + 'px';
+            circle.style.top = (e.clientY - rect.top - size / 2) + 'px';
+            btn.appendChild(circle);
+            circle.addEventListener('animationend', () => circle.remove(), { once: true });
+        }, true);
 
         function startBackgroundHydrate() {
             if (window.__portalHydrating) return;          // once per page load
