@@ -6009,7 +6009,7 @@
             }
 
             if (tabId === 'co-assistant') {
-                renderAISessions();
+                renderAISessions(true);
                 renderAIChatBoard();
             }
             // Execute component rendering
@@ -9218,9 +9218,14 @@
         ];
         let activeAIChatId = aiChats[0].id;
 
-        function renderAISessions() {
+        // animateIn=true replays the entrance stagger for the whole list (used only
+        // when the Co Assistant tab first opens). Every other call (selecting a
+        // session, renaming, deleting) passes false/omitted so clicking one session
+        // doesn't replay the pop-in animation for every row in the list.
+        function renderAISessions(animateIn) {
             const list = document.getElementById('ai-sessions-list');
             if (!list) return;
+            list.classList.toggle('stagger-container', !!animateIn);
             list.innerHTML = '';
 
             aiChats.forEach(chat => {
@@ -9287,6 +9292,8 @@
             activeAIChatId = newChat.id;
             saveAIChatsToStorage();
             renderAISessions();
+            const firstRow = document.getElementById('ai-sessions-list')?.firstElementChild;
+            if (firstRow) firstRow.classList.add('stagger-pop');
             renderAIChatBoard();
             showToast('Created new chat session!', 'success');
         }
