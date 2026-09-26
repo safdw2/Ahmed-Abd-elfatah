@@ -93,6 +93,15 @@
             backface-visibility: hidden;
             perspective: 1000px;
         }
+        /* Page-change crossfade: applied for ~140ms right before a tab is hidden,
+           so switching pages eases out instead of cutting instantly. */
+        .view-panel.view-fade-out {
+            animation: none !important;
+            opacity: 0 !important;
+            transform: translateY(-8px) scale(0.985) !important;
+            transition: opacity 0.14s ease, transform 0.14s ease;
+            pointer-events: none;
+        }
 
         /* 🌊 Global smoothing pass: every Tailwind transition-* utility in the app
            (buttons, nav items, cards, badges — hundreds of elements) upgrades from
@@ -3575,7 +3584,7 @@
                                 
                                 <div class="flex gap-2.5">
                                     <input type="text" id="ai-chat-prompt" onkeydown="if(event.key === 'Enter') submitAIChatMessage()" placeholder="Ask Co Assistant about the website layout or science concepts..." class="flex-1 bg-slate-950/60 border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-all font-medium">
-                                    <button onclick="submitAIChatMessage()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-3 rounded-xl text-xs transition flex items-center gap-1.5 shadow-lg shadow-indigo-600/20">
+                                    <button onclick="submitAIChatMessage()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-3 rounded-xl text-xs transition flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 ripple-btn interactive-btn">
                                         <i data-lucide="send" class="w-3.5 h-3.5"></i>
                                         <span>Send</span>
                                     </button>
@@ -5935,9 +5944,15 @@
             }
 
             
+            // 🎬 Smooth page crossfade — the previously visible panel now eases out
+            // (fade + gentle rise) for 140ms before the new tab's content swaps in,
+            // instead of instantly cutting from one page to the next.
+            const outgoingPanel = document.querySelector('.view-panel:not(.hidden)');
+            const runSwitch = () => {
             // Close all view streams
             document.querySelectorAll('.view-panel').forEach(panel => {
                 panel.classList.add('hidden');
+                panel.classList.remove('view-fade-out');
             });
 
             // Remove active style from side buttons
@@ -6008,6 +6023,14 @@
             if (tabId === 'admin') renderAdmin();
 
             lucide.createIcons();
+            };
+
+            if (outgoingPanel && outgoingPanel.id !== `view-${tabId}`) {
+                outgoingPanel.classList.add('view-fade-out');
+                setTimeout(runSwitch, 140);
+            } else {
+                runSwitch();
+            }
         }
 
         // -----------------------------------------------------------------
@@ -9656,7 +9679,7 @@
                 
                 bubble.className = `flex flex-col max-w-[85%] ${
                     isAI ? 'self-start mr-auto' : 'self-end ml-auto'
-                } space-y-1.5`;
+                } space-y-1.5 ${idx === activeChat.messages.length - 1 ? 'chat-bubble-new' : ''}`;
 
                 let navButtonsHTML = '';
                 if (isAI) {
