@@ -94,13 +94,50 @@
             perspective: 1000px;
         }
 
-        /* Modal animate states */
+        /* 🌊 Global smoothing pass: every Tailwind transition-* utility in the app
+           (buttons, nav items, cards, badges — hundreds of elements) upgrades from
+           Tailwind's default ease to one consistent, premium "settle" curve, so
+           hovers/focus/active states feel like one smooth system instead of each
+           hand-tuned duration-300 fighting its neighbours. Safe: this only
+           overrides the timing-function, never which properties animate. */
+        .transition-all, .transition, .transition-colors, .transition-transform,
+        .transition-opacity, .transition-shadow, [class*="transition-all"] {
+            transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        /* Buttons want a snappier, springier release than cards/panels do */
+        button, .interactive-btn, .nav-btn, .ripple-btn {
+            transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+        }
+
+        /* Modal animate states — now covers every modal in the app (Student/Video/
+           Material/Request/Tutoring/New-Chat/Liked-Users/Student-Stats) so all of
+           them pop in consistently instead of only the original four. */
         #student-modal:not(.hidden) > div,
         #video-modal:not(.hidden) > div,
         #material-upload-modal:not(.hidden) > div,
-        #request-account-modal:not(.hidden) > div {
+        #request-account-modal:not(.hidden) > div,
+        #tutoring-modal:not(.hidden) > div,
+        #new-chat-modal:not(.hidden) > div,
+        #liked-users-modal:not(.hidden) > div,
+        #student-stats-modal:not(.hidden) > div {
             animation: modalScaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
+
+        /* Smooth modal EXIT — a fade + gentle scale-down driven by a plain CSS
+           transition (not a keyframe, so it can be interrupted cleanly), applied
+           via the .modal-closing class right before .hidden lands. Every modal
+           in the app used to just vanish instantly on close before this. */
+        #student-modal, #video-modal, #material-upload-modal, #request-account-modal,
+        #tutoring-modal, #new-chat-modal, #liked-users-modal, #student-stats-modal {
+            transition: opacity 0.2s ease;
+        }
+        #student-modal > div, #video-modal > div, #material-upload-modal > div,
+        #request-account-modal > div, #tutoring-modal > div, #new-chat-modal > div,
+        #liked-users-modal > div, #student-stats-modal > div {
+            transition: transform 0.2s cubic-bezier(0.4, 0, 1, 1), opacity 0.2s ease;
+        }
+        .modal-closing { opacity: 0 !important; pointer-events: none; }
+        .modal-closing > div { animation: none !important; transform: scale(0.95) translateY(6px) !important; opacity: 0 !important; }
 
         /* Liking bounce effect */
         .fill-red-500 {
@@ -4554,6 +4591,18 @@
         // -----------------------------------------------------------------
         let tutoringEditingId = null;
 
+        // Smooth close for every modal: fades + scales it down over 0.2s (via the
+        // .modal-closing CSS above) instead of the old instant classList.add('hidden').
+        function closeModalSmooth(id) {
+            const el = document.getElementById(id);
+            if (!el || el.classList.contains('hidden')) return;
+            el.classList.add('modal-closing');
+            setTimeout(() => {
+                el.classList.add('hidden');
+                el.classList.remove('modal-closing');
+            }, 200);
+        }
+
         function openTutoringModal(id) {
             tutoringEditingId = id || null;
             const session = id ? tutoringSessions.find(t => String(t.id) === String(id)) : null;
@@ -4569,7 +4618,7 @@
             document.getElementById('tutoring-delete-btn').classList.toggle('hidden', !session);
             document.getElementById('tutoring-modal').classList.remove('hidden');
         }
-        function closeTutoringModal() { document.getElementById('tutoring-modal').classList.add('hidden'); tutoringEditingId = null; }
+        function closeTutoringModal() { closeModalSmooth('tutoring-modal'); tutoringEditingId = null; }
 
         let tutoringSubmitInFlight = false;
 
@@ -6238,7 +6287,7 @@
             lucide.createIcons();
         }
         function closeNewChatPicker() {
-            document.getElementById('new-chat-modal').classList.add('hidden');
+            closeModalSmooth('new-chat-modal');
         }
         function renderNewChatPickerList() {
             const container = document.getElementById('new-chat-list');
@@ -8435,7 +8484,7 @@
         }
 
         function closeLikedUsersModal() {
-            document.getElementById('liked-users-modal').classList.add('hidden');
+            closeModalSmooth('liked-users-modal');
         }
 
         function deleteFeedPost(postId) {
@@ -8679,7 +8728,7 @@
         // PROVISION MODAL DIALOGS
         // -----------------------------------------------------------------
         function openUploadMaterialModal() { document.getElementById('material-upload-modal').classList.remove('hidden'); }
-        function closeUploadMaterialModal() { document.getElementById('material-upload-modal').classList.add('hidden'); }
+        function closeUploadMaterialModal() { closeModalSmooth('material-upload-modal'); }
         async function handleMaterialUploadSubmit(e) {
             e.preventDefault();
             const title = document.getElementById('upload-doc-title').value;
@@ -8722,7 +8771,7 @@
             document.getElementById('video-part').value = '1';
             document.getElementById('video-grade').value = 'Grade 10 (Secondary 1)';
         }
-        function closeAddVideoModal() { document.getElementById('video-modal').classList.add('hidden'); }
+        function closeAddVideoModal() { closeModalSmooth('video-modal'); }
         async function handleVideoUploadSubmit(e) {
             e.preventDefault();
             const title = document.getElementById('video-title').value;
@@ -8773,7 +8822,7 @@
         }
 
         function openProvisionAccountModal() { document.getElementById('student-modal').classList.remove('hidden'); }
-        function closeProvisionAccountModal() { document.getElementById('student-modal').classList.add('hidden'); }
+        function closeProvisionAccountModal() { closeModalSmooth('student-modal'); }
 
         // -----------------------------------------------------------------
         // "Don't have an account? Request one" — login screen only. Collects
@@ -8789,7 +8838,7 @@
             lucide.createIcons();
         }
         function closeRequestAccountModal() {
-            document.getElementById('request-account-modal').classList.add('hidden');
+            closeModalSmooth('request-account-modal');
         }
 
         function handleRequestAccountSubmit(e) {
@@ -10293,7 +10342,7 @@
     }
 
     function closeStudentStatsModal() {
-        document.getElementById('student-stats-modal').classList.add('hidden');
+        closeModalSmooth('student-stats-modal');
     }
 
     function modifyStudentXP(id) {
