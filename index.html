@@ -161,10 +161,12 @@
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(31, 41, 55, 0.7);
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
         }
         .glass-panel:hover {
             border-color: rgba(99, 102, 241, 0.25);
             box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+            transform: translateY(-2px);
         }
         .rank-emerald {
             background: rgba(6, 78, 59, 0.2);
@@ -242,6 +244,7 @@
             border-color: rgba(99, 102, 241, 0.25);
             box-shadow: 0 12px 40px -10px rgba(99, 102, 241, 0.15);
             background: rgba(15, 23, 42, 0.48);
+            transform: translateY(-2px);
         }
 
         .glass-sidebar {
@@ -2672,6 +2675,75 @@
         .stagger-container > *:nth-child(6) { animation-delay: 0.32s; }
         .stagger-container > *:nth-child(n+7) { animation-delay: 0.38s; }
 
+        /* ==================================================================
+           ✨ POLISH PASS v3 — additive-only: skeleton loaders, smoother AI
+           typing dots, button loading→success morph, completion pop-ins,
+           and gentle floating empty-state illustrations. Nothing here
+           changes layout — only feel, and only on top of what already
+           exists above. */
+
+        /* Skeleton shimmer — ready-to-use placeholder for any element
+           still waiting on a D1 fetch (swap real content in once loaded). */
+        @keyframes skeletonShimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.14) 37%, rgba(255,255,255,0.06) 63%);
+            background-size: 400% 100%;
+            animation: skeletonShimmer 1.4s ease infinite;
+            border-radius: 8px;
+            color: transparent !important;
+        }
+        .light-theme .skeleton {
+            background: linear-gradient(90deg, rgba(15,23,42,0.06) 25%, rgba(15,23,42,0.12) 37%, rgba(15,23,42,0.06) 63%);
+            background-size: 400% 100%;
+        }
+
+        /* Smoother "Co Assistant is thinking" dots (replaces the default
+           Tailwind bounce on the loader bubble with a gentler pulse). */
+        @keyframes typingPulse {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-4px); opacity: 1; }
+        }
+        .typing-dot { animation: typingPulse 1s ease-in-out infinite; }
+
+        /* Button loading → success morph. Use with btnMorphStart() /
+           btnMorphSuccess() / btnMorphReset() (see script section). */
+        .btn-morphing { pointer-events: none; opacity: 0.85; }
+        .btn-morph-spinner {
+            display: inline-block; width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.35);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes btnSuccessFlash {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.04); }
+            100% { transform: scale(1); }
+        }
+        .btn-morph-success {
+            background-color: #10b981 !important;
+            border-color: #10b981 !important;
+            animation: btnSuccessFlash 0.4s ease-out;
+        }
+
+        /* Satisfying pop when a session/lecture gets its completed checkmark */
+        @keyframes checkPopIn {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        .completion-check-pop { animation: checkPopIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+        /* Gentle float for empty-state illustrations ("All caught up!") */
+        @keyframes emptyStateFloat {
+            0%, 100% { transform: translateY(0); opacity: 0.65; }
+            50% { transform: translateY(-6px); opacity: 1; }
+        }
+        .empty-state-float { animation: emptyStateFloat 3s ease-in-out infinite; }
+
         /* Desktop login card now gets a proper arrival too (previously mobile-only) */
         #login-section > div {
             animation: modalScaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -3873,7 +3945,7 @@
                                     <label class="block text-[9px] text-gray-400 uppercase tracking-wider font-bold">Confirm new password</label>
                                     <input type="password" id="account-confirm-password" placeholder="Repeat new password" class="w-full bg-slate-950/60 border border-white/5 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition">
                                 </div>
-                                <button onclick="changeAccountPassword()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 ripple-btn">
+                                <button onclick="changeAccountPassword(event)" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 ripple-btn">
                                     <i data-lucide="lock" class="w-3.5 h-3.5"></i>
                                     <span>Update Password</span>
                                 </button>
@@ -3928,8 +4000,9 @@
                             <div id="chat-room-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
                         </div>
                         <div class="flex-1 flex flex-col min-h-0">
-                            <div id="chat-empty-state" class="flex-1 flex items-center justify-center text-xs text-gray-500 p-6 text-center">
-                                Select a grade group or a direct message on the left, or tap <i data-lucide="user-plus" class="w-3 h-3 inline"></i> to start a new chat with any student.
+                            <div id="chat-empty-state" class="flex-1 flex flex-col items-center justify-center gap-2 text-xs text-gray-500 p-6 text-center">
+                                <svg class="empty-state-float w-10 h-10 text-indigo-400/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                                <span>Select a grade group or a direct message on the left, or tap <i data-lucide="user-plus" class="w-3 h-3 inline"></i> to start a new chat with any student.</span>
                             </div>
                             <div id="chat-thread" class="flex-1 flex flex-col min-h-0 hidden">
                                 <div class="p-3 border-b border-white/5 flex items-center gap-2 shrink-0">
@@ -4467,8 +4540,7 @@
             tutoringSubmitInFlight = true;
 
             const submitBtn = event.target && event.target.querySelector ? event.target.querySelector('button[type="submit"]') : null;
-            const submitBtnOriginalText = submitBtn ? submitBtn.textContent : null;
-            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving...'; submitBtn.classList.add('opacity-60', 'cursor-not-allowed'); }
+            btnMorphStart(submitBtn);
 
             try {
                 const payload = {
@@ -4506,7 +4578,7 @@
                 toast('Could not save the session. Please try again.', 'error');
             } finally {
                 tutoringSubmitInFlight = false;
-                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtnOriginalText; submitBtn.classList.remove('opacity-60', 'cursor-not-allowed'); }
+                btnMorphReset(submitBtn);
             }
         }
 
@@ -4561,8 +4633,9 @@
 
             if (!withDates.length) {
                 list.innerHTML = `
-                    <div class="col-span-full text-center py-6 text-xs text-gray-500 font-semibold bg-slate-950/20 border border-white/5 rounded-xl">
-                        No tutoring sessions scheduled yet.
+                    <div class="col-span-full flex flex-col items-center gap-2 text-center py-8 text-xs text-gray-500 font-semibold bg-slate-950/20 border border-white/5 rounded-xl">
+                        <svg class="empty-state-float w-10 h-10 text-indigo-400/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <span>All caught up — no tutoring sessions scheduled yet.</span>
                     </div>
                 `;
                 return;
@@ -5502,7 +5575,7 @@
             const btn = e.target && e.target.querySelector ? e.target.querySelector('button[type="submit"]') : null;
             if (btn && btn.dataset.busy === '1') return;
             const label = btn ? btn.textContent : '';
-            if (btn) { btn.dataset.busy = '1'; btn.disabled = true; btn.textContent = 'Signing in…'; btn.classList.add('opacity-70'); }
+            if (btn) { btn.dataset.busy = '1'; btn.disabled = true; btn.innerHTML = '<span class="btn-morph-spinner"></span><span>Signing in…</span>'; btn.classList.add('opacity-70'); }
             try {
                 await handleLoginCore(e);
             } finally {
@@ -5904,8 +5977,42 @@
             }
         }
 
-        async function changeAccountPassword() {
+        // 🔘 Reusable button "morph": swap a button's content for a small
+        // spinner while an async save runs, then a checkmark + green flash
+        // on success, before restoring the original label. Additive-only —
+        // existing buttons keep working exactly as before if never called.
+        function btnMorphStart(btn) {
+            if (!btn) return null;
+            const original = btn.innerHTML;
+            btn.dataset.morphOriginal = original;
+            btn.disabled = true;
+            btn.classList.add('btn-morphing');
+            btn.innerHTML = '<span class="btn-morph-spinner"></span>';
+            return original;
+        }
+        function btnMorphSuccess(btn, holdMs = 900) {
+            if (!btn) return;
+            btn.classList.remove('btn-morphing');
+            btn.classList.add('btn-morph-success');
+            btn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i>';
+            if (window.lucide) lucide.createIcons();
+            setTimeout(() => {
+                btn.classList.remove('btn-morph-success');
+                btn.innerHTML = btn.dataset.morphOriginal || '';
+                btn.disabled = false;
+                if (window.lucide) lucide.createIcons();
+            }, holdMs);
+        }
+        function btnMorphReset(btn) {
+            if (!btn) return;
+            btn.classList.remove('btn-morphing', 'btn-morph-success');
+            btn.innerHTML = btn.dataset.morphOriginal || btn.innerHTML;
+            btn.disabled = false;
+        }
+
+        async function changeAccountPassword(evt) {
             if (!currentUser) return;
+            const morphBtn = evt && evt.currentTarget ? evt.currentTarget : null;
             const cur = document.getElementById('account-current-password').value;
             const next = document.getElementById('account-new-password').value;
             const confirmVal = document.getElementById('account-confirm-password').value;
@@ -5923,14 +6030,17 @@
                 return;
             }
 
+            btnMorphStart(morphBtn);
             const res = await D1.updatePassword(currentUser.id, cur, next);
             if (res && res.success) {
                 showToast('Password updated successfully.', 'success');
                 document.getElementById('account-current-password').value = '';
                 document.getElementById('account-new-password').value = '';
                 document.getElementById('account-confirm-password').value = '';
+                btnMorphSuccess(morphBtn);
             } else {
                 showToast((res && res.error) || 'Could not update your password. Try again.', 'error');
+                btnMorphReset(morphBtn);
             }
         }
 
@@ -7074,7 +7184,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        ${lec.completed ? '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500 shrink-0"></i>' : ''}
+                        ${lec.completed ? '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500 shrink-0 completion-check-pop"></i>' : ''}
                         ${deleteLectureBtn}
                     </div>
                 `;
@@ -8534,13 +8644,12 @@
             // before adding it locally or claiming success, so a failed cloud
             // save can't silently vanish on the next refresh.
             const submitBtn = e.target.querySelector('button[type="submit"]');
-            if (submitBtn) submitBtn.disabled = true;
+            btnMorphStart(submitBtn);
 
             const res = await D1.saveMaterial(newMaterial);
 
-            if (submitBtn) submitBtn.disabled = false;
-
             if (!res || !res.success) {
+                btnMorphReset(submitBtn);
                 showToast('⚠️ This document was NOT saved to the cloud database. Check your connection and try again.', 'error');
                 return;
             }
@@ -8548,6 +8657,7 @@
             if (res.id) newMaterial.id = res.id;
             materials.unshift(newMaterial);
             syncLocalDB();
+            btnMorphReset(submitBtn);
             closeUploadMaterialModal();
             showToast('Document published to Cloud database!', 'success');
             renderMaterials();
@@ -8592,13 +8702,12 @@
             // from D1 on refresh. This is exactly what "sessions keep
             // disappearing" was.
             const submitBtn = e.target.querySelector('button[type="submit"]');
-            if (submitBtn) submitBtn.disabled = true;
+            btnMorphStart(submitBtn);
 
             const res = await D1.saveLecture(newSession);
 
-            if (submitBtn) submitBtn.disabled = false;
-
             if (!res || !res.success) {
+                btnMorphReset(submitBtn);
                 showToast('⚠️ This session was NOT saved to the cloud database. Check your connection and try again.', 'error');
                 return; // don't add it locally — nothing to disappear later
             }
@@ -8606,6 +8715,7 @@
             if (res.id) newSession.id = res.id;
             lectures.push(newSession);
             syncLocalDB();
+            btnMorphReset(submitBtn);
             closeAddVideoModal();
             const lenNote = probedSeconds ? ` Length: ${formatSessionLength(duration)}.` : ' Its length could not be read yet — it will be set the first time the video is played.';
             showToast((extractYouTubeId(url) ? 'YouTube lecture linked and indexed!' : 'Secure Video Archive.org URL Indexed!') + lenNote, probedSeconds ? 'success' : 'warning');
@@ -9248,13 +9358,13 @@
             const board = document.getElementById('ai-chat-board');
             const loadingBubble = document.createElement('div');
             loadingBubble.id = 'ai-typing-loader';
-            loadingBubble.className = 'flex items-center gap-1.5 self-start mr-auto max-w-[85%]';
+            loadingBubble.className = 'flex items-center gap-1.5 self-start mr-auto max-w-[85%] chat-bubble-new';
             loadingBubble.innerHTML = `
                 <img src="ai.png" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/></svg>';" class="w-3.5 h-3.5 rounded-full shrink-0">
                 <div class="bg-slate-900/60 border border-white/5 text-slate-100 p-3 rounded-2xl rounded-tl-none flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 0s;"></span>
-                    <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 0.15s;"></span>
-                    <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 0.3s;"></span>
+                    <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full typing-dot" style="animation-delay: 0s;"></span>
+                    <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full typing-dot" style="animation-delay: 0.15s;"></span>
+                    <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full typing-dot" style="animation-delay: 0.3s;"></span>
                 </div>
             `;
             board.appendChild(loadingBubble);
