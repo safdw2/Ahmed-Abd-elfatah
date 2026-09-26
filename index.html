@@ -4351,7 +4351,12 @@
         // GLOBAL CLIENT DATABASES (AUTOMATICALLY SEED LOCAL STORAGE / CLOUD STORAGE REST ENDPOINTS)
         // -----------------------------------------------------------------
         // 🧼 Self-cleaning storage arrays on every fresh load to guarantee NO FAKE DATA persists
-        localStorage.removeItem('lectures');
+        // 'lectures' is intentionally NOT wiped here anymore: it now doubles as a
+        // last-known-good cache of the video catalog. If the D1 fetch below ever
+        // fails (network hiccup, cold start, rate limit, etc.), hydrateFromD1()
+        // falls back to this cache instead of blanking the Sessions list to zero
+        // for students. Every successful D1 fetch still overwrites this cache with
+        // the real server data, so admin deletions/edits still propagate normally.
         localStorage.removeItem('materials');
         localStorage.removeItem('students');
         localStorage.removeItem('feedPosts');
@@ -5059,6 +5064,19 @@
             }
         }
 
+        // Retries a GET a couple of times with a short delay before giving up.
+        // GETs are safe to repeat, and this smooths over the kind of one-off
+        // network hiccup / D1 cold start that used to make a grade's whole
+        // video catalog vanish for the rest of that session.
+        async function d1RequestWithRetry(path, attempts = 3, delayMs = 600) {
+            for (let i = 0; i < attempts; i++) {
+                const result = await d1Request(path);
+                if (result !== null) return result;
+                if (i < attempts - 1) await new Promise(r => setTimeout(r, delayMs * (i + 1)));
+            }
+            return null;
+        }
+
         const D1 = {
             getStudents: () => d1Request('/students'),
             saveStudent: (student) => d1Request('/students', { method: 'POST', body: student }),
@@ -5096,7 +5114,7 @@
             getChatNicknames: (userId) => d1Request(`/chat/nicknames?user=${encodeURIComponent(userId)}`),
             setChatNickname: (userId, roomId, nickname) => d1Request('/chat/nickname', { method: 'POST', body: { user_id: userId, room_id: roomId, nickname } }),
 
-            getLectures: () => d1Request('/lectures'),
+            getLectures: () => d1RequestWithRetry('/lectures'),
             saveLecture: (lecture) => d1Request('/lectures', { method: 'POST', body: lecture }),
             deleteLecture: (id) => d1Request(`/lectures/${encodeURIComponent(id)}`, { method: 'DELETE' }),
             updateLectureDuration: (id, mins) => d1Request(`/lectures/${encodeURIComponent(id)}`, { method: 'PUT', body: { duration_mins: mins } }),
@@ -5183,7 +5201,22 @@
                     completed_lecture_ids: (() => { try { return JSON.parse(s.completed_lecture_ids || '[]'); } catch (e) { return []; } })()
                 }));
             }
-            if (Array.isArray(dbSessions) && dbSessions.length) lectures = dbSessions;
+            // Trust the server whenever the request actually succeeded — including
+            // an empty array, so a session an admin deletes disappears for every
+            // grade too. Only keep whatever was already on screen (the cached
+            // localStorage copy from the last successful sync) when the fetch
+            // itself failed, i.e. dbSessions came back null from d1Request. That
+            // was the bug behind videos "disappearing": a single transient fetch
+            // failure used to blank the whole Sessions list until the next reload
+            // happened to succeed, even though the video was still granted for
+            // that grade in D1. Now a failed fetch just leaves last-known-good
+            // data on screen instead of wiping it.
+            if (Array.isArray(dbSessions)) {
+                lectures = dbSessions;
+                try { localStorage.setItem('lectures', JSON.stringify(lectures)); } catch (e) {}
+            } else {
+                console.warn('⚠️ Could not refresh the session/video catalog from D1 — keeping the last cached list on screen for now.');
+            }
             if (Array.isArray(dbMaterials) && dbMaterials.length) {
                 // D1's materials_table column is called "filename" (schema.sql),
                 // but renderMaterials()/downloadStudySheet() read "file_url".
