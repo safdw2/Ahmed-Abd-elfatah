@@ -2817,6 +2817,48 @@
 
         /* Slightly punchier press feedback on every ripple/interactive button */
         .ripple-btn:active { transform: scale(0.95); }
+
+        /* ==================================================================
+           ✨ POLISH PASS v4 — more small delight animations: star-rating
+           pop, toast icon bounce-in, admin rows now cascade in with the
+           same stagger used by materials/videos/feed. */
+        @keyframes starPop {
+            0% { transform: scale(1) rotate(0deg); }
+            40% { transform: scale(1.35) rotate(-8deg); }
+            70% { transform: scale(0.95) rotate(4deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        .star-pop { animation: starPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        @keyframes toastIconPop {
+            0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+            60% { transform: scale(1.2) rotate(8deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        .toast-icon-pop { animation: toastIconPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both; }
+
+        /* Nav icon gives a tiny confirming bounce the moment its tab becomes active */
+        @keyframes navIconLand {
+            0% { transform: scale(0.7); }
+            60% { transform: scale(1.25); }
+            100% { transform: scale(1); }
+        }
+        .nav-icon-land { animation: navIconLand 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        /* Search inputs get an animated focus underline instead of just a border flash */
+        .search-underline-anim { position: relative; }
+        .search-underline-anim::after {
+            content: '';
+            position: absolute;
+            left: 12px; right: 12px; bottom: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #6366f1, #22d3ee);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border-radius: 2px;
+        }
+        .search-underline-anim:focus-within::after { transform: scaleX(1); }
     </style>
 
 </head>
@@ -3468,7 +3510,7 @@
                 <div id="view-materials" class="view-panel space-y-6 hidden">
                     <!-- 🔍 Live Search Bar and Category Filters -->
                     <div class="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between bg-slate-900/10 p-4 rounded-2xl border border-white/5">
-                        <div class="relative flex-1">
+                        <div class="relative flex-1 search-underline-anim">
                             <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"></i>
                             <input type="text" id="materials-search-input" oninput="applyMaterialsFilters()" placeholder="Search study materials by title or keyword..." class="w-full bg-slate-950/60 border border-white/5 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 placeholder-gray-600 transition">
                         </div>
@@ -3507,7 +3549,7 @@
                             </button>
                             
                             <!-- Video Search Input -->
-                            <div class="relative">
+                            <div class="relative search-underline-anim">
                                 <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500"></i>
                                 <input type="text" id="videos-search-input" oninput="applyVideosFilters()" placeholder="Search sessions..." class="w-full bg-slate-950/60 border border-white/5 rounded-xl pl-9 pr-3 py-2 text-[10px] text-white focus:outline-none focus:border-indigo-500 placeholder-gray-650 transition">
                             </div>
@@ -5832,6 +5874,12 @@
                     activeNav.className = "nav-btn ripple-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold bg-red-950/20 text-red-400 border border-red-500/20";
                 } else {
                     activeNav.className = "nav-btn ripple-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold bg-indigo-600/15 text-indigo-400 border border-indigo-500/10";
+                }
+                const activeNavIcon = activeNav.querySelector('[data-lucide]');
+                if (activeNavIcon) {
+                    activeNavIcon.classList.remove('nav-icon-land');
+                    void activeNavIcon.offsetWidth;
+                    activeNavIcon.classList.add('nav-icon-land');
                 }
             }
 
@@ -8441,14 +8489,15 @@
                     </div>
                 `;
             } else {
-                students.forEach(student => {
+                students.forEach((student, index) => {
                     const isAdmin = student.role === 'admin';
                     const titleBadge = student.title ? `<span class="bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-[8px] px-1.5 py-0.5 rounded-lg inline-block font-mono font-black">${student.title}</span>` : '';
                     const roleBadge = isAdmin ? `<span class="bg-red-500/20 border border-red-500/30 text-red-400 text-[8px] px-1.5 py-0.5 rounded-lg inline-block font-mono font-black">Admin</span>` : '';
                     const genderBadge = `<span class="bg-slate-500/20 border border-slate-500/30 text-slate-300 text-[8px] px-1.5 py-0.5 rounded-lg inline-block font-mono font-bold">${student.gender || 'Boy'}</span>`;
 
                     const row = document.createElement('div');
-                    row.className = "flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-white/5 text-[11px] hover:border-indigo-500/20 transition-all";
+                    row.className = "flex items-center justify-between p-3 rounded-xl bg-slate-950/40 border border-white/5 text-[11px] hover:border-indigo-500/20 hover:-translate-y-0.5 transition-all stagger-pop";
+                    row.style.setProperty('--stagger-i', index);
                     row.innerHTML = `
                         <div class="space-y-1">
                             <div class="flex items-center gap-1.5">
@@ -9008,7 +9057,7 @@
 
             toast.className = `flex items-center gap-3 px-4 py-3 rounded-2xl border text-xs shadow-2xl backdrop-blur-md pointer-events-auto toast-slide-in ${color}`;
             toast.innerHTML = `
-                <i data-lucide="${icon}" class="w-4 h-4 shrink-0"></i>
+                <i data-lucide="${icon}" class="w-4 h-4 shrink-0 toast-icon-pop"></i>
                 <span class="font-bold">${message}</span>
             `;
             
@@ -10076,8 +10125,11 @@
                 if (index < stars) {
                     btn.classList.add('text-amber-400', 'fill-amber-400');
                     btn.classList.remove('text-gray-600');
+                    btn.classList.remove('star-pop');
+                    void btn.offsetWidth; // restart the animation even if it's already applied
+                    btn.classList.add('star-pop');
                 } else {
-                    btn.classList.remove('text-amber-400', 'fill-amber-400');
+                    btn.classList.remove('text-amber-400', 'fill-amber-400', 'star-pop');
                     btn.classList.add('text-gray-600');
                 }
             });
