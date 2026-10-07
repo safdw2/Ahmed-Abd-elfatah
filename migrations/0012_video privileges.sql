@@ -1,30 +1,21 @@
 -- =====================================================================
--- MIGRATION 0009 — Video Privileges (unlock codes)
--- Run ONCE against your EXISTING database (schema.sql already has all of
--- this for brand-new databases). Use the database_name from wrangler.toml:
---   wrangler d1 execute ahmed-abdelfatah-db --file=./0009_video_privileges.sql --remote
--- Running it twice fails on the ALTER TABLE line ("duplicate column"); that
--- is harmless, the CREATE TABLE statements below are safe to re-run.
+-- Migration 0010 — Video Access Codes (per-student, per-video unlock)
+-- Run once against your D1 database before using "Video Privileges" in
+-- the Admin Console:
+--   wrangler d1 execute ahmed-abdelfatah-db --file=./0010_add_video_access_codes.sql --remote
+-- (drop --remote to apply to your local dev DB instead)
 -- =====================================================================
 
-ALTER TABLE videos_table ADD COLUMN requires_code INTEGER DEFAULT 0;
-
 CREATE TABLE IF NOT EXISTS video_access_codes_table (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    code          TEXT UNIQUE NOT NULL,
-    student_id    TEXT NOT NULL,
-    video_id      INTEGER NOT NULL,
-    created_by    TEXT,
-    created_at    TEXT DEFAULT (datetime('now')),
-    redeemed_at   TEXT
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    code            TEXT UNIQUE NOT NULL,
+    student_id      TEXT NOT NULL,
+    video_id        INTEGER NOT NULL,
+    redeemed        INTEGER DEFAULT 0,
+    redeemed_at     TEXT,
+    created_at      TEXT DEFAULT (datetime('now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_vcodes_student ON video_access_codes_table (student_id, video_id);
-
-CREATE TABLE IF NOT EXISTS video_unlocks_table (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    student_id    TEXT NOT NULL,
-    video_id      INTEGER NOT NULL,
-    unlocked_at   TEXT DEFAULT (datetime('now')),
-    UNIQUE(student_id, video_id)
-);
+CREATE INDEX IF NOT EXISTS idx_video_codes_student ON video_access_codes_table (student_id);
+CREATE INDEX IF NOT EXISTS idx_video_codes_video ON video_access_codes_table (video_id);
+CREATE INDEX IF NOT EXISTS idx_video_codes_code ON video_access_codes_table (code);
