@@ -46,10 +46,42 @@ CREATE TABLE IF NOT EXISTS videos_table (
     filename        TEXT,
     archive_url     TEXT NOT NULL,
     duration_mins   INTEGER DEFAULT 45,
+    -- 1 = students need an unlock code (Admin Console -> Video Privileges)
+    -- before they can watch this video. 0 = open to the whole grade.
+    requires_code   INTEGER DEFAULT 0,
     created_at      TEXT DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_videos_grade ON videos_table (grade);
+
+-- --------------------------------------------------------------------
+-- VIDEO ACCESS CODES — one code = one student + one video. Issued from the
+-- Admin Console ("Video Privileges"); redeemed_at stays NULL until the
+-- student enters it. student_id is the student's login ID (students_table.phone).
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS video_access_codes_table (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    code          TEXT UNIQUE NOT NULL,
+    student_id    TEXT NOT NULL,
+    video_id      INTEGER NOT NULL,
+    created_by    TEXT,
+    created_at    TEXT DEFAULT (datetime('now')),
+    redeemed_at   TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_vcodes_student ON video_access_codes_table (student_id, video_id);
+
+-- --------------------------------------------------------------------
+-- VIDEO UNLOCKS — written once when a code is redeemed. A row here is what
+-- keeps that video permanently unlocked for that student.
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS video_unlocks_table (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id    TEXT NOT NULL,
+    video_id      INTEGER NOT NULL,
+    unlocked_at   TEXT DEFAULT (datetime('now')),
+    UNIQUE(student_id, video_id)
+);
 
 -- --------------------------------------------------------------------
 -- MATERIALS TABLE — worksheets / PDFs / study sheets
