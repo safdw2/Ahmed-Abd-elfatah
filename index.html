@@ -4270,6 +4270,41 @@
                             </div>
                         </div>
 
+                        <!-- Video Privileges — generate a per-student, per-video unlock code -->
+                        <div class="glass-card p-5 rounded-2xl space-y-4 border border-white/10 shadow-2xl lg:col-span-2">
+                            <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                                <h3 class="text-xs font-bold text-white uppercase tracking-wider">Video Privileges</h3>
+                                <span class="bg-amber-950 border border-amber-500/20 text-amber-400 text-[8px] font-black px-2 py-0.5 rounded-full font-mono">per-student unlock codes</span>
+                            </div>
+                            <p class="text-[9px] text-gray-500 leading-relaxed">Every session is locked for students until they're given a code. Pick a student and a session below to generate the code made just for that pair — once they redeem it, that one video stays unlocked for that one student forever.</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
+                                <div class="space-y-1 sm:col-span-1">
+                                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider font-bold">Student</label>
+                                    <select id="video-priv-student-select" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"></select>
+                                </div>
+                                <div class="space-y-1 sm:col-span-1">
+                                    <label class="block text-[9px] text-gray-400 uppercase tracking-wider font-bold">Session</label>
+                                    <select id="video-priv-video-select" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"></select>
+                                </div>
+                                <button onclick="generateVideoPrivilegeCode()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-xl text-[11px] transition flex items-center justify-center gap-1.5 ripple-btn sm:col-span-1">
+                                    <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
+                                    <span>Generate Code</span>
+                                </button>
+                            </div>
+                            <div id="video-priv-result" class="hidden items-center justify-between gap-2 bg-amber-950/30 border border-amber-500/20 rounded-xl px-3 py-2.5">
+                                <div>
+                                    <p class="text-[9px] text-amber-500/80 uppercase font-bold tracking-wider">Give this code to the student</p>
+                                    <p id="video-priv-result-code" class="text-sm font-mono font-black text-amber-300 tracking-[0.15em]"></p>
+                                </div>
+                                <button onclick="copyVideoPrivilegeCode()" class="p-2 text-amber-400 hover:text-white hover:bg-amber-900/40 rounded-lg transition shrink-0" title="Copy code">
+                                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                            <div id="admin-video-codes-list" class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                                <!-- Dynamic list of generated codes -->
+                            </div>
+                        </div>
+
                         <!-- Direct Messages — open to every account, no admin pairing needed -->
                         <div class="glass-card p-5 rounded-2xl space-y-3 border border-white/10 shadow-2xl lg:col-span-2">
                             <div class="flex items-center justify-between border-b border-white/5 pb-2">
@@ -4372,6 +4407,29 @@
                 </div>
                 <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-xl text-xs transition">
                     Register Session
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Video Access Code Redeem Modal (student-facing) -->
+    <div id="video-code-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md items-center justify-center p-4 z-50 flex hidden">
+        <div class="w-full max-w-sm glass-modal p-6 rounded-2xl space-y-4 relative text-center">
+            <button onclick="closeVideoCodeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white transition">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+            <div class="w-12 h-12 rounded-2xl bg-amber-950/60 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+                <i data-lucide="lock" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h3 class="text-sm font-bold text-white">This session needs an access code</h3>
+                <p class="text-[10px] text-gray-500 mt-1 leading-relaxed">Ask MR. Ahmed Abd-ElFatah or the Co Assistant for your code, then enter it below. Once unlocked, this video stays open for you from now on.</p>
+            </div>
+            <form onsubmit="handleVideoCodeRedeemSubmit(event)" class="space-y-3 text-left">
+                <input type="text" id="video-code-input" required placeholder="XXXX-XXXX" autocomplete="off" autocapitalize="characters" class="w-full bg-slate-950/60 border border-white/5 rounded-xl px-3 py-2.5 text-center text-sm tracking-[0.2em] font-mono font-bold text-amber-300 placeholder-gray-600 focus:outline-none focus:border-amber-500 uppercase">
+                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                    <i data-lucide="unlock" class="w-3.5 h-3.5"></i>
+                    <span>Unlock Video</span>
                 </button>
             </form>
         </div>
@@ -4982,6 +5040,22 @@
         // Tutoring Center (Roots) — { id, title, session_date, session_time, location, notes, grade, recurring, active }
         let tutoringSessions = JSON.parse(localStorage.getItem('tutoringSessions')) || [];
 
+        // Video Privileges — { id, code, student_id, video_id, redeemed, redeemed_at }.
+        // For a student account this holds only THEIR codes; the Admin
+        // Console loads the full table separately when that panel is open.
+        let videoAccessCodes = JSON.parse(localStorage.getItem('videoAccessCodes')) || [];
+
+        // A video never needs a code for staff — only plain 'student'
+        // accounts can ever be locked out of a session.
+        function hasVideoCodeAccess(lec) {
+            if (!currentUser || currentUser.role !== 'student') return true;
+            return videoAccessCodes.some(c =>
+                String(c.student_id) === String(currentUser.id) &&
+                String(c.video_id) === String(lec.id) &&
+                Number(c.redeemed) === 1
+            );
+        }
+
         // -----------------------------------------------------------------
         // 💬 CHAT TAB — one group room per grade + admin-granted DM rooms
         // -----------------------------------------------------------------
@@ -5356,7 +5430,13 @@
             getTutoring: () => d1Request('/tutoring'),
             saveTutoring: (session) => d1Request('/tutoring', { method: 'POST', body: session }),
             updateTutoring: (session) => d1Request(`/tutoring/${encodeURIComponent(session.id)}`, { method: 'PUT', body: session }),
-            deleteTutoring: (id) => d1Request(`/tutoring/${encodeURIComponent(id)}`, { method: 'DELETE' })
+            deleteTutoring: (id) => d1Request(`/tutoring/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+            // Video Privileges — per-student, per-video unlock codes.
+            getVideoCodes: (studentId) => d1Request(studentId ? `/video-codes?student_id=${encodeURIComponent(studentId)}` : '/video-codes'),
+            generateVideoCode: (studentId, videoId) => d1Request('/video-codes', { method: 'POST', body: { student_id: studentId, video_id: videoId } }),
+            redeemVideoCode: (studentId, code) => d1Request('/video-codes/redeem', { method: 'POST', body: { student_id: studentId, code } }),
+            revokeVideoCode: (id) => d1Request(`/video-codes/${encodeURIComponent(id)}`, { method: 'DELETE' })
         };
 
         // Keep a single explicit API shape for every feed save. This prevents
@@ -5404,13 +5484,17 @@
         // Pages Function isn't reachable (e.g. local static preview), the portal
         // silently keeps working off whatever is cached in localStorage.
         async function hydrateFromD1() {
-            const [dbStudents, dbSessions, dbMaterials, dbFeed, dbFeedbacks, dbTutoring] = await Promise.all([
+            const [dbStudents, dbSessions, dbMaterials, dbFeed, dbFeedbacks, dbTutoring, dbVideoCodes] = await Promise.all([
                 D1.getStudents(),
                 D1.getLectures(),
                 D1.getMaterials(),
                 D1.getFeed(),
                 D1.getFeedbacks(),
-                D1.getTutoring()
+                D1.getTutoring(),
+                // Only the current account's own codes — the Admin Console's
+                // "Video Privileges" panel pulls the full table separately,
+                // on demand, when that panel is actually opened.
+                currentUser ? D1.getVideoCodes(currentUser.id) : Promise.resolve(null)
             ]);
 
             if (Array.isArray(dbStudents) && dbStudents.length) {
@@ -5490,6 +5574,10 @@
             // admin deletes on one device disappears everywhere else on the next refresh too.
             if (Array.isArray(dbTutoring)) {
                 tutoringSessions = dbTutoring.map(t => ({ ...t, recurring: !!t.recurring, active: t.active !== 0 }));
+            }
+            if (Array.isArray(dbVideoCodes)) {
+                videoAccessCodes = dbVideoCodes;
+                try { localStorage.setItem('videoAccessCodes', JSON.stringify(videoAccessCodes)); } catch (e) {}
             }
 
             syncLocalDB();
@@ -7365,9 +7453,12 @@
                 if (lessonA !== lessonB) return lessonA - lessonB;
                 return Number(a.part || 1) - Number(b.part || 1);
             }).forEach(lec => {
+                const locked = !hasVideoCodeAccess(lec);
                 const row = document.createElement('div');
-                row.className = "w-full text-left p-3 rounded-xl bg-slate-950/40 border border-white/5 hover:border-indigo-500/20 flex items-center justify-between group transition cursor-pointer hover:bg-slate-900/35";
-                row.onclick = () => loadSecureLecture(lec);
+                row.className = locked
+                    ? "w-full text-left p-3 rounded-xl bg-amber-950/10 border border-amber-500/15 hover:border-amber-500/30 flex items-center justify-between group transition cursor-pointer hover:bg-amber-950/20"
+                    : "w-full text-left p-3 rounded-xl bg-slate-950/40 border border-white/5 hover:border-indigo-500/20 flex items-center justify-between group transition cursor-pointer hover:bg-slate-900/35";
+                row.onclick = () => locked ? openVideoCodeModal(lec.id) : loadSecureLecture(lec);
 
                 const deleteLectureBtn = (currentUser.role === 'teacher' || currentUser.role === 'admin') ? `
                     <button onclick="event.stopPropagation(); deleteLectureRegistry(${lec.id})" class="p-1.5 text-red-400 hover:text-white hover:bg-red-950/40 rounded-lg transition ml-2 shrink-0 z-10" title="Delete Session">
@@ -7377,12 +7468,12 @@
 
                 row.innerHTML = `
                     <div class="flex items-center gap-2.5 overflow-hidden">
-                        <div class="p-2 rounded-xl bg-indigo-950/80 text-indigo-400 group-hover:scale-105 transition shrink-0">
-                            <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                        <div class="p-2 rounded-xl ${locked ? 'bg-amber-950/60 text-amber-400' : 'bg-indigo-950/80 text-indigo-400'} group-hover:scale-105 transition shrink-0">
+                            <i data-lucide="${locked ? 'lock' : 'play'}" class="w-3.5 h-3.5"></i>
                         </div>
                         <div class="overflow-hidden">
                             <h4 class="text-xs font-extrabold text-white truncate w-[160px] md:w-[300px]">${lec.title}</h4>
-                            <p class="text-[9px] text-gray-500 font-semibold tracking-wider uppercase mt-0.5">Lesson ${lec.lesson || 1}${lec.part && lec.part > 1 ? ` Part ${lec.part}` : ''} · ${lec.grade} · <span data-len-for="${lec.id}">${formatSessionLength(lec.duration_mins)}</span></p>
+                            <p class="text-[9px] ${locked ? 'text-amber-500/80' : 'text-gray-500'} font-semibold tracking-wider uppercase mt-0.5">${locked ? 'Code required — tap to unlock' : `Lesson ${lec.lesson || 1}${lec.part && lec.part > 1 ? ` Part ${lec.part}` : ''} · ${lec.grade} · <span data-len-for="${lec.id}">${formatSessionLength(lec.duration_mins)}</span>`}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -7407,6 +7498,62 @@
                     row.classList.add('hidden');
                 }
             });
+        }
+
+        // -----------------------------------------------------------------
+        // 🔒 VIDEO ACCESS CODE — student-facing redeem modal
+        // -----------------------------------------------------------------
+        let pendingVideoCodeLectureId = null;
+
+        function openVideoCodeModal(lecId) {
+            pendingVideoCodeLectureId = lecId;
+            const input = document.getElementById('video-code-input');
+            if (input) input.value = '';
+            document.getElementById('video-code-modal').classList.remove('hidden');
+            setTimeout(() => input && input.focus(), 50);
+        }
+        function closeVideoCodeModal() {
+            document.getElementById('video-code-modal').classList.add('hidden');
+            pendingVideoCodeLectureId = null;
+        }
+
+        async function handleVideoCodeRedeemSubmit(event) {
+            event.preventDefault();
+            const input = document.getElementById('video-code-input');
+            const code = input ? input.value.trim() : '';
+            if (!code) return;
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            btnMorphStart(submitBtn);
+
+            const res = await D1.redeemVideoCode(currentUser.id, code);
+
+            if (!res || !res.success) {
+                btnMorphReset(submitBtn);
+                showToast((res && res.error) || 'That code could not be verified. Check your connection and try again.', 'error');
+                return;
+            }
+
+            // Reflect the unlock locally immediately — redeemVideoCode() is
+            // idempotent server-side, so there's no harm pushing a plain
+            // local record in even if hydrateFromD1 hasn't run again yet.
+            const alreadyKnown = videoAccessCodes.find(c => String(c.video_id) === String(res.video_id) && String(c.student_id) === String(currentUser.id));
+            if (alreadyKnown) {
+                alreadyKnown.redeemed = 1;
+            } else {
+                videoAccessCodes.push({ student_id: currentUser.id, video_id: res.video_id, redeemed: 1 });
+            }
+            try { localStorage.setItem('videoAccessCodes', JSON.stringify(videoAccessCodes)); } catch (e) {}
+
+            btnMorphSuccess(submitBtn, 600);
+            showToast('Video unlocked! It will stay open for you from now on.', 'success');
+
+            const unlockedLecId = pendingVideoCodeLectureId;
+            setTimeout(() => {
+                closeVideoCodeModal();
+                renderVideos();
+                const lec = lectures.find(l => String(l.id) === String(unlockedLecId));
+                if (lec) loadSecureLecture(lec);
+            }, 500);
         }
 
         
@@ -8049,6 +8196,14 @@
         }
 
         function loadSecureLecture(lec) {
+            // Defense in depth: the Video Sessions list already hides the
+            // play button behind a lock icon for a gated video, but this
+            // guards every other way a lecture object can reach here too
+            // (the AI chat's "open session X" deep link, voice commands…).
+            if (!hasVideoCodeAccess(lec)) {
+                openVideoCodeModal(lec.id);
+                return;
+            }
             activeLectureObj = lec;
             const player = document.getElementById('secure-player');
             const youtubeWrap = document.getElementById('youtube-player-wrap');
@@ -8703,7 +8858,106 @@
                 });
             }
 
+            renderVideoPrivilegesPanel();
+
             lucide.createIcons();
+        }
+
+        // -----------------------------------------------------------------
+        // 🔑 VIDEO PRIVILEGES — admin-side: generate / list / revoke codes
+        // -----------------------------------------------------------------
+        let lastGeneratedVideoCode = '';
+
+        function renderVideoPrivilegesPanel() {
+            const studentSelect = document.getElementById('video-priv-student-select');
+            const videoSelect = document.getElementById('video-priv-video-select');
+            if (!studentSelect || !videoSelect) return;
+
+            const prevStudent = studentSelect.value;
+            const prevVideo = videoSelect.value;
+            studentSelect.innerHTML = students
+                .filter(s => s.role === 'student')
+                .map(s => `<option value="${s.id}">${s.name} (${s.grade})</option>`)
+                .join('') || '<option value="">No students yet</option>';
+            videoSelect.innerHTML = lectures
+                .map(l => `<option value="${l.id}">${l.title}${l.part && l.part > 1 ? ` (Part ${l.part})` : ''}</option>`)
+                .join('') || '<option value="">No sessions yet</option>';
+            if (prevStudent) studentSelect.value = prevStudent;
+            if (prevVideo) videoSelect.value = prevVideo;
+
+            // Pull the full code table fresh every time this panel renders —
+            // it's admin-only and small, so there's no need to cache it
+            // alongside the student-scoped copy used for lock-checking.
+            D1.getVideoCodes().then(codes => {
+                const listEl = document.getElementById('admin-video-codes-list');
+                if (!listEl) return;
+                if (!Array.isArray(codes) || !codes.length) {
+                    listEl.innerHTML = `<div class="text-center py-4 text-[10px] text-gray-500 font-semibold">No codes generated yet.</div>`;
+                    return;
+                }
+                listEl.innerHTML = codes.map(c => {
+                    const student = students.find(s => String(s.id) === String(c.student_id));
+                    const video = lectures.find(l => String(l.id) === String(c.video_id));
+                    const statusBadge = c.redeemed
+                        ? '<span class="bg-emerald-950 border border-emerald-500/20 text-emerald-400 text-[8px] font-black px-1.5 py-0.5 rounded-full">Redeemed</span>'
+                        : '<span class="bg-amber-950 border border-amber-500/20 text-amber-400 text-[8px] font-black px-1.5 py-0.5 rounded-full">Pending</span>';
+                    return `
+                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/40 border border-white/5 text-[10px]">
+                            <div class="overflow-hidden">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="font-mono font-black text-amber-300 tracking-wider">${c.code}</span>
+                                    ${statusBadge}
+                                </div>
+                                <p class="text-gray-500 truncate mt-0.5">${student ? student.name : c.student_id} → ${video ? video.title : `Video #${c.video_id}`}</p>
+                            </div>
+                            <button onclick="revokeVideoPrivilegeCode(${c.id})" class="p-1.5 text-red-400 hover:text-white hover:bg-red-950/40 rounded-lg transition shrink-0" title="Revoke code">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+                lucide.createIcons();
+            });
+        }
+
+        async function generateVideoPrivilegeCode() {
+            const studentId = document.getElementById('video-priv-student-select').value;
+            const videoId = document.getElementById('video-priv-video-select').value;
+            if (!studentId || !videoId) {
+                showToast('Pick both a student and a session first.', 'error');
+                return;
+            }
+            const res = await D1.generateVideoCode(studentId, videoId);
+            if (!res || !res.success) {
+                showToast((res && res.error) || 'Could not generate a code. Check your connection and try again.', 'error');
+                return;
+            }
+            lastGeneratedVideoCode = res.code;
+            const resultBox = document.getElementById('video-priv-result');
+            document.getElementById('video-priv-result-code').textContent = res.code;
+            resultBox.classList.remove('hidden');
+            resultBox.classList.add('flex');
+            showToast(res.redeemed === false || !res.redeemed ? 'Code generated.' : 'This student already redeemed a code for this video.', 'success');
+            renderVideoPrivilegesPanel();
+        }
+
+        function copyVideoPrivilegeCode() {
+            if (!lastGeneratedVideoCode) return;
+            navigator.clipboard?.writeText(lastGeneratedVideoCode).then(() => {
+                showToast('Code copied to clipboard.', 'success');
+            }).catch(() => {
+                showToast('Could not copy — select and copy the code manually.', 'error');
+            });
+        }
+
+        async function revokeVideoPrivilegeCode(id) {
+            const res = await D1.revokeVideoCode(id);
+            if (res && res.success) {
+                showToast('Access code revoked.', 'success');
+                renderVideoPrivilegesPanel();
+            } else {
+                showToast((res && res.error) || 'Could not revoke that code.', 'error');
+            }
         }
 
         function toggleAdminPrivilege(id) {
