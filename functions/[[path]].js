@@ -214,30 +214,6 @@ async function handleRequest(context) {
     if (pathname.startsWith('/api/db/')) {
         const d1 = env.DB;
 
-        // ---- Video Privileges helpers (unlock codes) ----
-        // Looks a student up by login ID (phone) or numeric row id, like the
-        // other routes do. Returns null if there is no such account.
-        const resolveStudent = async (key) => {
-            if (!d1 || key === undefined || key === null || String(key).trim() === '') return null;
-            return await d1.prepare('SELECT id, phone, name, role FROM students_table WHERE phone = ? OR id = ?')
-                .bind(String(key).trim(), String(key).trim()).first();
-        };
-        const isStaff = (row) => !!row && ['teacher', 'admin'].includes(String(row.role || '').toLowerCase());
-        // 8 chars from a 32-letter alphabet with no 0/O/1/I look-alikes.
-        // 256 is divisible by 32, so `byte % 32` has no modulo bias.
-        const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        const generateAccessCode = () => {
-            const bytes = new Uint8Array(8);
-            crypto.getRandomValues(bytes);
-            let s = '';
-            for (const b of bytes) s += CODE_ALPHABET[b % 32];
-            return s.slice(0, 4) + '-' + s.slice(4);
-        };
-        const normalizeAccessCode = (raw) => {
-            const s = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-            return s.length === 8 ? s.slice(0, 4) + '-' + s.slice(4) : s;
-        };
-
         // --- STUDENTS TABLE ENDPOINTS ---
         if (pathname === '/api/db/students') {
             if (request.method === 'GET') {
@@ -405,31 +381,7 @@ async function handleRequest(context) {
             if (request.method === 'GET') {
                 if (d1) {
                     const { results } = await d1.prepare('SELECT * FROM videos_table ORDER BY id ASC').all();
-                    // Videos flagged requires_code only reveal their stream URL to
-                    // staff, or to a student who has redeemed a code for that video.
-                    // Everyone else gets locked:true and an empty URL, so the link
-                    // never reaches the browser (hiding it in the UI alone wouldn't
-                    // stop anyone opening DevTools).
-                    const viewer = await resolveStudent(url.searchParams.get('user'));
-                    const staff = isStaff(viewer);
-                    const unlocked = new Set();
-                    if (viewer && !staff) {
-                        try {
-                            const { results: ul } = await d1.prepare('SELECT video_id FROM video_unlocks_table WHERE student_id = ?').bind(viewer.phone).all();
-                            (ul || []).forEach(r => unlocked.add(Number(r.video_id)));
-                        } catch (e) { /* migration not applied yet: nothing is unlocked */ }
-                    }
-                    return jsonResponse((results || []).map(v => {
-                        const needs = !!v.requires_code;
-                        const locked = needs && !staff && !unlocked.has(Number(v.id));
-                        return {
-                            ...v,
-                            requires_code: needs ? 1 : 0,
-                            locked,
-                            archive_url: locked ? '' : v.archive_url,
-                            filename: locked ? '' : v.filename
-                        };
-                    }));
+                    return jsonResponse(results || []);
                 }
                 return jsonResponse([]);
             }
@@ -451,9 +403,6 @@ async function handleRequest(context) {
                             lec.archive_url || lec.filename || '',
                             lec.duration_mins || 45
                         ).run();
-                        if (lec.requires_code) {
-                            await d1.prepare('UPDATE videos_table SET requires_code = 1 WHERE id = ?').bind(result.meta.last_row_id).run();
-                        }
                         return jsonResponse({ success: true, id: result.meta.last_row_id, message: 'Lecture registered in D1.' });
                     }
                     return jsonResponse({ success: true, mock: true });
@@ -469,12 +418,6 @@ async function handleRequest(context) {
             try {
                 const lecId = pathname.split('/').pop();
                 const body = await request.json();
-                if (body.requires_code !== undefined) {
-                    const admin = await resolveStudent(body.admin_id);
-                    if (!isStaff(admin)) return jsonResponse({ error: 'Only the teacher/admin can change this.' }, 403);
-                    if (d1) await d1.prepare('UPDATE videos_table SET requires_code = ? WHERE id = ?').bind(body.requires_code ? 1 : 0, lecId).run();
-                    return jsonResponse({ success: true, requires_code: body.requires_code ? 1 : 0 });
-                }
                 const mins = Math.round(Number(body.duration_mins));
                 if (!lecId || !Number.isFinite(mins) || mins < 1 || mins > 1440) {
                     return jsonResponse({ error: 'duration_mins must be a whole number of minutes between 1 and 1440.' }, 400);
@@ -492,125 +435,118 @@ async function handleRequest(context) {
             const lecId = pathname.split('/').pop();
             if (d1 && lecId) {
                 await d1.prepare('DELETE FROM videos_table WHERE id = ?').bind(lecId).run();
-                try {
-                    await d1.batch([
-                        d1.prepare('DELETE FROM video_access_codes_table WHERE video_id = ?').bind(lecId),
-                        d1.prepare('DELETE FROM video_unlocks_table WHERE video_id = ?').bind(lecId)
-                    ]);
-                } catch (e) { /* tables not created yet */ }
                 return jsonResponse({ success: true, message: 'Lecture deleted.' });
             }
             return jsonResponse({ success: true });
         }
 
-        // --- VIDEO PRIVILEGES: access codes + permanent unlocks ---
-        // Admin Console issues a one-time code for ONE student + ONE video. The
-        // student redeems it once; that writes a row to video_unlocks_table and
-        // the video stays unlocked for them forever (until an admin revokes it).
-
-        // Student redeems a code
-        if (pathname === '/api/db/video-codes/redeem' && request.method === 'POST') {
-            try {
-                const { student_id, code } = await request.json();
-                const student = await resolveStudent(student_id);
-                const normalized = normalizeAccessCode(code);
-                // One generic message for "no such code" and "someone else's code"
-                // so this endpoint can't be used to probe which codes exist.
-                const invalid = () => jsonResponse({ error: 'That code is not valid for your account.' }, 403);
-                if (!student || !normalized) return invalid();
-                const row = await d1.prepare('SELECT * FROM video_access_codes_table WHERE code = ?').bind(normalized).first();
-                if (!row || String(row.student_id) !== String(student.phone)) return invalid();
-
-                if (!row.redeemed_at) {
-                    await d1.batch([
-                        d1.prepare('INSERT OR IGNORE INTO video_unlocks_table (student_id, video_id) VALUES (?, ?)').bind(student.phone, row.video_id),
-                        d1.prepare("UPDATE video_access_codes_table SET redeemed_at = datetime('now') WHERE id = ?").bind(row.id)
-                    ]);
-                }
-                const video = await d1.prepare('SELECT id, title, archive_url FROM videos_table WHERE id = ?').bind(row.video_id).first();
-                if (!video) return jsonResponse({ error: 'That video no longer exists.' }, 404);
-                return jsonResponse({
-                    success: true,
-                    already: !!row.redeemed_at,
-                    video_id: video.id,
-                    title: video.title,
-                    archive_url: video.archive_url
-                });
-            } catch (err) {
-                return jsonResponse({ error: err.message }, 400);
-            }
-        }
-
-        // Admin: list codes / generate a code
+        // --- VIDEO ACCESS CODES (per-student, per-video unlock) ---
+        // Admin Console -> "Video Privileges": pick one student + one video,
+        // get back a short code. The student enters it once; after that,
+        // that one video stays unlocked for that one student forever
+        // (the redeemed row is the permanent record — nothing expires it).
         if (pathname === '/api/db/video-codes') {
             if (request.method === 'GET') {
-                const admin = await resolveStudent(url.searchParams.get('admin_id'));
-                if (!isStaff(admin)) return jsonResponse({ error: 'Only the teacher/admin can view codes.' }, 403);
-                if (!d1) return jsonResponse([]);
-                const { results } = await d1.prepare(`
-                    SELECT c.id, c.code, c.student_id, c.video_id, c.created_at, c.redeemed_at,
-                           s.name AS student_name, v.title AS video_title
-                    FROM video_access_codes_table c
-                    LEFT JOIN students_table s ON s.phone = c.student_id
-                    LEFT JOIN videos_table v ON v.id = c.video_id
-                    ORDER BY c.id DESC LIMIT 200
-                `).all();
-                return jsonResponse(results || []);
+                if (d1) {
+                    // Admin console wants every code (to show the full list);
+                    // the logged-in student only needs their own, so the
+                    // client always passes ?student_id= for that lookup —
+                    // but either way we just return raw rows and let the
+                    // frontend join against the students/lectures it
+                    // already has in memory.
+                    const studentId = url.searchParams.get('student_id');
+                    const { results } = studentId
+                        ? await d1.prepare('SELECT * FROM video_access_codes_table WHERE student_id = ? ORDER BY id DESC').bind(studentId).all()
+                        : await d1.prepare('SELECT * FROM video_access_codes_table ORDER BY id DESC').all();
+                    return jsonResponse(results || []);
+                }
+                return jsonResponse([]);
             }
 
+            // Generate a fresh code for one student + one video.
             if (request.method === 'POST') {
                 try {
-                    const { admin_id, student_id, video_id } = await request.json();
-                    const admin = await resolveStudent(admin_id);
-                    if (!isStaff(admin)) return jsonResponse({ error: 'Only the teacher/admin can generate codes.' }, 403);
-                    if (!d1) return jsonResponse({ error: 'Database not configured.' }, 503);
+                    const { student_id, video_id } = await request.json();
+                    if (!student_id || !video_id) {
+                        return jsonResponse({ error: 'student_id and video_id are required.' }, 400);
+                    }
+                    if (!d1) return jsonResponse({ success: true, mock: true, code: 'DEMO-CODE' });
 
-                    const student = await resolveStudent(student_id);
-                    if (!student) return jsonResponse({ error: 'Student not found.' }, 404);
-                    const video = await d1.prepare('SELECT id, requires_code FROM videos_table WHERE id = ?').bind(video_id).first();
-                    if (!video) return jsonResponse({ error: 'Video not found.' }, 404);
-                    if (!video.requires_code) return jsonResponse({ error: 'That video is open to everyone. Turn on "Code required" for it first.' }, 400);
+                    // Reuse an existing code for the same student+video pair
+                    // instead of minting duplicates every time the admin
+                    // clicks Generate again (e.g. if the student lost it).
+                    const existing = await d1.prepare(
+                        'SELECT * FROM video_access_codes_table WHERE student_id = ? AND video_id = ?'
+                    ).bind(String(student_id), video_id).first();
+                    if (existing) {
+                        return jsonResponse({ success: true, id: existing.id, code: existing.code, redeemed: !!existing.redeemed, message: 'This student already has a code for this video.' });
+                    }
 
-                    const already = await d1.prepare('SELECT id FROM video_unlocks_table WHERE student_id = ? AND video_id = ?').bind(student.phone, video.id).first();
-                    if (already) return jsonResponse({ error: `${student.name} already has this video unlocked.` }, 409);
+                    // 8-char, unambiguous alphabet (no 0/O/1/I), formatted XXXX-XXXX.
+                    const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                    const makeCode = () => {
+                        let raw = '';
+                        for (let i = 0; i < 8; i++) raw += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+                        return `${raw.slice(0, 4)}-${raw.slice(4)}`;
+                    };
 
-                    // Re-use the pending code for this pair instead of piling up duplicates.
-                    const pending = await d1.prepare('SELECT id, code FROM video_access_codes_table WHERE student_id = ? AND video_id = ? AND redeemed_at IS NULL')
-                        .bind(student.phone, video.id).first();
-                    if (pending) return jsonResponse({ success: true, id: pending.id, code: pending.code, reused: true, student_name: student.name });
-
+                    let code = makeCode();
+                    let result = null;
+                    // UNIQUE(code) makes a collision self-evident — retry a
+                    // few times rather than trusting randomness blindly.
                     for (let attempt = 0; attempt < 5; attempt++) {
-                        const code = generateAccessCode();
                         try {
-                            const r = await d1.prepare('INSERT INTO video_access_codes_table (code, student_id, video_id, created_by) VALUES (?, ?, ?, ?)')
-                                .bind(code, student.phone, video.id, admin.phone).run();
-                            return jsonResponse({ success: true, id: r.meta.last_row_id, code, reused: false, student_name: student.name });
+                            result = await d1.prepare(
+                                'INSERT INTO video_access_codes_table (code, student_id, video_id) VALUES (?, ?, ?)'
+                            ).bind(code, String(student_id), video_id).run();
+                            break;
                         } catch (e) {
-                            if (!/UNIQUE/i.test(String(e && e.message))) throw e; // only retry code collisions
+                            code = makeCode();
                         }
                     }
-                    return jsonResponse({ error: 'Could not generate a unique code. Try again.' }, 500);
+                    if (!result) return jsonResponse({ error: 'Could not generate a unique code — try again.' }, 500);
+
+                    return jsonResponse({ success: true, id: result.meta.last_row_id, code, message: 'Access code generated.' });
                 } catch (err) {
                     return jsonResponse({ error: err.message }, 400);
                 }
             }
         }
 
-        // Admin: revoke a code. If it was already redeemed this also re-locks the video for that student.
+        // Student redeems a code they were given. Matched on code + their
+        // own id so one student can never redeem a code minted for someone
+        // else, even if they somehow get hold of it.
+        if (pathname === '/api/db/video-codes/redeem' && request.method === 'POST') {
+            try {
+                const { student_id, code } = await request.json();
+                if (!student_id || !code) return jsonResponse({ error: 'student_id and code are required.' }, 400);
+                if (!d1) return jsonResponse({ success: true, mock: true });
+
+                const clean = String(code).trim().toUpperCase();
+                const row = await d1.prepare('SELECT * FROM video_access_codes_table WHERE code = ?').bind(clean).first();
+                if (!row) return jsonResponse({ error: 'That code was not recognized. Double-check it with your teacher.' }, 404);
+                if (String(row.student_id) !== String(student_id)) {
+                    return jsonResponse({ error: 'This code was generated for a different student account.' }, 403);
+                }
+                if (!row.redeemed) {
+                    await d1.prepare('UPDATE video_access_codes_table SET redeemed = 1, redeemed_at = datetime(\'now\') WHERE id = ?')
+                        .bind(row.id).run();
+                }
+                return jsonResponse({ success: true, video_id: row.video_id, message: 'Video unlocked — it will stay unlocked for you from now on.' });
+            } catch (err) {
+                return jsonResponse({ error: err.message }, 400);
+            }
+        }
+
+        // Revoke (delete) a code from the Admin Console — also re-locks the
+        // video for that student if it had already been redeemed.
         if (pathname.startsWith('/api/db/video-codes/') && request.method === 'DELETE') {
-            const admin = await resolveStudent(url.searchParams.get('admin_id'));
-            if (!isStaff(admin)) return jsonResponse({ error: 'Only the teacher/admin can revoke codes.' }, 403);
             const codeId = pathname.split('/').pop();
             if (d1 && codeId) {
-                const row = await d1.prepare('SELECT * FROM video_access_codes_table WHERE id = ?').bind(codeId).first();
-                if (row) {
-                    await d1.batch([
-                        d1.prepare('DELETE FROM video_unlocks_table WHERE student_id = ? AND video_id = ?').bind(row.student_id, row.video_id),
-                        d1.prepare('DELETE FROM video_access_codes_table WHERE id = ?').bind(codeId)
-                    ]);
-                }
+                await d1.prepare('DELETE FROM video_access_codes_table WHERE id = ?').bind(codeId).run();
+                return jsonResponse({ success: true, message: 'Access code revoked.' });
             }
-            return jsonResponse({ success: true, message: 'Code revoked.' });
+            return jsonResponse({ success: true });
         }
 
         // --- MATERIALS ENDPOINTS ---
